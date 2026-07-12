@@ -1,0 +1,6 @@
+{
+  "name": "SI-PEKA",
+  "description": "Aplikasi Penilaian Kerusakan Bangunan Gedung (Sekolah) berbasis lokasi dengan fitur pelaporan foto dan dashboard analitik.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

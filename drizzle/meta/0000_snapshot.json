@@ -1,0 +1,1128 @@
+{
+  "id": "ff60db19-4fe6-41e0-8455-855dad9dc414",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.app_config": {
+      "name": "app_config",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.audit_trails": {
+      "name": "audit_trails",
+      "schema": "",
+      "columns": {
+        "id_audit": {
+          "name": "id_audit",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "id_permohonan": {
+          "name": "id_permohonan",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_email": {
+          "name": "user_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_name": {
+          "name": "user_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "details": {
+          "name": "details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "audit_trails_id_permohonan_permohonan_penilaian_id_permohonan_fk": {
+          "name": "audit_trails_id_permohonan_permohonan_penilaian_id_permohonan_fk",
+          "tableFrom": "audit_trails",
+          "tableTo": "permohonan_penilaian",
+          "columnsFrom": [
+            "id_permohonan"
+          ],
+          "columnsTo": [
+            "id_permohonan"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.history_penilaian": {
+      "name": "history_penilaian",
+      "schema": "",
+      "columns": {
+        "id_history": {
+          "name": "id_history",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "id_bangunan": {
+          "name": "id_bangunan",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_permohonan": {
+          "name": "id_permohonan",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tahun_penilaian": {
+          "name": "tahun_penilaian",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tanggal_penilaian": {
+          "name": "tanggal_penilaian",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "total_persentase_kerusakan": {
+          "name": "total_persentase_kerusakan",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kesimpulan_akhir": {
+          "name": "kesimpulan_akhir",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "operator_penilai": {
+          "name": "operator_penilai",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Sistem Penilai'"
+        },
+        "catatan_kerusakan": {
+          "name": "catatan_kerusakan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "history_penilaian_id_bangunan_profil_bangunan_id_bangunan_fk": {
+          "name": "history_penilaian_id_bangunan_profil_bangunan_id_bangunan_fk",
+          "tableFrom": "history_penilaian",
+          "tableTo": "profil_bangunan",
+          "columnsFrom": [
+            "id_bangunan"
+          ],
+          "columnsTo": [
+            "id_bangunan"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "history_penilaian_id_permohonan_permohonan_penilaian_id_permohonan_fk": {
+          "name": "history_penilaian_id_permohonan_permohonan_penilaian_id_permohonan_fk",
+          "tableFrom": "history_penilaian",
+          "tableTo": "permohonan_penilaian",
+          "columnsFrom": [
+            "id_permohonan"
+          ],
+          "columnsTo": [
+            "id_permohonan"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.log_disposisi": {
+      "name": "log_disposisi",
+      "schema": "",
+      "columns": {
+        "id_disposisi": {
+          "name": "id_disposisi",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "id_permohonan": {
+          "name": "id_permohonan",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_user_pengirim": {
+          "name": "id_user_pengirim",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_user_penerima": {
+          "name": "id_user_penerima",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "waktu_disposisi": {
+          "name": "waktu_disposisi",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "status_tindakan": {
+          "name": "status_tindakan",
+          "type": "status_tindakan",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "catatan_rekomendasi_ai": {
+          "name": "catatan_rekomendasi_ai",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "log_disposisi_id_permohonan_permohonan_penilaian_id_permohonan_fk": {
+          "name": "log_disposisi_id_permohonan_permohonan_penilaian_id_permohonan_fk",
+          "tableFrom": "log_disposisi",
+          "tableTo": "permohonan_penilaian",
+          "columnsFrom": [
+            "id_permohonan"
+          ],
+          "columnsTo": [
+            "id_permohonan"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "log_disposisi_id_user_pengirim_users_id_user_fk": {
+          "name": "log_disposisi_id_user_pengirim_users_id_user_fk",
+          "tableFrom": "log_disposisi",
+          "tableTo": "users",
+          "columnsFrom": [
+            "id_user_pengirim"
+          ],
+          "columnsTo": [
+            "id_user"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "log_disposisi_id_user_penerima_users_id_user_fk": {
+          "name": "log_disposisi_id_user_penerima_users_id_user_fk",
+          "tableFrom": "log_disposisi",
+          "tableTo": "users",
+          "columnsFrom": [
+            "id_user_penerima"
+          ],
+          "columnsTo": [
+            "id_user"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.master_katalog_visual": {
+      "name": "master_katalog_visual",
+      "schema": "",
+      "columns": {
+        "id_katalog": {
+          "name": "id_katalog",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "id_komponen": {
+          "name": "id_komponen",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_klasifikasi": {
+          "name": "id_klasifikasi",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deskripsi_pupr": {
+          "name": "deskripsi_pupr",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url_foto_contoh": {
+          "name": "url_foto_contoh",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "master_katalog_visual_id_komponen_master_komponen_id_komponen_fk": {
+          "name": "master_katalog_visual_id_komponen_master_komponen_id_komponen_fk",
+          "tableFrom": "master_katalog_visual",
+          "tableTo": "master_komponen",
+          "columnsFrom": [
+            "id_komponen"
+          ],
+          "columnsTo": [
+            "id_komponen"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "master_katalog_visual_id_klasifikasi_master_klasifikasi_kerusakan_id_klasifikasi_fk": {
+          "name": "master_katalog_visual_id_klasifikasi_master_klasifikasi_kerusakan_id_klasifikasi_fk",
+          "tableFrom": "master_katalog_visual",
+          "tableTo": "master_klasifikasi_kerusakan",
+          "columnsFrom": [
+            "id_klasifikasi"
+          ],
+          "columnsTo": [
+            "id_klasifikasi"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.master_klasifikasi_kerusakan": {
+      "name": "master_klasifikasi_kerusakan",
+      "schema": "",
+      "columns": {
+        "id_klasifikasi": {
+          "name": "id_klasifikasi",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "nama_klasifikasi": {
+          "name": "nama_klasifikasi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nilai_faktor": {
+          "name": "nilai_faktor",
+          "type": "numeric(3, 2)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.master_komponen": {
+      "name": "master_komponen",
+      "schema": "",
+      "columns": {
+        "id_komponen": {
+          "name": "id_komponen",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "kategori_komponen": {
+          "name": "kategori_komponen",
+          "type": "kategori_komponen",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nama_komponen": {
+          "name": "nama_komponen",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "satuan": {
+          "name": "satuan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bobot_form_a": {
+          "name": "bobot_form_a",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bobot_form_b": {
+          "name": "bobot_form_b",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bobot_form_c": {
+          "name": "bobot_form_c",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tooltip_text": {
+          "name": "tooltip_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tooltip_image": {
+          "name": "tooltip_image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "urutan": {
+          "name": "urutan",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.notifications": {
+      "name": "notifications",
+      "schema": "",
+      "columns": {
+        "id_notification": {
+          "name": "id_notification",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "id_user": {
+          "name": "id_user",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target_role": {
+          "name": "target_role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_permohonan": {
+          "name": "id_permohonan",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_read": {
+          "name": "is_read",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "notifications_id_user_users_id_user_fk": {
+          "name": "notifications_id_user_users_id_user_fk",
+          "tableFrom": "notifications",
+          "tableTo": "users",
+          "columnsFrom": [
+            "id_user"
+          ],
+          "columnsTo": [
+            "id_user"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "notifications_id_permohonan_permohonan_penilaian_id_permohonan_fk": {
+          "name": "notifications_id_permohonan_permohonan_penilaian_id_permohonan_fk",
+          "tableFrom": "notifications",
+          "tableTo": "permohonan_penilaian",
+          "columnsFrom": [
+            "id_permohonan"
+          ],
+          "columnsTo": [
+            "id_permohonan"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.pengaturan_dinas": {
+      "name": "pengaturan_dinas",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "nama_dinas": {
+          "name": "nama_dinas",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Dinas Pekerjaan Umum dan Penataan Ruang'"
+        },
+        "alamat": {
+          "name": "alamat",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Jalan Raya Pembangunan No. 123, Garut'"
+        },
+        "kontak": {
+          "name": "kontak",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "website": {
+          "name": "website",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_kadis": {
+          "name": "id_kadis",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_kabid": {
+          "name": "id_kabid",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "pengaturan_dinas_id_kadis_users_id_user_fk": {
+          "name": "pengaturan_dinas_id_kadis_users_id_user_fk",
+          "tableFrom": "pengaturan_dinas",
+          "tableTo": "users",
+          "columnsFrom": [
+            "id_kadis"
+          ],
+          "columnsTo": [
+            "id_user"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "pengaturan_dinas_id_kabid_users_id_user_fk": {
+          "name": "pengaturan_dinas_id_kabid_users_id_user_fk",
+          "tableFrom": "pengaturan_dinas",
+          "tableTo": "users",
+          "columnsFrom": [
+            "id_kabid"
+          ],
+          "columnsTo": [
+            "id_user"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.penilaian_tahap1_keselamatan": {
+      "name": "penilaian_tahap1_keselamatan",
+      "schema": "",
+      "columns": {
+        "id_tahap1": {
+          "name": "id_tahap1",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "id_permohonan": {
+          "name": "id_permohonan",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_komponen": {
+          "name": "id_komponen",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "indikasi_bahaya": {
+          "name": "indikasi_bahaya",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "url_foto_bukti": {
+          "name": "url_foto_bukti",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "penilaian_tahap1_keselamatan_id_permohonan_permohonan_penilaian_id_permohonan_fk": {
+          "name": "penilaian_tahap1_keselamatan_id_permohonan_permohonan_penilaian_id_permohonan_fk",
+          "tableFrom": "penilaian_tahap1_keselamatan",
+          "tableTo": "permohonan_penilaian",
+          "columnsFrom": [
+            "id_permohonan"
+          ],
+          "columnsTo": [
+            "id_permohonan"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "penilaian_tahap1_keselamatan_id_komponen_master_komponen_id_komponen_fk": {
+          "name": "penilaian_tahap1_keselamatan_id_komponen_master_komponen_id_komponen_fk",
+          "tableFrom": "penilaian_tahap1_keselamatan",
+          "tableTo": "master_komponen",
+          "columnsFrom": [
+            "id_komponen"
+          ],
+          "columnsTo": [
+            "id_komponen"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.penilaian_tahap2_volume": {
+      "name": "penilaian_tahap2_volume",
+      "schema": "",
+      "columns": {
+        "id_tahap2": {
+          "name": "id_tahap2",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "id_permohonan": {
+          "name": "id_permohonan",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_komponen": {
+          "name": "id_komponen",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id_klasifikasi": {
+          "name": "id_klasifikasi",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "volume_input": {
+          "name": "volume_input",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url_foto_bukti": {
+          "name": "url_foto_bukti",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nilai_kerusakan_komponen": {
+          "name": "nilai_kerusakan_komponen",
+          "type": "numeric(8, 4)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "penilaian_tahap2_volume_id_permohonan_permohonan_penilaian_id_permohonan_fk": {
+          "name": "penilaian_tahap2_volume_id_permohonan_permohonan_penilaian_id_permohonan_fk",
+          "tableFrom": "penilaian_tahap2_volume",
+          "tableTo": "permohonan_penilaian",
+          "columnsFrom": [
+            "id_permohonan"
+          ],
+          "columnsTo": [
+            "id_permohonan"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "penilaian_tahap2_volume_id_komponen_master_komponen_id_komponen_fk": {
+          "name": "penilaian_tahap2_volume_id_komponen_master_komponen_id_komponen_fk",
+          "tableFrom": "penilaian_tahap2_volume",
+          "tableTo": "master_komponen",
+          "columnsFrom": [
+            "id_komponen"
+          ],
+          "columnsTo": [
+            "id_komponen"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "penilaian_tahap2_volume_id_klasifikasi_master_klasifikasi_kerusakan_id_klasifikasi_fk": {
+          "name": "penilaian_tahap2_volume_id_klasifikasi_master_klasifikasi_kerusakan_id_klasifikasi_fk",
+          "tableFrom": "penilaian_tahap2_volume",
+          "tableTo": "master_klasifikasi_kerusakan",
+          "columnsFrom": [
+            "id_klasifikasi"
+          ],
+          "columnsTo": [
+            "id_klasifikasi"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.permohonan_penilaian": {
+      "name": "permohonan_penilaian",
+      "schema": "",
+      "columns": {
+        "id_permohonan": {
+          "name": "id_permohonan",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "id_bangunan": {
+          "name": "id_bangunan",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tanggal_pengajuan": {
+          "name": "tanggal_pengajuan",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "status_terakhir": {
+          "name": "status_terakhir",
+          "type": "status_permohonan",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Menunggu_Validasi'"
+        },
+        "total_persentase_kerusakan": {
+          "name": "total_persentase_kerusakan",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kesimpulan_akhir": {
+          "name": "kesimpulan_akhir",
+          "type": "kesimpulan_akhir",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "url_dokumen_hasil_pdf": {
+          "name": "url_dokumen_hasil_pdf",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "disposisi_data": {
+          "name": "disposisi_data",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "permohonan_penilaian_id_bangunan_profil_bangunan_id_bangunan_fk": {
+          "name": "permohonan_penilaian_id_bangunan_profil_bangunan_id_bangunan_fk",
+          "tableFrom": "permohonan_penilaian",
+          "tableTo": "profil_bangunan",
+          "columnsFrom": [
+            "id_bangunan"
+          ],
+          "columnsTo": [
+            "id_bangunan"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.profil_bangunan": {
+      "name": "profil_bangunan",
+      "schema": "",
+      "columns": {
+        "id_bangunan": {
+          "name": "id_bangunan",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "id_user_pengelola": {
+          "name": "id_user_pengelola",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nama_sekolah_instansi": {
+          "name": "nama_sekolah_instansi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "npsn_nup": {
+          "name": "npsn_nup",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nama_massa_bangunan": {
+          "name": "nama_massa_bangunan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "koordinat_gps": {
+          "name": "koordinat_gps",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "luas_bangunan_m2": {
+          "name": "luas_bangunan_m2",
+          "type": "numeric(10, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jumlah_lantai": {
+          "name": "jumlah_lantai",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "custom_fields": {
+          "name": "custom_fields",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "profil_bangunan_id_user_pengelola_users_id_user_fk": {
+          "name": "profil_bangunan_id_user_pengelola_users_id_user_fk",
+          "tableFrom": "profil_bangunan",
+          "tableTo": "users",
+          "columnsFrom": [
+            "id_user_pengelola"
+          ],
+          "columnsTo": [
+            "id_user"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id_user": {
+          "name": "id_user",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "uid": {
+          "name": "uid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nama_lengkap": {
+          "name": "nama_lengkap",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Pengelola_Bangunan'"
+        },
+        "kontak_whatsapp": {
+          "name": "kontak_whatsapp",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fcm_token": {
+          "name": "fcm_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_uid_unique": {
+          "name": "users_uid_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "uid"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.kategori_komponen": {
+      "name": "kategori_komponen",
+      "schema": "public",
+      "values": [
+        "Struktur",
+        "Arsitektur",
+        "Utilitas"
+      ]
+    },
+    "public.kesimpulan_akhir": {
+      "name": "kesimpulan_akhir",
+      "schema": "public",
+      "values": [
+        "Tidak Rusak",
+        "Rusak Ringan",
+        "Rusak Sedang",
+        "Rusak Berat"
+      ]
+    },
+    "public.role": {
+      "name": "role",
+      "schema": "public",
+      "values": [
+        "Administrator",
+        "Pengelola_Bangunan",
+        "Operator",
+        "Tim_Teknis",
+        "Koordinator",
+        "Kabid",
+        "Kadis"
+      ]
+    },
+    "public.status_permohonan": {
+      "name": "status_permohonan",
+      "schema": "public",
+      "values": [
+        "Menunggu_Validasi",
+        "Survei_Lapangan",
+        "Selesai_Dianalisis",
+        "Arsip_Digital"
+      ]
+    },
+    "public.status_tindakan": {
+      "name": "status_tindakan",
+      "schema": "public",
+      "values": [
+        "Disposisi",
+        "Setuju_Tanpa_Survei",
+        "Jadwalkan_Survei",
+        "Terbitkan_Hasil"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

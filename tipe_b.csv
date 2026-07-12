@@ -1,0 +1,79 @@
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,FORMULIR PENILAIAN KERUSAKAN BANGUNAN,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,Nama Sekolah ,,:,,,,,,,,,,,,,,,,,,,,,,
+,NPSN,,:,,,,,,,,,,,,,,,,,,,,,,
+,Nama Bangunan,,:,,,,,,,,,,,,,,,,,,,,,,
+,NUP (No Urut Perolehan),,: ,,,,,,,,,,,,,,,,,,,,,,
+,Alamat,,:,,,,,,,,,,,,,,,,,,,,,,
+,Kabupaten/Kota,,:,Garut,,,Provinsi,,Jawa Barat,,,,,,,,,,,,,,,,
+,Koordinat,,:,,,,,,,,,,,,,,,,,,,,,,
+,Luas Bangunan,,:,,m2,,,,,,,,Jumlah Lantai        :,,,,,,2,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,NO,SISTEM,KOMPONEN,,SATUAN,VOLUME SELURUH KOMPONEN,TAHAP 2 - HITUNG VOLUME KERUSAKAN KOMPONEN BERDASARKAN KLASIFIKASI KERUSAKAN,,,,,,,,TAHAP 1 - PENGAMATAN VISUAL ADA / TDKNYA KERUSAKAN DAN INDIKASI DAMPAK KERUSAKAN TERHADAP KESELAMATAN PEMANFAATAN RUANGAN / BANGUNAN,PERHITUNGAN TINGKAT KERUSAKAN KOMPONEN,,,,,,,,"BOBOT 
+KOMPONEN",TINGKAT KERUSAKAN KOMPONEN THD MASSA BANGUNAN / RUANGAN
+,,,,,,,Tdk Rusak,"Rusak, dengan Tingkat Kerusakan:",,,,,Komponen Tdk Sesuai / Tdk Ada,Keterangan,,,,,,,,,,,
+,,,,,,,,Sangat Ringan,Ringan,Sedang,Berat,Sangat Berat,,,,1,2,3,4,5,6,7,TOTAL,,
+,,,,,,,1,2,3,4,5,6,7,8,,"0,00","0,20","0,35","0,50","0,70","0,85","1,00",,,
+,(1),(2),(3),,(4),(5),(6),(7),(8),(9),(10),(11),(12),,(6),(14),(15),(16),(17),(18),(19),(20),(21),(22),(23)
+,1,STRUKTUR,Pondasi & Sloof,,Estimasi,,Pondasi diindikasi dalam kondisi baik,,,,,,,,Tidak ada kerusakan,,,,,,,,0%,"10,00%","0,00%"
+,,,Kolom,,unit,10,,,,,,,,Volume Kurang,Tidak ada kerusakan,"0,00","0,00","0,00","0,00","0,00","0,00","0,00",0%,"13,00%","0,00%"
+,,,Balok,,unit,10,,,,,,,,Volume Kurang,Tidak ada kerusakan,"0,00","0,00","0,00","0,00","0,00","0,00","0,00",0%,"12,00%","0,00%"
+,,,Plat Lantai,,unit,6,,,,,,,,Volume Kurang,Tidak ada kerusakan,"0,00","0,00","0,00","0,00","0,00","0,00","0,00",0%,"7,00%","0,00%"
+,,,Tangga,,unit,2,,,,,,,,Volume Kurang,Tidak ada kerusakan,"0,00","0,00","0,00","0,00","0,00","0,00","0,00",0%,"3,00%","0,00%"
+, ,,Atap,,%,100%,,,,,,,,Input Volume,Tidak ada kerusakan,"0,00","0,00","0,00","0,00","0,00","0,00","0,00",0%,"10,00%","0,00%"
+,2,ARSITEKTUR,Dinding / Partisi,,%,100%,,,,,,,,Input Volume,Tidak ada kerusakan,"0,00","0,00","0,00","0,00","0,00","0,00","0,00",0%,"15,00%","0,00%"
+,,,Plafond,,%,100%,,,,,,,,Input Volume,,"0,00","0,00","0,00","0,00","0,00","0,00","0,00",0%,"6,00%","0,00%"
+,,,Lantai,,%,100%,,,,,,,,Input Volume,,"0,00","0,00","0,00","0,00","0,00","0,00","0,00",0%,"9,00%","0,00%"
+,,,Kusen,,unit,1,,,,,,,,Volume Kurang,,"0,00","0,00","0,00","0,00","0,00","0,00","0,00",0%,"1,50%","0,00%"
+,,,Pintu,,unit,1,,,,,,,,Volume Kurang,,"0,00","0,00","0,00","0,00","0,00","0,00","0,00",0%,"1,00%","0,00%"
+,,,Jendela ,,unit,1,,,,,,,,Volume Kurang,,"0,00","0,00","0,00","0,00","0,00","0,00","0,00",0%,"1,25%","0,00%"
+,,,Finishing Plafond,,%,100%,,,,,,,,Input Volume,,"0,00","0,00","0,00","0,00","0,00","0,00","0,00",0%,"1,00%","0,00%"
+,,,Finishing Dinding,,%,100%,,,,,,,,Input Volume,,"0,00","0,00","0,00","0,00","0,00","0,00","0,00",0%,"5,00%","0,00%"
+,,,Finishing Kusen & Pintu,,%,100%,,,,,,,,Input Volume,,"0,00","0,00","0,00","0,00","0,00","0,00","0,00",0%,"1,00%","0,00%"
+,3,UTILITAS,Instalasi Listrik ,,Estimasi,,Jaringan listrik dalam kondisi baik,,,,,,,,,,,,,,,,0%,"2,00%","0,00%"
+,,,Instalasi Air Bersih,,Estimasi,,Sistem penyediaan air dalam kondisi baik,,,,,,,,,,,,,,,,0%,"1,00%","0,00%"
+,,,Drainase Limbah,,m1,1,,,,,,,,Volume Kurang,,"0,00","0,00","0,00","0,00","0,00","0,00","0,00",0%,"1,25%","0,00%"
+,,,,,,,,,,,,,,,Cek Kerusakan Komponen Lain,"TOTAL NILAI KERUSAKAN 
+MASSA BANGUNAN / RUANGAN =",,,,,,,,,"0,00%"
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,"KESIMPULAN TINGKAT KERUSAKAN 
+MASSA BANGUNAN / RUANGAN =",,,,,,,,,Tidak Ada Kerusakan
+,,,,,,,,,,,,,,,,,,,,,,,,,Tidak Ada Kerusakan
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,Tingkat Kerusakan,,
+,,,,,,,,,,,,,,,,,,,,,,,Ringan,,: ≤ 30%
+,SKETSA DENAH BANGUNAN,,,,,,,,,,,,,,,,,,,,,,Sedang,,: > 30% - 45%
+,,,,,,,,,,,,,,,,,,,,,,,Berat,,: > 45%
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,TIM SURVEI :,,
+,,,,,,,,,,,,,,,,,,,,,1,"Enjang Wahyudin, ST",,,….........................................
+,,,,,,,,,,,,,,,,,,,,,,NIP 199112182019031011,,,
+,,,,,,,,,,,,,,,,,,,,,2,Haris Nugraha,,,….........................................
+,,,,,,,,,,,,,,,,,,,,,,NIP 197703292025211012,,,
+,,,,,,,,,,,,,,,,,,,,,3,Nendi Supriadi,,,….........................................
+,,,,,,,,,,,,,,,,,,,,,,NIP 198302022025211069,,,
+,,,,,,,,,,,,,,,,,,,,,,DIPERIKSA,,,
+,,,,,,,,,,,,,,,,,,,,,,Sub Koordinator Penataan Bangunan dan Lingkungan,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,"Asep Tedi Sugianto, ST., M.Si.",,,
+,,,,,,,,,,,,,,,,,,,,,,NIP. 19770525 201410 1 002,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,MENYETUJUI,,,
+,,,,,,,,,,,,,,,,,,,,,,Kepala Bidang Bangunan,,,
+,,,,,,,,,,,,,,,,,,,,,,Dinas PUPR Kab Garut,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,"Dedi Komara, ST., M.Si.",,,
+,,,,,,,,,,,,,,,,,,,,,,NIP. 19760527 201001 1 002,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,MENGETAHUI,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,
+,Note : ,,,,,,,,,,,,,,,,,,,,,,,,
+,* ,: Dinas PU/Dinas yang menangani Bangunan Gedung ,,,,,,,,,,,,,,,,,,,,(___________________________),,,

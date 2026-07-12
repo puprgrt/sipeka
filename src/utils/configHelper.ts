@@ -1,0 +1,82 @@
+import { db } from '../db';
+import * as schema from '../db/schema';
+import { eq } from 'drizzle-orm';
+import fs from 'fs';
+import path from 'path';
+
+export async function getDbConfig(key: string, defaultVal: any) {
+  try {
+    const result = await db.select().from(schema.appConfig).where(eq(schema.appConfig.id, key)).limit(1);
+    if (result.length > 0) {
+      if (result[0].value) {
+        return JSON.parse(result[0].value);
+      }
+    }
+  } catch (e) {
+    console.error("getDbConfig error", e);
+  }
+  return defaultVal;
+}
+
+export async function setDbConfig(key: string, value: any) {
+  try {
+    const existing = await db.select().from(schema.appConfig).where(eq(schema.appConfig.id, key)).limit(1);
+    if (existing.length > 0) {
+      await db.update(schema.appConfig).set({ value: JSON.stringify(value) }).where(eq(schema.appConfig.id, key));
+    } else {
+      await db.insert(schema.appConfig).values({ id: key, value: JSON.stringify(value) });
+    }
+  } catch (e) {
+    console.error("setDbConfig error", e);
+  }
+}
+
+export async function readLetterParamsFile() {
+  let defaultVal: any = {
+    sistem: {
+      logoKiri: "",
+      logoKanan: "",
+      namaInstansiAtas: "PEMERINTAH KABUPATEN GARUT",
+      namaInstansiBawah: "DINAS PEKERJAAN UMUM DAN PENATAAN RUANG",
+      alamat: "Jalan Raya Pembangunan No. 123, Sukagalih, Kec. Tarogong Kidul, Kabupaten Garut, Jawa Barat 44151",
+      email: "",
+      website: "",
+      nomorTelepon: ""
+    },
+    pengelola: {
+      logoKiri: "",
+      logoKanan: "",
+      namaInstansiAtas: "PEMERINTAH KABUPATEN GARUT",
+      namaInstansiBawah: "NAMA LEMBAGA / SEKOLAH",
+      alamat: "Alamat Lembaga",
+      email: "",
+      website: "",
+      nomorTelepon: ""
+    }
+  };
+
+  const dbVal = await getDbConfig('pengaturan_surat', defaultVal);
+  return {
+    sistem: { ...defaultVal.sistem, ...(dbVal?.sistem || {}) },
+    pengelola: { ...defaultVal.pengelola, ...(dbVal?.pengelola || {}) }
+  };
+}
+
+export async function writeLetterParamsFile(data: any) {
+  await setDbConfig('pengaturan_surat', data);
+  return true;
+}
+
+export async function readAppSettingsFile() {
+  let defaultVal: any = {
+    logoKiri: "https://upload.wikimedia.org/wikipedia/commons/b/b3/Coat_of_arms_of_Garut_Regency.svg",
+    logoKanan: "https://upload.wikimedia.org/wikipedia/commons/0/06/Logo_PUPR.png"
+  };
+  const dbVal = await getDbConfig('app_settings', defaultVal);
+  return { ...defaultVal, ...(dbVal || {}) };
+}
+
+export async function writeAppSettingsFile(data: any) {
+  await setDbConfig('app_settings', data);
+  return true;
+}

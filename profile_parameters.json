@@ -1,0 +1,34 @@
+[
+  {
+    "id": "nip",
+    "label": "NIP / Nomor Induk Pegawai",
+    "type": "text",
+    "placeholder": "Contoh: 198203112009121002",
+    "required": false,
+    "enabled": true
+  },
+  {
+    "id": "jabatan",
+    "label": "Jabatan",
+    "type": "text",
+    "placeholder": "Contoh: Kepala Seksi Tata Bangunan",
+    "required": false,
+    "enabled": true
+  },
+  {
+    "id": "unitKerja",
+    "label": "Unit Kerja / Bidang",
+    "type": "text",
+    "placeholder": "Contoh: Bidang Cipta Karya",
+    "required": false,
+    "enabled": true
+  },
+  {
+    "id": "instansi",
+    "label": "Instansi / Lembaga",
+    "type": "text",
+    "placeholder": "Contoh: Dinas PUPR Kabupaten Garut",
+    "required": false,
+    "enabled": true
+  }
+]

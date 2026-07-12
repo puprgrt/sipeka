@@ -1,0 +1,22 @@
+{
+  "sistem": {
+    "logoKiri": "https://upload.wikimedia.org/wikipedia/commons/b/b3/Coat_of_arms_of_Garut_Regency.svg",
+    "logoKanan": "",
+    "namaInstansiAtas": "PEMERINTAH KABUPATEN GARUT",
+    "namaInstansiBawah": "DINAS PEKERJAAN UMUM DAN PENATAAN RUANG",
+    "alamat": "Jalan Raya Pembangunan No. 123, Tarogong Kidul, Garut",
+    "email": "pupr@garutkab.go.id",
+    "website": "pupr.garutkab.go.id",
+    "nomorTelepon": "(0262) 234567"
+  },
+  "pengelola": {
+    "logoKiri": "https://upload.wikimedia.org/wikipedia/commons/4/46/Logo_Tut_Wuri_Handayani.png",
+    "logoKanan": "",
+    "namaInstansiAtas": "PEMERINTAH KABUPATEN GARUT / DINAS PENDIDIKAN",
+    "namaInstansiBawah": "UPTD SATUAN PENDIDIKAN SDN 1 TAROGONG KIDUL",
+    "alamat": "Jalan Merdeka No. 45, Jayaraga, Tarogong Kidul, Garut",
+    "email": "sdn1tarogongkidul@edu.garutkab.go.id",
+    "website": "sdn1tarogongkidul.sch.id",
+    "nomorTelepon": "0812-3456-7890"
+  }
+}
