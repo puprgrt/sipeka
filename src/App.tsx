@@ -18,7 +18,6 @@ import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import FileManager from "./pages/FileManager";
 import AiDashboard from "./pages/AiDashboard";
-import TestSupabase from "./pages/TestSupabase";
 
 export default function App() {
   return (
@@ -38,7 +37,6 @@ export default function App() {
           <Route path="file-manager" element={<FileManager />} />
           <Route path="settings" element={<Settings />} />
           <Route path="profile" element={<Profile />} />
-          <Route path="test-supabase" element={<TestSupabase />} />
         </Route>
       </Routes>
     </BrowserRouter>

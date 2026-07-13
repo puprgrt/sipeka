@@ -7,14 +7,19 @@ import { v4 as uuidv4 } from "uuid";
 import { Assessment } from "./src/types";
 import { db } from "./src/db/index";
 import * as schema from "./src/db/schema";
-import { initializeApp as initAdminApp } from "firebase-admin/app";
+import { initializeApp as initAdminApp, getApps, getApp } from "firebase-admin/app";
 import { getMessaging as getAdminMessaging } from "firebase-admin/messaging";
 
 // Initialize Firebase Admin
 let adminApp;
 try {
-  adminApp = initAdminApp();
-  console.log("Firebase Admin initialized successfully.");
+  if (getApps().length === 0) {
+    adminApp = initAdminApp();
+    console.log("Firebase Admin initialized successfully.");
+  } else {
+    adminApp = getApp();
+    console.log("Firebase Admin already initialized.");
+  }
 } catch (error) {
   console.error("Failed to initialize Firebase Admin:", error);
 }
