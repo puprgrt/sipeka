@@ -5,6 +5,9 @@ import {
   TrendingUp, ShieldAlert, CheckCircle, BarChart3, ScanEye,
   Camera
 } from "lucide-react";
+import SmartPhotoViewer from "../components/SmartPhotoViewer";
+import { UploadCloud, Loader2 } from "lucide-react";
+
 import { 
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -14,6 +17,58 @@ import {
 export default function AiDashboard() {
   const [assessments, setAssessments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState("");
+  const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
+  const [photoFindings, setPhotoFindings] = useState<any[]>([]);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadedFileName(file.name);
+    setIsAnalyzingPhoto(true);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64 = event.target?.result as string;
+      setUploadedPhotoUrl(base64);
+
+      try {
+        const res = await fetch("/api/analyze-document", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileType: "image",
+            imageBase64: base64
+          })
+        });
+        const data = await res.json();
+        if (data.findings) {
+          const mappedFindings = data.findings.map((f: any, idx: number) => ({
+            id: idx,
+            label: `${f.element} - ${f.defect}`,
+            type: f.severity === "Tinggi" ? "Kritis" : f.severity === "Sedang" ? "Sedang" : "Ringan",
+            recommendation: f.remediation,
+            x: f.box?.x || 10,
+            y: f.box?.y || 10,
+            w: f.box?.w || 30,
+            h: f.box?.h || 30,
+            confidence: data.confidenceScore || 85
+          }));
+          setPhotoFindings(mappedFindings);
+        }
+      } catch (err) {
+        console.error("Analysis error:", err);
+      } finally {
+        setIsAnalyzingPhoto(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
 
   const activeRole = localStorage.getItem("activeRole") || "Administrator";
   const activeUserId = localStorage.getItem("activeUserId");
@@ -311,38 +366,34 @@ export default function AiDashboard() {
           <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
              <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <Camera className="w-5 h-5 text-indigo-600" /> Sampel Deteksi Visual Terakhir
+                <Camera className="w-5 h-5 text-indigo-600" /> Inspeksi Visual Cerdas (AI Vision)
               </h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="group relative rounded-2xl overflow-hidden border border-slate-200">
-                <img src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=600&auto=format&fit=crop" alt="Crack" className="w-full h-40 object-cover transition-transform group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                <div className="absolute bottom-3 left-3 right-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-bold text-white uppercase bg-rose-500/80 px-2 py-0.5 rounded backdrop-blur-sm">Retak Struktur</span>
-                    <span className="text-[10px] font-mono text-emerald-400 font-bold bg-black/50 px-2 py-0.5 rounded backdrop-blur-sm">87% Conf.</span>
-                  </div>
-                  <p className="text-[10px] text-slate-300 line-clamp-1">Kolom K1 - Lantai 2, potensi bahaya tinggi</p>
+            
+            <div className="mb-4">
+              <label className="flex items-center justify-center w-full h-24 border-2 border-dashed border-indigo-200 rounded-xl hover:bg-indigo-50 transition cursor-pointer bg-white">
+                <div className="flex flex-col items-center">
+                  {isAnalyzingPhoto ? (
+                    <Loader2 className="w-6 h-6 text-indigo-500 animate-spin mb-2" />
+                  ) : (
+                    <UploadCloud className="w-6 h-6 text-indigo-500 mb-2" />
+                  )}
+                  <span className="text-xs font-medium text-slate-600">
+                    {isAnalyzingPhoto ? "AI Sedang Menganalisis..." : "Unggah Foto Kerusakan untuk Analisis AI"}
+                  </span>
                 </div>
-                {/* Bounding box mock */}
-                <div className="absolute top-1/4 left-1/4 right-1/3 bottom-1/3 border-2 border-rose-500 bg-rose-500/10 rounded-lg shadow-[0_0_15px_rgba(244,63,94,0.5)]"></div>
-              </div>
-
-              <div className="group relative rounded-2xl overflow-hidden border border-slate-200">
-                <img src="https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=600&auto=format&fit=crop" alt="Corrosion" className="w-full h-40 object-cover transition-transform group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                <div className="absolute bottom-3 left-3 right-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-bold text-white uppercase bg-amber-500/80 px-2 py-0.5 rounded backdrop-blur-sm">Korosi Baut</span>
-                    <span className="text-[10px] font-mono text-emerald-400 font-bold bg-black/50 px-2 py-0.5 rounded backdrop-blur-sm">92% Conf.</span>
-                  </div>
-                  <p className="text-[10px] text-slate-300 line-clamp-1">Struktur Atap Baja - Sayap Barat</p>
-                </div>
-                {/* Bounding box mock */}
-                <div className="absolute top-1/3 left-1/3 right-1/4 bottom-1/4 border-2 border-amber-500 bg-amber-500/10 rounded-lg shadow-[0_0_15px_rgba(245,158,11,0.5)]"></div>
-              </div>
+                <input type="file" className="hidden" accept="image/*" onChange={handlePhotoUpload} disabled={isAnalyzingPhoto} />
+              </label>
             </div>
+            
+            {uploadedPhotoUrl && !isAnalyzingPhoto && (
+              <SmartPhotoViewer 
+                photoUrl={uploadedPhotoUrl} 
+                fileName={uploadedFileName} 
+                findings={photoFindings}
+                onClose={() => setUploadedPhotoUrl(null)} 
+              />
+            )}
           </div>
         </div>
 

@@ -80,3 +80,21 @@ export async function writeAppSettingsFile(data: any) {
   await setDbConfig('app_settings', data);
   return true;
 }
+
+export async function readAiSettings() {
+  let defaultVal: any = {
+    apiKey: "",
+    model: "gemini-3.5-flash",
+    autoAnalyze: true,
+    confidenceThreshold: 85,
+    visionPrompt: "You are a civil engineering expert analyzing a building component for damage.\n\nPlease analyze the provided image of the component.\nDetermine the damage level classification based on these categories:\n- \"Rusak Sangat Ringan\"\n- \"Rusak Ringan\"\n- \"Rusak Sedang\"\n- \"Rusak Berat\"\n- \"Rusak Sangat Berat\"\n- \"Tidak Rusak\"\n\nAlso estimate the percentage of the volume/area of the component that is damaged (0 to 100).\nFinally, provide a brief reasoning for your assessment.",
+    documentPrompt: "You are an expert AI assistant that analyzes building inspection photos.\nPlease extract findings and bounding boxes. Respond ONLY with valid JSON.\nFormat: [{ \"label\": \"damage_type\", \"box\": [ymin, xmin, ymax, xmax] }]"
+  };
+  const dbVal = await getDbConfig('ai_settings', defaultVal);
+  return { ...defaultVal, ...(dbVal || {}) };
+}
+
+export async function writeAiSettings(data: any) {
+  await setDbConfig('ai_settings', data);
+  return true;
+}

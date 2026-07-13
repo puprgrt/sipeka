@@ -46,152 +46,38 @@ interface FileItem {
   };
 }
 
-const MOCK_FILES: FileItem[] = [
-  { id: "f1", name: "Laporan Kerusakan", type: "folder", updatedAt: "2026-07-10T10:00:00Z", author: "System", folderId: null, accessRole: ["Administrator", "Kadis", "Kabid", "Koordinator"] },
-  { id: "f2", name: "Surat Disposisi", type: "folder", updatedAt: "2026-07-09T14:20:00Z", author: "System", folderId: null, accessRole: ["Administrator", "Kadis", "Kabid"] },
-  { id: "f3", name: "Dokumen Sekolah", type: "folder", updatedAt: "2026-07-08T09:15:00Z", author: "System", folderId: null, accessRole: ["Administrator", "Pengelola_Bangunan", "Operator"] },
-  { id: "f4", name: "Foto Lapangan", type: "folder", updatedAt: "2026-07-05T11:45:00Z", author: "System", folderId: null, accessRole: ["Administrator", "Tim_Teknis", "Koordinator"] },
-  { 
-    id: "file1", 
-    name: "Disposisi_SDN_1_Garut.pdf", 
-    type: "pdf", 
-    size: 1024 * 1500, 
-    updatedAt: "2026-07-09T15:30:00Z", 
-    author: "Kabid Cipta Karya", 
-    folderId: "f2", 
-    accessRole: ["Administrator", "Kadis", "Kabid"],
-    description: "Surat disposisi resmi Kepala Dinas PUPR Kabupaten Garut mengenai instruksi survei kelayakan fisik SDN 1 Garut.",
-    comments: [
-      { id: "c1", user: "Dr. H. Ahmad, M.T.", role: "Kepala Dinas", text: "Tolong segera dijadwalkan survei lapangan untuk SDN 1 Garut, utamakan keselamatan siswa.", time: "2026-07-09T15:45:00Z" },
-      { id: "c2", user: "Kabid Cipta Karya", role: "Kabid", text: "Siap pak, disposisi telah diteruskan ke Koordinator Tim Teknis.", time: "2026-07-09T16:00:00Z" }
-    ],
-    activities: [
-      { action: "Surat disposisi dibuat", time: "2026-07-09T15:30:00Z", user: "Kadis" },
-      { action: "Sifat surat diatur: SEGERA", time: "2026-07-09T15:32:00Z", user: "Operator" },
-      { action: "Menerima disposisi", time: "2026-07-09T15:45:00Z", user: "Kabid Cipta Karya" }
-    ]
-  },
-  { 
-    id: "file2", 
-    name: "Laporan_SDN_1_Garut.pdf", 
-    type: "pdf", 
-    size: 1024 * 3500, 
-    updatedAt: "2026-07-10T11:00:00Z", 
-    author: "Tim Teknis", 
-    folderId: "f1", 
-    accessRole: ["Administrator", "Kadis", "Kabid", "Koordinator"],
-    description: "Laporan komprehensif hasil penilaian kondisi fisik bangunan gedung SDN 1 Garut oleh Tim Teknis Dinas PUPR.",
-    comments: [
-      { id: "c3", user: "Ir. Budiman", role: "Tim Teknis", text: "Laporan struktur menunjukkan retak lentur pada balok kelas B perlu diwaspadai.", time: "2026-07-10T11:15:00Z" }
-    ],
-    activities: [
-      { action: "Draf laporan diunggah", time: "2026-07-10T11:00:00Z", user: "Tim Teknis" },
-      { action: "Analisis AI dijalankan", time: "2026-07-10T11:02:00Z", user: "Sistem AI" }
-    ]
-  },
-  { 
-    id: "file3", 
-    name: "Foto_Kerusakan_Atap.jpg", 
-    type: "image", 
-    size: 1024 * 800, 
-    updatedAt: "2026-07-05T12:00:00Z", 
-    author: "Tim Teknis", 
-    folderId: "f4", 
-    accessRole: ["Administrator", "Tim_Teknis", "Koordinator"],
-    previewUrl: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&q=80&w=1200",
-    description: "Bukti visual kerusakan pada komponen atap dan plafon ruang kelas IV yang lapuk akibat rembesan air hujan jangka panjang.",
-    comments: [],
-    activities: [
-      { action: "Foto diunggah dari kamera lapangan", time: "2026-07-05T12:00:00Z", user: "Tim Teknis" }
-    ]
-  },
-  { 
-    id: "file4", 
-    name: "Profil_SDN_1.pdf", 
-    type: "pdf", 
-    size: 1024 * 200, 
-    updatedAt: "2026-07-08T09:30:00Z", 
-    author: "Pengelola Sekolah", 
-    folderId: "f3", 
-    accessRole: ["Administrator", "Pengelola_Bangunan", "Operator"],
-    description: "Dokumen profil sekolah SDN 1 Garut yang berisi data statistik, jumlah murid, luas tanah, serta nomor izin operasional bangunan.",
-    comments: [],
-    activities: [
-      { action: "Dokumen profil diunggah pemohon", time: "2026-07-08T09:30:00Z", user: "Pengelola Sekolah" }
-    ]
-  },
-  {
-    id: "file5",
-    name: "Template_Surat_Jawaban.docx",
-    type: "word",
-    size: 1024 * 45,
-    updatedAt: "2026-07-11T13:40:00Z",
-    author: "Operator Dinas",
-    folderId: null,
-    accessRole: ["Administrator", "Operator", "Kabid"],
-    description: "Draf surat jawaban resmi penolakan atau persetujuan kelaikan fungsi bangunan gedung sekolah.",
-    content: "PEMERINTAH KABUPATEN GARUT\nDINAS PEKERJAAN UMUM DAN PENATAAN RUANG\nJl. Pahlawan No. 45, Garut\n\nNomor : 600/342/CiptaKarya/2026\nLampiran : 1 (satu) Berkas\nSifat : Segera\nPerihal : Surat Rekomendasi Teknis Kelaikan Gedung Sekolah\n\nKepada Yth,\nKepala Sekolah SDN 1 Garut\ndi Tempat\n\nMenindaklanjuti surat permohonan Penilaian Kelaikan Fungsi Bangunan Gedung SDN 1 Garut, Tim Teknis Dinas PUPR telah melaksanakan survei lapangan pada tanggal 10 Juli 2026.\n\nBerdasarkan hasil analisis visual dan instrumen ukur, bangunan tersebut berada pada klasifikasi TINGKAT KERUSAKAN RINGAN dengan skor keandalan bangunan 82.50%. Dengan ini direkomendasikan bahwa Gedung SDN 1 Garut dinyatakan LAIK FUNGSI dengan syarat dilakukan pemeliharaan berkala pada struktur rangka atap.\n\nDemikian surat rekomendasi teknis ini dibuat untuk dipergunakan sebagaimana mestinya.\n\nKepala Dinas Pekerjaan Umum,\n\nDr. H. Ahmad, M.T.\nNIP. 19750812 200112 1 002",
-    comments: [],
-    activities: [
-      { action: "Draf template surat dibuat", time: "2026-07-11T13:40:00Z", user: "Operator Dinas" }
-    ]
-  },
-  {
-    id: "file6",
-    name: "Estimasi_Anggaran_Rehab.xlsx",
-    type: "excel",
-    size: 1024 * 72,
-    updatedAt: "2026-07-11T15:10:00Z",
-    author: "Tim Teknis",
-    folderId: null,
-    accessRole: ["Administrator", "Tim_Teknis", "Koordinator", "Kabid"],
-    description: "Lembar perhitungan Rencana Anggaran Biaya (RAB) estimasi perbaikan darurat komponen atap dan penanganan retak dinding.",
-    excelData: {
-      sheets: [
-        {
-          name: "RAB Struktur",
-          rows: [
-            ["No", "Nama Pekerjaan", "Volume", "Satuan", "Harga Satuan (Rp)", "Total Harga (Rp)"],
-            ["1", "Perbaikan Pondasi Ambles", "15", "m3", "1450000", "21750000"],
-            ["2", "Suntik Epoksi Retak Kolom", "40", "titik", "250000", "10000000"],
-            ["3", "Plester Patching Beton", "85", "m2", "180000", "15300000"],
-            ["4", "Struktur Gording Kayu Atap", "24", "batang", "480000", "11520000"],
-            ["5", "Ganti Genteng Bocor", "250", "buah", "15000", "3750000"],
-            ["", "Total Anggaran Struktur", "", "", "", "62320000"]
-          ]
-        },
-        {
-          name: "RAB Non-Struktur",
-          rows: [
-            ["No", "Nama Pekerjaan", "Volume", "Satuan", "Harga Satuan (Rp)", "Total Harga (Rp)"],
-            ["1", "Pasang Plafon Gypsum 9mm", "120", "m2", "135000", "16200000"],
-            ["2", "Pengecatan Tembok Dalam", "450", "m2", "40000", "18000000"],
-            ["3", "Instalasi Kabel Listrik Baru", "8", "titik", "250000", "2000000"],
-            ["4", "Kusen Pintu Kayu Kamper", "4", "unit", "1200000", "4800000"],
-            ["", "Total Anggaran Non-Struktur", "", "", "", "41000000"]
-          ]
-        }
-      ]
-    },
-    comments: [
-      { id: "c4", user: "Kabid Cipta Karya", role: "Kabid", text: "Rincian harga satuan sudah sesuai standar harga daerah Garut 2026. Setuju.", time: "2026-07-11T16:00:00Z" }
-    ],
-    activities: [
-      { action: "Estimasi anggaran diinput", time: "2026-07-11T15:10:00Z", user: "Tim Teknis" },
-      { action: "Harga disesuaikan standar daerah", time: "2026-07-11T15:25:00Z", user: "Operator" }
-    ]
-  }
-];
+
 
 export default function FileManager() {
   const [activeRole, setActiveRole] = useState(() => localStorage.getItem("activeRole") || "Administrator");
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState("");
-  const [files, setFiles] = useState<FileItem[]>(() => {
-    const saved = localStorage.getItem("smart_files_db");
-    return saved ? JSON.parse(saved) : MOCK_FILES;
-  });
+  const [files, setFiles] = useState<FileItem[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(true);
+
+  useEffect(() => {
+    const fetchFiles = async () => {
+      try {
+        const saved = localStorage.getItem("sipeka_files");
+        if (saved) {
+          setFiles(JSON.parse(saved));
+          setLoadingFiles(false);
+        } else {
+          const res = await fetch("/api/files");
+          if (res.ok) {
+            const data = await res.json();
+            setFiles(data);
+          }
+          setLoadingFiles(false);
+        }
+      } catch (error) {
+        console.error("Failed to fetch files", error);
+        setLoadingFiles(false);
+      }
+    };
+    fetchFiles();
+  }, []);
 
   // Preview States
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);

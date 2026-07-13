@@ -30,6 +30,7 @@ import assessmentRoutes from "./src/routes/assessmentRoutes";
 import referenceRoutes from "./src/routes/referenceRoutes";
 import userRoutes from "./src/routes/userRoutes";
 import settingsRoutes from "./src/routes/settingsRoutes";
+import fileRoutes from "./src/routes/fileRoutes";
 import { getDbConfig, setDbConfig, readLetterParamsFile, writeLetterParamsFile, readAppSettingsFile, writeAppSettingsFile } from './src/utils/configHelper';
 import { initMasterData } from './src/utils/masterData';
 
