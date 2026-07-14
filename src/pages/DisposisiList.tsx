@@ -13,6 +13,7 @@ import { getAccessToken, googleSignIn } from "../lib/firebaseAuth";
 import { motion, AnimatePresence } from "motion/react";
 import SmartPhotoViewer from '../components/SmartPhotoViewer';
 import { exportAssessmentToPdf } from "../lib/exportPdf";
+import { exportAssessmentToExcel } from "../lib/exportExcel";
 import { Download } from "lucide-react";
 import { 
   Eye, Clock, Calendar, Building, MapPin, FileText, 
@@ -735,70 +736,7 @@ export default function DisposisiList() {
                         <button
                           onClick={() => {
                             if (!selectedAssessment) return;
-                            const wsData = [
-                              ["LAMPIRAN PERHITUNGAN VOLUME KERUSAKAN BANGUNAN"],
-                              [],
-                              ["Nama Sekolah/Instansi", selectedAssessment.schoolName],
-                              ["Nama Bangunan", selectedAssessment.buildingName],
-                              ["Tanggal Penilaian", new Date().toLocaleDateString('id-ID')],
-                              ["Jumlah Lantai", selectedAssessment.floorCount || 1],
-                              [],
-                              ["Total Kerusakan", `${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%`],
-                              ["Kategori", selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan'],
-                              [],
-                              ["No", "Komponen", "Bobot (%)", "Tkt Kerusakan (%)", "Nilai Kerusakan (%)", "Risiko Keselamatan"]
-                            ];
-
-                            let no = 1;
-                            const floorCount = selectedAssessment.floorCount || 1;
-                            const weights = floorCount === 2 
-                              ? COMPONENT_WEIGHTS_2_LANTAI 
-                              : floorCount >= 3 
-                                ? COMPONENT_WEIGHTS_3_LANTAI 
-                                : COMPONENT_WEIGHTS_1_LANTAI;
-                            
-                            Object.keys(weights).filter(name => weights[name] > 0).forEach(name => {
-                              const weight = weights[name];
-                              const compData = selectedAssessment.components?.find(c => c.name === name);
-                              const isSafetyRisk = compData?.safetyImpact ? "Ya" : "Tidak";
-                              
-                              let componentDamageFraction = 0;
-                              compData?.damageDetails?.forEach(detail => {
-                                const multiplier = DAMAGE_MULTIPLIERS[detail.level] || 0;
-                                const volumeFraction = (detail.percentage || 0) / 100;
-                                componentDamageFraction += volumeFraction * multiplier;
-                              });
-                              componentDamageFraction = Math.min(componentDamageFraction, 1.0);
-                              
-                              const totalCompDamagePct = componentDamageFraction * 100;
-                              const nilaiKerusakanThdMassa = componentDamageFraction * weight;
-
-                              wsData.push([
-                                no++,
-                                name,
-                                weight.toFixed(2),
-                                totalCompDamagePct.toFixed(2),
-                                nilaiKerusakanThdMassa.toFixed(2),
-                                isSafetyRisk
-                              ]);
-                            });
-
-                            const ws = XLSX.utils.aoa_to_sheet(wsData);
-                            
-                            // Auto-size columns slightly
-                            const wscols = [
-                              {wch: 5},
-                              {wch: 35},
-                              {wch: 12},
-                              {wch: 25},
-                              {wch: 12},
-                              {wch: 15}
-                            ];
-                            ws['!cols'] = wscols;
-
-                            const wb = XLSX.utils.book_new();
-                            XLSX.utils.book_append_sheet(wb, ws, "Lampiran");
-                            XLSX.writeFile(wb, `Lampiran_Kerusakan_${selectedAssessment.schoolName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
+                            exportAssessmentToExcel(selectedAssessment);
                           }}
                           className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm mt-2"
                         >
