@@ -2,11 +2,9 @@ import express from 'express';
 import { db } from '../db';
 import * as schema from '../db/schema';
 import { eq } from 'drizzle-orm';
+import { initMasterData } from '../utils/masterData';
 
 const router = express.Router();
-
-// Dummy initMasterData for now to prevent errors
-async function initMasterData() {}
 
 router.get("/api/components", async (req, res) => {
   try {

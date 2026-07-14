@@ -18,7 +18,7 @@ interface BuildingInfoStepProps {
   coordinates: { lat: number; lng: number } | null;
   handleGetLocation: () => void;
   photos: string[];
-  setSmartPreviewPhoto: (photo: string | null) => void;
+  setSmartPreviewPhoto: (photo: { url: string, componentName: string } | null) => void;
   setAnnotatingPhotoUrl: (url: string) => void;
   setAnnotatingContext: (ctx: any) => void;
   setIsAnnotatorOpen: (open: boolean) => void;
@@ -146,7 +146,7 @@ export default function BuildingInfoStep({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {photos.map((photo, idx) => (
               <div key={idx} className="relative group rounded-xl overflow-hidden border border-slate-300 bg-slate-100 aspect-square shadow-sm">
-                <img src={photo} alt={`Foto ${idx+1}`} className="w-full h-full object-cover cursor-pointer" onClick={() => setSmartPreviewPhoto(photo)} />
+                <img src={photo} alt={`Foto ${idx+1}`} className="w-full h-full object-cover cursor-pointer" onClick={() => setSmartPreviewPhoto({ url: photo, componentName: 'Informasi Umum' })} />
                 <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
                   <button 
                     type="button"

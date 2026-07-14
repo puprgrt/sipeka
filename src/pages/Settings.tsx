@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Brain, Edit2, Trash2, Plus, Save, X, Info, Camera, HelpCircle, Layers, Users, Phone, Mail, Shield, UserCog, FileText, Printer, UploadCloud, Settings as SettingsIcon, GripVertical, Sun, Moon } from "lucide-react";
+import { Brain, Loader2, Edit2, Trash2, Plus, Save, X, Info, Camera, HelpCircle, Layers, Users, Phone, Mail, Shield, UserCog, FileText, Printer, UploadCloud, Settings as SettingsIcon, GripVertical, Sun, Moon } from "lucide-react";
 import { cn } from "../lib/utils";
 import {
   DndContext,
@@ -1178,13 +1178,13 @@ export default function Settings() {
       className="space-y-6 max-w-6xl mx-auto pb-12"
     >
       {/* Tabs Selector */}
-      <div className="flex flex-wrap md:flex-nowrap bg-slate-200/50 backdrop-blur-sm p-1 rounded-2xl max-w-5xl border border-slate-200/50 shadow-inner gap-1">
+      <div className="flex overflow-x-auto custom-scrollbar bg-slate-200/50 backdrop-blur-sm p-1 rounded-2xl max-w-5xl border border-slate-200/50 shadow-inner gap-1">
         {ALL_TABS.filter(t => availableTabs.includes(t.id)).map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-bold rounded-xl transition-all duration-200 whitespace-nowrap",
+              "flex-shrink-0 flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-xs font-bold rounded-xl transition-all duration-200 whitespace-nowrap",
               activeTab === tab.id
                 ? "bg-white text-pu-blue shadow-md scale-[1.02]"
                 : "text-slate-600 hover:text-slate-900 hover:bg-white/40"

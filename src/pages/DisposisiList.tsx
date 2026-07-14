@@ -625,7 +625,7 @@ export default function DisposisiList() {
                                       <br/><br/><br/>
                                       <p><b><u>Ir. H. KEPALA DINAS, M.T.</u></b></p>
                                       <p>NIP. 19700101 199803 1 004</p>
-                                    </div>
+                                     </div>
                                     <script>window.print();</script>
                                   </body>
                                 </html>
@@ -836,7 +836,7 @@ export default function DisposisiList() {
                                       )}></div>
                                       {detail.level}
                                     </span>
-                                    <span className="font-mono font-medium">{detail.percentage.toFixed(1)}%</span>
+                                    <span className="font-mono font-medium">{comp.unit === 'Estimasi' ? '1' : `${detail.percentage.toFixed(1)}%`}</span>
                                   </li>
                                 ))}
                               </ul>

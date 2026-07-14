@@ -387,6 +387,15 @@ export default function AssessmentList() {
           const sangatBerat = getDetailPct("Rusak Sangat Berat");
           const tdkSesuai = getDetailPct("Komponen Tidak Sesuai");
 
+          const isMultipleChoice = compData?.unit === 'Estimasi';
+
+          const formatVal = (val: number) => {
+            if (isMultipleChoice) {
+              return val > 0 ? "1" : "0,00";
+            }
+            return `${val.toFixed(2)}%`;
+          };
+          
           let componentDamageFraction = 0;
           compData?.damageDetails?.forEach(detail => {
             const multiplier = DAMAGE_MULTIPLIERS[detail.level] || 0;
@@ -396,21 +405,22 @@ export default function AssessmentList() {
           componentDamageFraction = Math.min(componentDamageFraction, 1.0);
           const totalCompDamagePct = componentDamageFraction * 100;
           
-          const tdkRusak = Math.max(0, 100 - totalCompDamagePct);
+          // For regular components, tdkRusak is remainder. For multiple choice, read it directly.
+          const tdkRusak = isMultipleChoice ? getDetailPct("Tidak Rusak") : Math.max(0, 100 - totalCompDamagePct);
           const nilaiKerusakanThdMassa = componentDamageFraction * weight;
 
           return [
             index++,
             systemMap[name] || "STRUKTUR",
             name,
-            unitMap[name] || "%",
-            `${tdkRusak.toFixed(2)}%`,
-            `${sangatRingan.toFixed(2)}%`,
-            `${ringan.toFixed(2)}%`,
-            `${sedang.toFixed(2)}%`,
-            `${berat.toFixed(2)}%`,
-            `${sangatBerat.toFixed(2)}%`,
-            `${tdkSesuai.toFixed(2)}%`,
+            compData?.unit || unitMap[name] || "%",
+            formatVal(tdkRusak),
+            formatVal(sangatRingan),
+            formatVal(ringan),
+            formatVal(sedang),
+            formatVal(berat),
+            formatVal(sangatBerat),
+            formatVal(tdkSesuai),
             `${totalCompDamagePct.toFixed(2)}%`,
             `${weight.toFixed(2)}%`,
             `${nilaiKerusakanThdMassa.toFixed(2)}%`
@@ -1168,7 +1178,7 @@ export default function AssessmentList() {
                                       </span>
                                       <span className="font-mono font-medium flex items-center gap-3 text-[10px]">
                                         {detail.volume !== undefined ? <span className="text-blue-600 bg-blue-50 px-1 rounded">Vol: {detail.volume} {comp.unit || 'm2'}</span> : null}
-                                        <span className="text-slate-800 bg-slate-200 px-1.5 rounded">{detail.percentage.toFixed(1)}%</span>
+                                        <span className="text-slate-800 bg-slate-200 px-1.5 rounded">{comp.unit === 'Estimasi' ? '1' : `${detail.percentage.toFixed(1)}%`}</span>
                                       </span>
                                     </div>
                                     {detail.photos && detail.photos.length > 0 && (

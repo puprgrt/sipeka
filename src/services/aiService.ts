@@ -2,6 +2,7 @@ import { readAiSettings } from "../utils/configHelper";
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
 
 let aiClient: GoogleGenAI | null = null;
+let currentApiKey: string | null = null;
 
 export async function getAI() {
   const aiSettings = await readAiSettings();
@@ -10,15 +11,14 @@ export async function getAI() {
     throw new Error("GEMINI_API_KEY is not set in settings or environment variable");
   }
   
-  if (!aiClient || aiClient.apiKey !== apiKey) {
+  if (!aiClient || currentApiKey !== apiKey) {
     aiClient = new GoogleGenAI({
       apiKey: apiKey,
       httpOptions: {
         headers: { 'User-Agent': 'aistudio-build' }
       }
     });
-    // @ts-ignore
-    aiClient.apiKey = apiKey; // Save for tracking changes
+    currentApiKey = apiKey;
   }
   return { aiClient, aiSettings };
 }
@@ -79,25 +79,25 @@ export async function analyzeDocumentLogic(fileName: string, fileType: string, f
     const mimeType = imageBase64.substring(5, imageBase64.indexOf(";"));
     const data = imageBase64.substring(imageBase64.indexOf(",") + 1);
 
-    const prompt = (aiSettings.documentPrompt || `You are a PUPR Cipta Karya building structural inspector.
-Please perform an AI Crack & Defect Analysis on the provided image of a building element: "${fileName}".
-Analyze the image for building structure defects such as concrete cracks, water leakage stains, exposed reinforcement bar, column deformities, or material wear.
-If you find any crack or defect, describe it.
+    const prompt = (aiSettings.documentPrompt || `You are an expert PUPR Cipta Karya building structural inspector and civil engineer.
+Please perform a highly detailed AI Crack & Defect Analysis on the provided image of a building element: "${fileName}".
+Analyze the image for building structure defects such as concrete cracks, water leakage stains, exposed reinforcement bar, column deformities, corrosion, or material wear.
+If you find any crack or defect, describe it technically and estimate the damage criteria according to PUPR standards (Rusak Ringan, Rusak Sedang, Rusak Berat).
 
 Return a JSON response matching the following schema:
 {
-  "summary": "Analisis visual terhadap komponen bangunan.",
+  "summary": "Analisis visual teknis yang mendalam terhadap kondisi dan integritas komponen bangunan.",
   "findings": [
     {
-      "element": "Nama komponen (misal: Balok, Kolom, Atap)",
-      "defect": "Tipe cacat (misal: Retak Rambut, Korosi Baja Tulangan, Kebocoran Plafon)",
-      "severity": "Rendah / Sedang / Tinggi",
-      "remediation": "Saran penanganan teknis",
+      "element": "Nama komponen spesifik (misal: Balok Beton Bertulang, Kolom Praktis, Rangka Baja Atap)",
+      "defect": "Tipe cacat teknis (misal: Retak Geser, Spalling, Korosi Tulangan Utama, Lendutan)",
+      "severity": "Rusak Ringan / Rusak Sedang / Rusak Berat (sesuai standar PUPR)",
+      "remediation": "Saran penanganan teknis spesifik (misal: Injeksi epoxy resin, Grouting non-shrink, FRP Retrofitting)",
       "box": { "x": 10, "y": 20, "w": 30, "h": 40 }
     }
   ],
-  "recommendations": ["Rekomendasi teknis 1", "Rekomendasi teknis 2"],
-  "complianceStatus": "Sesuai regulasi / Perlu perbaikan segera",
+  "recommendations": ["Rekomendasi metode perbaikan struktural", "Estimasi Kriteria Kerusakan: Rusak Ringan/Sedang/Berat", "Estimasi Persentase Kerusakan Komponen (contoh: Estimasi 30%)"],
+  "complianceStatus": "Sesuai Standar SNI / Perlu Audit Struktur / Tidak Laik Fungsi",
   "confidenceScore": 85
 }`) + `
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI } from "../types";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
@@ -20,7 +20,8 @@ import {
 export default function VerificationList() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const targetId = searchParams.get('id');
+  const location = useLocation();
+  const targetId = searchParams.get('id') || (location.state as any)?.assessmentId;
 
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [formParams, setFormParams] = useState<any[]>([]);
@@ -39,7 +40,7 @@ export default function VerificationList() {
   const [localVerification, setLocalVerification] = useState<Record<string, { status: 'Sesuai' | 'Butuh_Survey', comment: string }>>({});
   const [savingVerification, setSavingVerification] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
-  const [smartPreviewPhoto, setSmartPreviewPhoto] = useState<string | null>(null);
+  const [smartPreviewPhoto, setSmartPreviewPhoto] = useState<{ url: string, componentName: string } | null>(null);
   const [isAiDetecting, setIsAiDetecting] = useState(false);
   const [aiAnalysisResult, setAiAnalysisResult] = useState<{ score: number, issues: string[] } | null>(null);
   const [isForwarding, setIsForwarding] = useState(false);
@@ -486,12 +487,21 @@ export default function VerificationList() {
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setSelectedAssessment(null)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigate(`/new?edit=${selectedAssessment.id}&returnTo=/verifikasi`)}
+                    className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors border border-amber-200 flex items-center gap-1.5 shadow-sm"
+                  >
+                    <FileSignature className="w-3.5 h-3.5" />
+                    Edit Data Penilaian
+                  </button>
+                  <button
+                    onClick={() => setSelectedAssessment(null)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Content (Scrollable) */}
@@ -543,8 +553,13 @@ export default function VerificationList() {
                         Parameter Tambahan Pemohon
                       </p>
                       <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200/55">
-                        {Object.entries(selectedAssessment.customFields).map(([key, value]) => {
-                          // Make readable title from CamelCase
+                        {Object.entries(selectedAssessment.customFields)
+                          .filter(([key, value]) => {
+                            if (["id", "date", "schoolName", "buildingName", "npsn", "buildingArea", "floorCount", "address", "city", "province", "components", "photos", "finalResult", "status", "userId", "userName", "customFields"].includes(key)) return false;
+                            if (typeof value === "object" && value !== null) return false;
+                            return true;
+                          })
+                          .map(([key, value]) => {
                           const readableKey = key
                             .replace(/([A-Z])/g, " $1")
                             .replace(/^./, str => str.toUpperCase());
@@ -569,7 +584,7 @@ export default function VerificationList() {
                         {selectedAssessment.photos.map((photo, pIdx) => (
                           <div 
                             key={pIdx} 
-                            onClick={() => setSmartPreviewPhoto(photo)}
+                            onClick={() => setSmartPreviewPhoto({ url: photo, componentName: 'Umum' })}
                             className="relative group aspect-square rounded-xl overflow-hidden border border-slate-200/80 cursor-pointer hover:shadow-md transition-all bg-slate-100 flex items-center justify-center"
                           >
                             <img 
@@ -628,7 +643,7 @@ export default function VerificationList() {
                                         )}></div>
                                         {detail.level}
                                       </span>
-                                      <span className="font-mono font-medium">{detail.percentage.toFixed(1)}%</span>
+                                      <span className="font-mono font-medium">{comp.unit === 'Estimasi' ? '1' : `${detail.percentage.toFixed(1)}%`}</span>
                                     </li>
                                   ))}
                                 </ul>
@@ -638,7 +653,7 @@ export default function VerificationList() {
                               {comp.photo && (
                                 <div className="mt-2.5">
                                   <div 
-                                    onClick={() => setSmartPreviewPhoto(comp.photo!)}
+                                    onClick={() => setSmartPreviewPhoto({ url: comp.photo!, componentName: comp.name })}
                                     className="relative group w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm cursor-pointer hover:shadow-md transition-all bg-slate-100 flex items-center justify-center"
                                   >
                                     <img 
@@ -1061,9 +1076,16 @@ export default function VerificationList() {
         {/* Lightbox Modal */}
         {smartPreviewPhoto && (
           <SmartPhotoViewer 
-            photoUrl={smartPreviewPhoto} 
-            fileName={smartPreviewPhoto.split('/').pop() || "Dokumentasi Bangunan"}
-            findings={[{ id: 0, x: 25, y: 35, w: 22, h: 28, label: "Area Observasi", confidence: 90, type: "Kritis", recommendation: "Segera lakukan pemeriksaan lanjut." }]}
+            photoUrl={smartPreviewPhoto.url} 
+            fileName={smartPreviewPhoto.url.split('/').pop() || "Dokumentasi Bangunan"}
+            onApplyAiRecommendation={smartPreviewPhoto.componentName !== "Umum" ? (text) => {
+              const currentComment = localVerification[smartPreviewPhoto.componentName]?.comment || '';
+              handleUpdateVerification(
+                smartPreviewPhoto.componentName, 
+                'Butuh_Survey', 
+                currentComment ? `${currentComment}\n\n${text}` : text
+              );
+            } : undefined}
             onClose={() => setSmartPreviewPhoto(null)}
           />
         )}

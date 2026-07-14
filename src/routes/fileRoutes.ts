@@ -58,7 +58,7 @@ export const MOCK_FILES = [
   }
 ];
 
-router.get("/", (req: Request, res: Response) => {
+router.get("/api/files", (req: Request, res: Response) => {
   res.json(MOCK_FILES);
 });
 

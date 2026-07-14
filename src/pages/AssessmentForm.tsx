@@ -97,7 +97,6 @@ export default function AssessmentForm() {
     componentWeights,
     setAnnotatingContext,
     setSubmitting,
-    handleStorageChange,
     formParams,
     setBuildingArea,
     submitting,
@@ -108,7 +107,6 @@ export default function AssessmentForm() {
     hasDraft,
     setStep,
     idBangunan,
-    handleBeforeUnload,
     handlePhotoUpload,
     setIsAnnotatorOpen,
     setCoordinates,
@@ -129,7 +127,18 @@ export default function AssessmentForm() {
     handleSubmit,
     components,
     setNpsn,
-    setFormParams
+    setFormParams,
+    restoreDraft,
+    discardDraft,
+    isPermohonanFlow,
+    removePhoto,
+    hasCriticalDamage,
+    SAFETY_QUESTIONS,
+    permissions,
+    updateComponentMeta,
+    updateComponentDamage,
+    removeComponentPhoto,
+    calculateFinalResult
   } = useAssessmentForm();
 
   return (
@@ -206,8 +215,7 @@ export default function AssessmentForm() {
                 { num: 1, label: "Informasi", desc: "Data Bangunan", icon: Building },
                 { num: 2, label: "Keselamatan", desc: "Uji Keselamatan", icon: AlertCircle },
                 { num: 3, label: "Penilaian", desc: "Kerusakan Fisik", icon: ClipboardList },
-                { num: 4, label: "Dokumentasi", desc: "Foto Bangunan", icon: Camera },
-                { num: 5, label: "Ringkasan", desc: "Kesimpulan", icon: CheckCircle }
+                { num: 4, label: "Ringkasan", desc: "Kesimpulan", icon: CheckCircle }
               ];
 
           const progressPercent = ((step - 1) / (currentSteps.length - 1)) * 100;
@@ -355,9 +363,10 @@ export default function AssessmentForm() {
             setStep={setStep}
             isPermohonanFlow={isPermohonanFlow}
             DAMAGE_MULTIPLIERS={DAMAGE_MULTIPLIERS}
+            setComponents={setComponents}
           />
         )}
-              {step === 4 && !isPermohonanFlow && (
+      {step === 4 && !isPermohonanFlow && (
         <FinalReviewStep
           calculateFinalResult={calculateFinalResult}
           schoolName={schoolName}
@@ -370,6 +379,11 @@ export default function AssessmentForm() {
           setStep={setStep}
           handleSubmit={handleSubmit}
           submitting={submitting}
+          components={components}
+          componentWeights={componentWeights}
+          DAMAGE_MULTIPLIERS={DAMAGE_MULTIPLIERS}
+          allComponentsData={allComponentsData}
+          safetyChecks={safetyChecks}
         />
       )}
       </AnimatePresence>
@@ -631,8 +645,8 @@ export default function AssessmentForm() {
       {/* Lightbox Modal */}
       {smartPreviewPhoto && (
         <SmartPhotoViewer 
-          photoUrl={smartPreviewPhoto} 
-          fileName={smartPreviewPhoto.split('/').pop() || "Dokumentasi Bangunan"}
+          photoUrl={smartPreviewPhoto.url} 
+          fileName={smartPreviewPhoto.componentName || "Dokumentasi Bangunan"}
           onClose={() => setSmartPreviewPhoto(null)}
         />
       )}

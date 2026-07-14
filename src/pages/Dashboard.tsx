@@ -31,6 +31,7 @@ import BuildingHistoryModal from "../components/BuildingHistoryModal";
 import StatusUpdatesWidget from "../components/StatusUpdatesWidget";
 import StaffPerformancePanel from "../components/StaffPerformancePanel";
 import SupportTicketPanel from "../components/dashboard/SupportTicketPanel";
+import ExecutiveSummaryWidget from "../components/ExecutiveSummaryWidget";
 
 import DashboardMap from "../components/dashboard/DashboardMap";
 export default function Dashboard() {
@@ -2444,6 +2445,7 @@ export default function Dashboard() {
         renderRecentActivity()
       ) : (
         <>
+          <ExecutiveSummaryWidget />
           {/* 1.5. Filter Wilayah Terintegrasi */}
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-3">

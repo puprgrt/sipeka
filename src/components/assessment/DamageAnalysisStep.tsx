@@ -15,7 +15,7 @@ interface DamageAnalysisStepProps {
   setShowHelpModal: (show: boolean) => void;
   updateComponentMeta: (compIndex: number, field: string, value: any) => void;
   updateComponentDamage: (compIndex: number, level: string, percentage: number, volume: number, volumeInputs: string[]) => void;
-  setSmartPreviewPhoto: (photo: string) => void;
+  setSmartPreviewPhoto: (photo: { url: string, componentName: string } | null) => void;
   setAnnotatingPhotoUrl: (url: string) => void;
   setAnnotatingContext: (ctx: any) => void;
   setIsAnnotatorOpen: (open: boolean) => void;
@@ -24,7 +24,38 @@ interface DamageAnalysisStepProps {
   setStep: (step: number) => void;
   isPermohonanFlow: boolean;
   DAMAGE_MULTIPLIERS: Record<string, number>;
+  setComponents: React.Dispatch<React.SetStateAction<any[]>>;
 }
+
+export const PONDASI_OPTIONS = [
+  { level: "Tidak Rusak", label: "Pondasi diindikasi dalam kondisi baik" },
+  { level: "Rusak Sangat Ringan", label: "Penurunan merata pada seluruh struktur bangunan" },
+  { level: "Rusak Ringan", label: "Penurunan merata pada seluruh struktur bangunan dan/atau Sedikit beda penurunan (differential settlement) antar kolom / dinding, tetapi tidak berakibat kerusakan pada struktur atasnya." },
+  { level: "Rusak Sedang", label: "Penurunan > 1/250 L (L adalah Jarak Antar Kolom), dan menyebabkan kerusakan awal pada struktur atasnya." },
+  { level: "Rusak Berat", label: "Bangunan miring secara kasat mata, Lantai dasar naik/menggelembung" },
+  { level: "Rusak Sangat Berat", label: "Pondasi patah, bergeser akibat longsor, struktur atas menjadi rusak" },
+  { level: "Komponen Tidak Sesuai", label: "Material, dimensi, dan konstruksi pondasi diindikasi tidak sesuai dengan persyaratan teknis (merujuk pada Rencana Teknis apabila ada, Petunjuk Teknis, dan/atau SNI)" }
+];
+
+export const LISTRIK_OPTIONS = [
+  { level: "Tidak Rusak", label: "Jaringan listrik dalam kondisi baik" },
+  { level: "Rusak Sangat Ringan", label: "Sebagian kecil komponen dari panel-panel LP rusak, ada sedikit jalur kabel instalasi shortage, sebagian kecil armature rusak ringan, sehingga biaya perbaikan kurang dari 10% dari biaya instalasi baru" },
+  { level: "Rusak Ringan", label: "Beberapa komponen dari panel-panel LP rusak, sebagian kecil jalur kabel instalasi shortage, sehingga armature rusak ringan, sehingga biaya perbaikan 10-25% dari biaya instalasi baru" },
+  { level: "Rusak Sedang", label: "Beberapa komponen dari panel-panel LP rusak, sebagian kecil jalur kabel instalasi shortage, sehingga armature rusak berat dan ringan, sehingga biaya perbaikan 25-50% dari biaya instalasi baru" },
+  { level: "Rusak Berat", label: "Sebagian besar komponen panel-panel LP rusak, sebagian besar kabel instalasi shortage, sebagian besar armature rusak, sehingga biaya perbaikan 50-65 % dari instalasi baru" },
+  { level: "Rusak Sangat Berat", label: "Sebagian besar komponen panel-panel LP rusak, sebagian besar kabel instalasi shortage, seluruh armature rusak berat, sehingga biaya perbaikan lebih dari 65 % dari instalasi baru" },
+  { level: "Komponen Tidak Sesuai", label: "Material, dimensi, dan konstruksi jaringan listrik diindikasi tidak sesuai dengan persyaratan teknis (merujuk pada Rencana Teknis apabila ada, Petunjuk Teknis, dan/atau SNI)" }
+];
+
+export const AIR_BERSIH_OPTIONS = [
+  { level: "Tidak Rusak", label: "Sistem penyediaan air dalam kondisi baik" },
+  { level: "Rusak Sangat Ringan", label: "Kebocoran pipa terbatas ditempat yang terlihat atau mudah dicapai, keran-keran kecil rusak, sehingga biaya perbaikan kurang dari 10% biaya instalasi baru" },
+  { level: "Rusak Ringan", label: "Bagian-bagian kecil pemipaan bocor, motor pompa terbakar, keran-keran kecil rusak, sehingga biaya perbaikan antara 10-25% dari biaya instalasi baru" },
+  { level: "Rusak Sedang", label: "Pompa, motor, pipa, dan keran rusak apabila diganti atau diperbaiki memerlukan biaya antara 25-50% dari biaya instalasi baru" },
+  { level: "Rusak Berat", label: "Sebagian besar pompa, sebagian besar motor terbakar, pipa utama bocor namun ditempat terbuka, beberapa keran tidak berfungsi, sehingga biaya perbaikan 50-65% dari biaya instalasi baru" },
+  { level: "Rusak Sangat Berat", label: "Pompa -pompa rusak total, motor terbakar, di banyak tempat terbuka dan tutup pipa-pipa bocor keran-keran tidak berfungsi, sehingga perbaikan instalasi perlu menyeluruh, dengan perkiraan biaya lebih dari 65% dari biaya instalasi baru" },
+  { level: "Komponen Tidak Sesuai", label: "Material, dimensi, dan konstruksi sistem penyediaan air diindikasi tidak sesuai dengan persyaratan teknis (merujuk pada Rencana Teknis apabila ada, Petunjuk Teknis, dan/atau SNI)" }
+];
 
 export default function DamageAnalysisStep({
   components,
@@ -45,7 +76,8 @@ export default function DamageAnalysisStep({
   handleComponentPhotoUpload,
   setStep,
   isPermohonanFlow,
-  DAMAGE_MULTIPLIERS
+  DAMAGE_MULTIPLIERS,
+  setComponents
 }: DamageAnalysisStepProps) {
   return (
 <motion.div 
@@ -169,139 +201,245 @@ export default function DamageAnalysisStep({
                             </select>
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                          {Object.keys(DAMAGE_MULTIPLIERS).filter(k => k !== "Tidak Rusak").map((level) => {
-                            const details = currentDetails.find(d => d.level === level);
-                            const photos = details?.photos || [];
-
-                            return (
-                            <div key={level} className="flex flex-col bg-white/40 p-2.5 rounded-xl border border-slate-200/50">
-                              <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1 truncate" title={level}>{level}</label>
-                              
-                              <div className="relative mb-1.5 flex-1">
-                                <label className="text-[9px] font-bold text-slate-500 flex justify-between">
-                                  Vol. Rusak
-                                  <button 
-                                    type="button"
-                                    onClick={() => {
-                                      const currentInputs = details?.volumeInputs || (details?.volume ? [String(details.volume)] : [""]);
-                                      const newArr = [...currentInputs, ""];
-                                      updateComponentDamage(compIndex, level, details?.percentage || 0, details?.volume || 0, newArr);
-                                    }}
-                                    className="text-[9px] font-bold text-blue-600 hover:underline flex items-center"
-                                  >
-                                    <Plus className="w-2.5 h-2.5 mr-0.5" /> Tambah
-                                  </button>
-                                </label>
-                                <div className="flex flex-col gap-1 mt-1">
-                                  {(details?.volumeInputs || (details?.volume ? [String(details.volume)] : [""])).map((vInput, vIdx, vArr) => (
-                                    <div key={vIdx} className="flex gap-1 items-center">
-                                      <input 
-                                        type="number" 
-                                        min="0"
-                                        value={vInput}
-                                        onChange={(e) => {
-                                          const newArr = [...vArr];
-                                          newArr[vIdx] = e.target.value;
-                                          const totalDamagedVol = newArr.reduce((sum, val) => sum + (Number(val) || 0), 0);
-                                          const totalVol = comp.totalVolume || 100;
-                                          const pct = totalVol > 0 ? Math.min(100, Math.round(((totalDamagedVol / totalVol) * 100) * 100) / 100) : 0;
-                                          updateComponentDamage(compIndex, level, pct, totalDamagedVol, newArr);
-                                        }}
-                                        placeholder="0"
-                                        className="block w-full rounded border border-slate-200/50 focus:border-pu-blue p-1.5 font-mono text-xs" 
-                                      />
-                                      {vIdx > 0 ? (
-                                        <button 
-                                          type="button" 
-                                          onClick={() => {
-                                            const newArr = vArr.filter((_, i) => i !== vIdx);
+                        {["Pondasi & Sloof", "Instalasi Listrik", "Instalasi Air Bersih"].includes(comp.name) ? (
+                          <div className="flex flex-col gap-2 bg-white/40 p-4 rounded-xl border border-slate-200/50">
+                            <div className="space-y-2">
+                              {(comp.name === "Instalasi Listrik" ? LISTRIK_OPTIONS : comp.name === "Instalasi Air Bersih" ? AIR_BERSIH_OPTIONS : PONDASI_OPTIONS).map(opt => {
+                                const isSelected = getPercentage(opt.level) > 0;
+                                return (
+                                  <label key={opt.level} className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'bg-blue-50/50 border-blue-300' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                                    <input
+                                      type="radio"
+                                      name={`mc-${comp.name}`}
+                                      checked={isSelected}
+                                      onChange={() => {
+                                        setComponents(prev => {
+                                          const newComps = [...prev];
+                                          const currentComp = { ...newComps[compIndex] };
+                                          // Retain all existing photos mapped by level
+                                          const existingPhotos = currentComp.damageDetails.reduce((acc, d) => {
+                                            acc[d.level] = d.photos || [];
+                                            return acc;
+                                          }, {} as Record<string, string[]>);
+                                          
+                                          currentComp.damageDetails = [{
+                                            level: opt.level,
+                                            percentage: 100,
+                                            volume: 1,
+                                            volumeInputs: ["1"],
+                                            photos: existingPhotos[opt.level] || []
+                                          }];
+                                          
+                                          currentComp.totalVolume = 1;
+                                          currentComp.unit = 'Estimasi';
+                                          newComps[compIndex] = currentComp;
+                                          return newComps;
+                                        });
+                                      }}
+                                      className="mt-0.5"
+                                    />
+                                    <div className="flex flex-col flex-1 gap-2">
+                                      <span className="text-xs text-slate-700">{opt.label}</span>
+                                      
+                                      {/* Only show photo upload for the selected option */}
+                                      {isSelected && (
+                                        <div className="mt-2 pt-2 border-t border-blue-200/50 flex flex-col gap-2">
+                                          {(currentDetails.find(d => d.level === opt.level)?.photos || []).length > 0 && (
+                                            <div className="flex flex-wrap gap-1">
+                                              {(currentDetails.find(d => d.level === opt.level)?.photos || []).map((p: string, idx: number) => (
+                                                <div key={idx} className="relative w-12 h-12 rounded-lg overflow-hidden border border-slate-300 bg-slate-50 group cursor-pointer hover:shadow-sm transition-all" onClick={() => setSmartPreviewPhoto({ url: p, componentName: comp.name })}>
+                                                  <img src={p} alt="Foto" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                                  <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-1">
+                                                    <button 
+                                                      type="button"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setAnnotatingPhotoUrl(p);
+                                                        setAnnotatingContext({
+                                                          type: "component",
+                                                          index: compIndex,
+                                                          level: opt.level,
+                                                          photoIdx: idx
+                                                        });
+                                                        setIsAnnotatorOpen(true);
+                                                      }}
+                                                      className="bg-pu-yellow text-slate-950 p-1 rounded hover:scale-110 transition-transform cursor-pointer"
+                                                      title="Coret / Anotasi"
+                                                    >
+                                                      <Paintbrush className="w-3 h-3 stroke-[2.5]" />
+                                                    </button>
+                                                    <button 
+                                                      type="button"
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        removeComponentPhoto(compIndex, opt.level, idx);
+                                                      }}
+                                                      className="bg-rose-500 text-white p-1 rounded hover:scale-110 transition-transform cursor-pointer"
+                                                      title="Hapus"
+                                                    >
+                                                      <X className="w-3 h-3" />
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          )}
+                                          <label className="cursor-pointer max-w-[120px]">
+                                            <input 
+                                              type="file" 
+                                              accept="image/*" 
+                                              multiple
+                                              className="hidden" 
+                                              onChange={(e) => handleComponentPhotoUpload(e, compIndex, opt.level)}
+                                            />
+                                            <div className="flex items-center justify-center gap-1 px-2 py-1 bg-blue-50 text-pu-blue rounded border border-blue-200 hover:bg-blue-100 transition-colors shadow-sm w-full">
+                                              <Camera className="h-3 w-3" />
+                                              <span className="text-[9px] font-bold">Upload Foto</span>
+                                            </div>
+                                          </label>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                            {Object.keys(DAMAGE_MULTIPLIERS).filter(k => k !== "Tidak Rusak").map((level) => {
+                              const details = currentDetails.find(d => d.level === level);
+                              const photos = details?.photos || [];
+  
+                              return (
+                              <div key={level} className="flex flex-col bg-white/40 p-2.5 rounded-xl border border-slate-200/50">
+                                <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1 truncate" title={level}>{level}</label>
+                                
+                                <div className="relative mb-1.5 flex-1">
+                                  <label className="text-[9px] font-bold text-slate-500 flex justify-between">
+                                    Vol. Rusak
+                                    <button 
+                                      type="button"
+                                      onClick={() => {
+                                        const currentInputs = details?.volumeInputs || (details?.volume ? [String(details.volume)] : [""]);
+                                        const newArr = [...currentInputs, ""];
+                                        updateComponentDamage(compIndex, level, details?.percentage || 0, details?.volume || 0, newArr);
+                                      }}
+                                      className="text-[9px] font-bold text-blue-600 hover:underline flex items-center"
+                                    >
+                                      <Plus className="w-2.5 h-2.5 mr-0.5" /> Tambah
+                                    </button>
+                                  </label>
+                                  <div className="flex flex-col gap-1 mt-1">
+                                    {(details?.volumeInputs || (details?.volume ? [String(details.volume)] : [""])).map((vInput, vIdx, vArr) => (
+                                      <div key={vIdx} className="flex gap-1 items-center">
+                                        <input 
+                                          type="number" 
+                                          min="0"
+                                          value={vInput}
+                                          onChange={(e) => {
+                                            const newArr = [...vArr];
+                                            newArr[vIdx] = e.target.value;
                                             const totalDamagedVol = newArr.reduce((sum, val) => sum + (Number(val) || 0), 0);
                                             const totalVol = comp.totalVolume || 100;
                                             const pct = totalVol > 0 ? Math.min(100, Math.round(((totalDamagedVol / totalVol) * 100) * 100) / 100) : 0;
                                             updateComponentDamage(compIndex, level, pct, totalDamagedVol, newArr);
                                           }}
-                                          className="p-1 text-rose-500 hover:bg-rose-50 rounded"
-                                        >
-                                          <Minus className="w-3 h-3" />
-                                        </button>
-                                      ) : (
-                                        <span className="text-[9px] text-slate-400 font-bold truncate max-w-[24px]">{comp.unit || compConfig?.satuan || "m2"}</span>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                              
-                              <div className="relative mb-2 mt-1">
-                                <label className="text-[9px] font-bold text-slate-500">% Kerusakan (Otomatis)</label>
-                                <div className="relative mt-1">
-                                  <div className="block w-full rounded border border-slate-200/50 bg-slate-100 p-1.5 font-mono text-xs text-slate-500 cursor-not-allowed">
-                                    {getPercentage(level) || 0}
-                                  </div>
-                                  <span className="absolute right-2 top-1.5 text-slate-400 text-[10px] font-bold">%</span>
-                                </div>
-                              </div>
-
-                              {/* Multi-Photo Upload per Level */}
-                              <div className="flex flex-col gap-2">
-                                {photos.length > 0 && (
-                                  <div className="flex flex-wrap gap-1">
-                                    {photos.map((p, idx) => (
-                                      <div key={idx} className="relative w-12 h-12 rounded-lg overflow-hidden border border-slate-300 bg-slate-50 group cursor-pointer hover:shadow-sm transition-all" onClick={() => setSmartPreviewPhoto(p)}>
-                                        <img src={p} alt="Foto" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                        <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-1">
+                                          placeholder="0"
+                                          className="block w-full rounded border border-slate-200/50 focus:border-pu-blue p-1.5 font-mono text-xs" 
+                                        />
+                                        {vIdx > 0 ? (
                                           <button 
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setAnnotatingPhotoUrl(p);
-                                              setAnnotatingContext({
-                                                type: "component",
-                                                index: compIndex,
-                                                level,
-                                                photoIdx: idx
-                                              });
-                                              setIsAnnotatorOpen(true);
+                                            type="button" 
+                                            onClick={() => {
+                                              const newArr = vArr.filter((_, i) => i !== vIdx);
+                                              const totalDamagedVol = newArr.reduce((sum, val) => sum + (Number(val) || 0), 0);
+                                              const totalVol = comp.totalVolume || 100;
+                                              const pct = totalVol > 0 ? Math.min(100, Math.round(((totalDamagedVol / totalVol) * 100) * 100) / 100) : 0;
+                                              updateComponentDamage(compIndex, level, pct, totalDamagedVol, newArr);
                                             }}
-                                            className="bg-pu-yellow text-slate-950 p-1 rounded hover:scale-110 transition-transform cursor-pointer"
-                                            title="Coret / Anotasi"
+                                            className="p-1 text-rose-500 hover:bg-rose-50 rounded"
                                           >
-                                            <Paintbrush className="w-3 h-3 stroke-[2.5]" />
+                                            <Minus className="w-3 h-3" />
                                           </button>
-                                          <button 
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              removeComponentPhoto(compIndex, level, idx);
-                                            }}
-                                            className="bg-rose-500 text-white p-1 rounded hover:scale-110 transition-transform cursor-pointer"
-                                            title="Hapus"
-                                          >
-                                            <X className="w-3 h-3" />
-                                          </button>
-                                        </div>
+                                        ) : (
+                                          <span className="text-[9px] text-slate-400 font-bold truncate max-w-[24px]">{comp.unit || compConfig?.satuan || "m2"}</span>
+                                        )}
                                       </div>
                                     ))}
                                   </div>
-                                )}
-                                <label className="cursor-pointer">
-                                  <input 
-                                    type="file" 
-                                    accept="image/*" 
-                                    multiple
-                                    className="hidden" 
-                                    onChange={(e) => handleComponentPhotoUpload(e, compIndex, level)}
-                                  />
-                                  <div className="flex items-center justify-center gap-1 px-2 py-1 bg-blue-50 text-pu-blue rounded border border-blue-200 hover:bg-blue-100 transition-colors shadow-sm w-full">
-                                    <Camera className="h-3 w-3" />
-                                    <span className="text-[9px] font-bold">Foto</span>
+                                </div>
+                                
+                                <div className="relative mb-2 mt-1">
+                                  <label className="text-[9px] font-bold text-slate-500">% Kerusakan (Otomatis)</label>
+                                  <div className="relative mt-1">
+                                    <div className="block w-full rounded border border-slate-200/50 bg-slate-100 p-1.5 font-mono text-xs text-slate-500 cursor-not-allowed">
+                                      {getPercentage(level) || 0}
+                                    </div>
+                                    <span className="absolute right-2 top-1.5 text-slate-400 text-[10px] font-bold">%</span>
                                   </div>
-                                </label>
+                                </div>
+  
+                                {/* Multi-Photo Upload per Level */}
+                                <div className="flex flex-col gap-2">
+                                  {photos.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                      {photos.map((p: string, idx: number) => (
+                                        <div key={idx} className="relative w-12 h-12 rounded-lg overflow-hidden border border-slate-300 bg-slate-50 group cursor-pointer hover:shadow-sm transition-all" onClick={() => setSmartPreviewPhoto({ url: p, componentName: comp.name })}>
+                                          <img src={p} alt="Foto" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                          <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-1">
+                                            <button 
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setAnnotatingPhotoUrl(p);
+                                                setAnnotatingContext({
+                                                  type: "component",
+                                                  index: compIndex,
+                                                  level,
+                                                  photoIdx: idx
+                                                });
+                                                setIsAnnotatorOpen(true);
+                                              }}
+                                              className="bg-pu-yellow text-slate-950 p-1 rounded hover:scale-110 transition-transform cursor-pointer"
+                                              title="Coret / Anotasi"
+                                            >
+                                              <Paintbrush className="w-3 h-3 stroke-[2.5]" />
+                                            </button>
+                                            <button 
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                removeComponentPhoto(compIndex, level, idx);
+                                              }}
+                                              className="bg-rose-500 text-white p-1 rounded hover:scale-110 transition-transform cursor-pointer"
+                                              title="Hapus"
+                                            >
+                                              <X className="w-3 h-3" />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                  <label className="cursor-pointer">
+                                    <input 
+                                      type="file" 
+                                      accept="image/*" 
+                                      multiple
+                                      className="hidden" 
+                                      onChange={(e) => handleComponentPhotoUpload(e, compIndex, level)}
+                                    />
+                                    <div className="flex items-center justify-center gap-1 px-2 py-1 bg-blue-50 text-pu-blue rounded border border-blue-200 hover:bg-blue-100 transition-colors shadow-sm w-full">
+                                      <Camera className="h-3 w-3" />
+                                      <span className="text-[9px] font-bold">Foto</span>
+                                    </div>
+                                  </label>
+                                </div>
                               </div>
-                            </div>
-                          )})}
-                        </div>
+                            )})}
+                          </div>
+                        )}
                       </motion.div>
                     )}
                     </AnimatePresence>

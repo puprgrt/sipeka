@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import { Assessment } from '../../types';
 
@@ -20,7 +21,7 @@ const DashboardMap = memo(({ filteredAssessments, setSelectedAssessment }: Dashb
                   attribution='&copy; OpenStreetMap'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                {assessments.filter(a => a.coordinates && a.status === "Survei_Lapangan").map(a => (
+                {filteredAssessments.filter(a => a.coordinates && a.status === "Survei_Lapangan").map(a => (
                   <Marker 
                     key={a.id} 
                     position={[a.coordinates.lat, a.coordinates.lng]}

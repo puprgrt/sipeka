@@ -2,40 +2,25 @@ import "dotenv/config";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import fs from "fs";
-import { v4 as uuidv4 } from "uuid";
-import { Assessment } from "./src/types";
 import { db } from "./src/db/index";
 import * as schema from "./src/db/schema";
-import { initializeApp as initAdminApp, getApps, getApp } from "firebase-admin/app";
-import { getMessaging as getAdminMessaging } from "firebase-admin/messaging";
+import { eq, inArray } from "drizzle-orm";
 
-// Initialize Firebase Admin
-let adminApp;
-try {
-  if (getApps().length === 0) {
-    adminApp = initAdminApp();
-    console.log("Firebase Admin initialized successfully.");
-  } else {
-    adminApp = getApp();
-    console.log("Firebase Admin already initialized.");
-  }
-} catch (error) {
-  console.error("Failed to initialize Firebase Admin:", error);
-}
+// Centralized modules
+import { getFirebaseAdmin } from "./src/utils/firebaseAdmin";
+import { registerSseClient, getSseClientCount } from "./src/utils/sseManager";
 
-import { eq, and, ne, inArray } from "drizzle-orm";
+// Routes
 import aiRoutes from "./src/routes/aiRoutes";
 import assessmentRoutes from "./src/routes/assessmentRoutes";
 import referenceRoutes from "./src/routes/referenceRoutes";
 import userRoutes from "./src/routes/userRoutes";
 import settingsRoutes from "./src/routes/settingsRoutes";
 import fileRoutes from "./src/routes/fileRoutes";
-import { getDbConfig, setDbConfig, readLetterParamsFile, writeLetterParamsFile, readAppSettingsFile, writeAppSettingsFile } from './src/utils/configHelper';
-import { initMasterData } from './src/utils/masterData';
+import reportRoutes from "./src/routes/reportRoutes";
 
-
-import { logAuditTrail, sendDisposisiNotification } from "./src/utils/audit";
+// Initialize Firebase Admin once at startup
+getFirebaseAdmin();
 
 const app = express();
 const PORT = 3000;
@@ -43,9 +28,32 @@ const PORT = 3000;
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
+// --- Health Check ---
+app.get("/api/health", async (req, res) => {
+  try {
+    // Test DB connection
+    await db.select().from(schema.appConfig).limit(1);
+    res.json({
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      sseClients: getSseClientCount(),
+      database: "connected",
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: "error",
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      database: "disconnected",
+      error: (error as Error).message,
+    });
+  }
+});
+
+// --- API Routes ---
 app.use("/api/gemini", aiRoutes);
-
-
+app.use(assessmentRoutes);
 
 app.get("/api/audit-trails", async (req, res) => {
   try {
@@ -77,46 +85,71 @@ app.get("/api/audit-trails", async (req, res) => {
   }
 });
 
-// Simple in-memory store for assessments
-const dbPath = path.join(process.cwd(), "assessments.json");
+// --- Dashboard Stats Endpoint ---
+app.get("/api/dashboard/stats", async (req, res) => {
+  try {
+    const permohonans = await db.select().from(schema.permohonanPenilaian);
+    const buildings = await db.select().from(schema.profilBangunan);
+    const users = await db.select().from(schema.users);
 
-// Initialize Master Data
-
-app.use(assessmentRoutes);
-
-interface SseClient {
-  res: express.Response;
-  userId: number | null;
-  role: string | null;
-}
-const sseClients: SseClient[] = [];
-
-app.get("/api/notifications/stream", (req, res) => {
-  res.writeHead(200, {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    "Connection": "keep-alive",
-  });
-
-  const userId = req.query.userId ? Number(req.query.userId) : null;
-  const role = req.query.role ? String(req.query.role) : null;
-
-  const client: SseClient = { res, userId, role };
-  sseClients.push(client);
-
-  res.write("data: connected\n\n");
-
-  const heartbeat = setInterval(() => {
-    res.write(":\n\n");
-  }, 30000);
-
-  req.on("close", () => {
-    clearInterval(heartbeat);
-    const idx = sseClients.indexOf(client);
-    if (idx !== -1) {
-      sseClients.splice(idx, 1);
+    // Status breakdown
+    const statusCounts: Record<string, number> = {};
+    for (const p of permohonans) {
+      const s = p.statusTerakhir || "Unknown";
+      statusCounts[s] = (statusCounts[s] || 0) + 1;
     }
-  });
+
+    // Pending > 7 days
+    const now = Date.now();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const pendingLong = permohonans.filter(p => {
+      if (p.statusTerakhir === "Menunggu_Validasi") {
+        return (now - new Date(p.tanggalPengajuan).getTime()) > sevenDaysMs;
+      }
+      return false;
+    }).length;
+
+    // Top 5 highest damage
+    const top5Damage = permohonans
+      .filter(p => p.totalPersentaseKerusakan)
+      .sort((a, b) => Number(b.totalPersentaseKerusakan) - Number(a.totalPersentaseKerusakan))
+      .slice(0, 5)
+      .map(p => {
+        const b = buildings.find(bl => bl.idBangunan === p.idBangunan);
+        return {
+          idPermohonan: p.idPermohonan,
+          schoolName: b?.namaSekolahInstansi || "Unknown",
+          buildingName: b?.namaMassaBangunan || "Unknown",
+          damagePercentage: Number(p.totalPersentaseKerusakan),
+          category: p.kesimpulanAkhir,
+        };
+      });
+
+    // Damage category distribution
+    const categoryCounts: Record<string, number> = {};
+    for (const p of permohonans) {
+      const c = p.kesimpulanAkhir || "Belum Dinilai";
+      categoryCounts[c] = (categoryCounts[c] || 0) + 1;
+    }
+
+    res.json({
+      totalPermohonan: permohonans.length,
+      totalBuildings: buildings.length,
+      totalUsers: users.length,
+      statusCounts,
+      pendingLongCount: pendingLong,
+      top5Damage,
+      categoryCounts,
+    });
+  } catch (error) {
+    console.error("GET dashboard stats error", error);
+    res.status(500).json({ error: "Failed to fetch dashboard stats" });
+  }
+});
+
+// --- SSE Notification Stream (uses centralized sseManager) ---
+app.get("/api/notifications/stream", (req, res) => {
+  registerSseClient(req, res);
 });
 
 app.get("/api/notifications", async (req, res) => {
@@ -186,20 +219,20 @@ app.put("/api/notifications/read-all", async (req, res) => {
   }
 });
 
-
 // Master Komponen CRUD
 app.use(referenceRoutes);
 
-
-// User CRUD
-// Endpoint to save FCM token
+// User CRUD & FCM Token
 app.use(userRoutes);
 
-
-// GET & PUT Letter Configuration
-
+// Settings Routes
 app.use(settingsRoutes);
 
+// File Routes
+app.use(fileRoutes);
+
+// Report Routes
+app.use(reportRoutes);
 
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {

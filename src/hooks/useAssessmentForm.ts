@@ -73,7 +73,7 @@ export function useAssessmentForm() {
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [photos, setPhotos] = useState<string[]>([]);
   const [idBangunan, setIdBangunan] = useState<number | null>(null);
-  const [smartPreviewPhoto, setSmartPreviewPhoto] = useState<string | null>(null);
+  const [smartPreviewPhoto, setSmartPreviewPhoto] = useState<{ url: string, componentName: string } | null>(null);
 
   const handleFieldChange = (id: string, value: any) => {
     setIsDirty(true);
@@ -124,11 +124,22 @@ export function useAssessmentForm() {
     setAddress(data.address || "");
     setBuildingArea(data.buildingArea || 100);
     setFloorCount(data.floorCount || 1);
-    if (data.components) setAllComponentsData(data.components);
+    
+    setDynamicValues({
+      schoolName: data.schoolName || "",
+      buildingName: data.buildingName || "",
+      npsn: data.npsn || "",
+      address: data.address || "",
+      buildingArea: data.buildingArea || 100,
+      floorCount: data.floorCount || 1,
+      idBangunan: data.idBangunan || "",
+      ...(data.customFields || {})
+    });
+
+    if (data.components) setComponents(data.components);
     if (data.photos) setPhotos(data.photos);
     if (data.coordinates) setCoordinates(data.coordinates);
     if (data.idBangunan) setIdBangunan(data.idBangunan);
-    if (data.customFields) setDynamicValues(data.customFields || {});
   };
 
   const handleResolveLocalConflict = (useLocal: boolean) => {
@@ -496,12 +507,12 @@ export function useAssessmentForm() {
             });
           });
           setComponentWeights(weights);
-          setComponents(comps);
+          setComponents(prev => prev.length > 0 ? prev : comps);
         } else {
           // fallback to defaults if api is empty
           const fallbackWeights = floorCount === 2 ? COMPONENT_WEIGHTS_2_LANTAI : floorCount >= 3 ? COMPONENT_WEIGHTS_3_LANTAI : COMPONENT_WEIGHTS_1_LANTAI;
           setComponentWeights(fallbackWeights);
-          setComponents(Object.keys(COMPONENT_WEIGHTS_3_LANTAI).map(name => ({
+          setComponents(prev => prev.length > 0 ? prev : Object.keys(COMPONENT_WEIGHTS_3_LANTAI).map(name => ({
             name,
             safetyImpact: false,
             damageDetails: []
@@ -512,7 +523,7 @@ export function useAssessmentForm() {
         console.error("Failed to load components", err);
         const fallbackWeights = floorCount === 2 ? COMPONENT_WEIGHTS_2_LANTAI : floorCount >= 3 ? COMPONENT_WEIGHTS_3_LANTAI : COMPONENT_WEIGHTS_1_LANTAI;
         setComponentWeights(fallbackWeights);
-        setComponents(Object.keys(COMPONENT_WEIGHTS_3_LANTAI).map(name => ({
+        setComponents(prev => prev.length > 0 ? prev : Object.keys(COMPONENT_WEIGHTS_3_LANTAI).map(name => ({
             name,
             safetyImpact: false,
             damageDetails: []
@@ -792,6 +803,7 @@ Demikian permohonan ini kami sampaikan agar dapat ditindaklanjuti.
       photos,
       components,
       finalResult,
+      safetyChecks,
       documentLink: documentLink ? documentLink.replace(/\/edit$/, "/export?format=pdf") : null,
       customFields: {
         ...customFields,
@@ -836,7 +848,8 @@ Demikian permohonan ini kami sampaikan agar dapat ditindaklanjuti.
         setIsDirty(false);
         
         alert(`⚠️ Koneksi internet terbatas atau tidak terdeteksi.\n\nData penilaian untuk "${schoolName || "Sekolah"}" telah berhasil disimpan secara aman di memori lokal perangkat Anda (IndexedDB).\n\nSistem akan otomatis mensinkronisasikan data ini ke server ketika koneksi internet terhubung kembali.`);
-        navigate("/list");
+        const returnTo = searchParams.get("returnTo") || "/list";
+        navigate(returnTo, { state: { assessmentId: editId || payload.idBangunan } });
       } catch (err) {
         console.error("Failed to save to IndexedDB, fallback to localStorage", err);
         const existingOffline = JSON.parse(localStorage.getItem("offline_assessments") || "[]");
@@ -856,7 +869,8 @@ Demikian permohonan ini kami sampaikan agar dapat ditindaklanjuti.
         window.dispatchEvent(new Event("offline-assessments-updated"));
         
         alert(`⚠️ Koneksi internet terbatas atau tidak terdeteksi.\n\nData penilaian untuk "${schoolName || "Sekolah"}" telah berhasil disimpan secara aman di memori lokal perangkat Anda.\n\nSistem akan otomatis mensinkronisasikan data ini ke server ketika koneksi internet terhubung kembali.`);
-        navigate("/list");
+        const returnTo = searchParams.get("returnTo") || "/list";
+        navigate(returnTo, { state: { assessmentId: editId || payload.idBangunan } });
       }
     };
 
@@ -879,7 +893,8 @@ Demikian permohonan ini kami sampaikan agar dapat ditindaklanjuti.
         if (generatedDocLink) {
             alert(`Permohonan berhasil disimpan!\nDokumen surat permohonan resmi telah berhasil disimpan dalam bentuk PDF dan dikirimkan ke Dinas.`);
         }
-        navigate("/list");
+        const returnTo = searchParams.get("returnTo") || "/list";
+        navigate(returnTo, { state: { assessmentId: editId || payload.idBangunan } });
       } else {
         alert("Terjadi kesalahan saat menyimpan data.");
       }
@@ -1133,7 +1148,6 @@ Demikian permohonan ini kami sampaikan agar dapat ditindaklanjuti.
     componentWeights,
     setAnnotatingContext,
     setSubmitting,
-    handleStorageChange,
     formParams,
     setBuildingArea,
     submitting,
@@ -1144,7 +1158,6 @@ Demikian permohonan ini kami sampaikan agar dapat ditindaklanjuti.
     hasDraft,
     setStep,
     idBangunan,
-    handleBeforeUnload,
     handlePhotoUpload,
     setIsAnnotatorOpen,
     setCoordinates,
@@ -1165,6 +1178,17 @@ Demikian permohonan ini kami sampaikan agar dapat ditindaklanjuti.
     handleSubmit,
     components,
     setNpsn,
-    setFormParams
+    setFormParams,
+    restoreDraft,
+    discardDraft,
+    isPermohonanFlow,
+    removePhoto,
+    hasCriticalDamage,
+    SAFETY_QUESTIONS,
+    permissions,
+    updateComponentMeta,
+    updateComponentDamage,
+    removeComponentPhoto,
+    calculateFinalResult
   };
 }

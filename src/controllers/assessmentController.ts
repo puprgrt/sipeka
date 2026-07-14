@@ -3,17 +3,11 @@ import { db } from '../db';
 import * as schema from '../db/schema';
 import { eq, and, ne, inArray, like } from 'drizzle-orm';
 import { logAuditTrail, sendDisposisiNotification } from '../utils/audit';
+import { initMasterData } from '../utils/masterData';
+import { broadcastNotification } from '../utils/sseManager';
+import { sendPushNotification } from '../utils/firebaseAdmin';
 
 import { Assessment } from '../types';
-import { getMessaging as getAdminMessaging } from 'firebase-admin/messaging';
-import { initializeApp as initAdminApp } from 'firebase-admin/app';
-let adminApp;
-try {
-  adminApp = initAdminApp();
-} catch (error) {}
-
-// Dummy initMasterData for now to prevent errors
-async function initMasterData() {}
 
 
 export const get_assessments = async (req: express.Request, res: express.Response) => {
@@ -233,7 +227,8 @@ export const post_assessments = async (req: express.Request, res: express.Respon
       province: (req.body as any).province || payload.province || "Unknown",
       components: payload.components || [],
       verification: payload.verification || {},
-      photos: payload.photos || []
+      photos: payload.photos || [],
+      safetyChecks: (req.body as any).safetyChecks || {}
     };
 
     let finalIdBangunan: number;
@@ -723,34 +718,7 @@ export const get_assessments_by_id_logs = async (req: express.Request, res: expr
   }
 };
 
-// --- NOTIFICATION HELPERS & ENDPOINTS ---
-
-interface SseClient {
-  res: any;
-  userId: number | null;
-  role: string | null;
-}
-
-const sseClients: SseClient[] = [];
-
-function broadcastNotification(notification: any) {
-  for (const client of sseClients) {
-    let matches = false;
-    if (notification.userId && client.userId && notification.userId === client.userId) {
-      matches = true;
-    }
-    if (notification.targetRole && client.role && notification.targetRole === client.role) {
-      matches = true;
-    }
-    if (matches) {
-      try {
-        client.res.write(`data: ${JSON.stringify(notification)}\n\n`);
-      } catch (err) {
-        console.error("Failed to send SSE notification to client", err);
-      }
-    }
-  }
-}
+// --- NOTIFICATION HELPERS ---
 
 async function createStatusUpdateNotification(idPermohonan: string, newStatus: string) {
   try {
@@ -773,24 +741,10 @@ async function createStatusUpdateNotification(idPermohonan: string, newStatus: s
     if (inserted) {
       broadcastNotification(inserted);
       
-      // Send Firebase Push Notification
-      try {
-        if (adminApp) {
-          const [user] = await db.select().from(schema.users).where(eq(schema.users.idUser, creatorId)).limit(1);
-          if (user && user.fcmToken) {
-            const messaging = getAdminMessaging(adminApp);
-            await messaging.send({
-              token: user.fcmToken,
-              notification: {
-                title: inserted.title,
-                body: inserted.message,
-              }
-            });
-            console.log("FCM Notification sent to", user.fcmToken);
-          }
-        }
-      } catch (fcmError) {
-        console.error("Failed to send FCM notification:", fcmError);
+      // Send Firebase Push Notification via centralized module
+      const [user] = await db.select().from(schema.users).where(eq(schema.users.idUser, creatorId)).limit(1);
+      if (user && user.fcmToken) {
+        await sendPushNotification(user.fcmToken, inserted.title, inserted.message);
       }
     }
   } catch (err) {
@@ -954,7 +908,7 @@ export const put_assessments_by_id_disposisi = async (req: express.Request, res:
 export const put_assessments_by_id = async (req: express.Request, res: express.Response) => {
   try {
     const id = req.params.id;
-    const { schoolName, buildingName, buildingArea, floorCount, address, city, province, coordinates } = req.body;
+    const { schoolName, buildingName, buildingArea, floorCount, address, city, province, coordinates, components, photos, finalResult, documentLink, verification } = req.body;
     
     const [p] = await db.select().from(schema.permohonanPenilaian).where(eq(schema.permohonanPenilaian.idPermohonan, id)).limit(1);
     if (!p) return res.status(404).json({ error: "Permohonan tidak ditemukan" });
@@ -967,9 +921,15 @@ export const put_assessments_by_id = async (req: express.Request, res: express.R
 
     const newCustomFields = {
       ...parsedCustomFields,
+      ...((req.body as any).customFields || {}),
       address: address || (parsedCustomFields as any).address,
       city: city || (parsedCustomFields as any).city,
-      province: province || (parsedCustomFields as any).province
+      province: province || (parsedCustomFields as any).province,
+      components: components || (parsedCustomFields as any).components,
+      photos: photos || (parsedCustomFields as any).photos,
+      documentLink: documentLink || (parsedCustomFields as any).documentLink,
+      verification: verification || (parsedCustomFields as any).verification,
+      safetyChecks: (req.body as any).safetyChecks || (parsedCustomFields as any).safetyChecks
     };
 
     let koordinatStr = b?.koordinatGps;
@@ -987,6 +947,16 @@ export const put_assessments_by_id = async (req: express.Request, res: express.R
         customFields: JSON.stringify(newCustomFields)
       })
       .where(eq(schema.profilBangunan.idBangunan, p.idBangunan));
+      
+    if (finalResult) {
+      await db.update(schema.permohonanPenilaian)
+        .set({
+          totalPersentaseKerusakan: String(finalResult.totalDamagePercentage),
+          kesimpulanAkhir: `Rusak ${finalResult.category}` as any,
+          urlDokumenHasilPdf: documentLink || p.urlDokumenHasilPdf
+        })
+        .where(eq(schema.permohonanPenilaian.idPermohonan, id));
+    }
     
     await logAuditTrail(
       id,
@@ -1006,11 +976,12 @@ export const delete_assessments_by_id = async (req: express.Request, res: expres
   try {
     const id = req.params.id;
     
-    // Delete child records first
+    // Delete child records first (including notifications)
     await db.delete(schema.penilaianTahap1Keselamatan).where(eq(schema.penilaianTahap1Keselamatan.idPermohonan, id));
     await db.delete(schema.penilaianTahap2Volume).where(eq(schema.penilaianTahap2Volume.idPermohonan, id));
     await db.delete(schema.logDisposisi).where(eq(schema.logDisposisi.idPermohonan, id));
     await db.delete(schema.historyPenilaian).where(eq(schema.historyPenilaian.idPermohonan, id));
+    await db.delete(schema.notifications).where(eq(schema.notifications.idPermohonan, id));
     await db.delete(schema.auditTrails).where(eq(schema.auditTrails.idPermohonan, id));
     
     // Delete permohonan

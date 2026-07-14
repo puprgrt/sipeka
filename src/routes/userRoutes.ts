@@ -5,7 +5,7 @@ import { eq, ne, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import { initMasterData } from '../utils/masterData';
-
+import { getDbConfig, setDbConfig } from '../utils/configHelper';
 
 const router = express.Router();
 
@@ -144,23 +144,6 @@ router.delete("/api/users/:id", async (req, res) => {
 });
 
 // Dynamic Building General Parameters CRUD
-
-async function getDbConfig(key, defaultVal) {
-  const result = await db.select().from(schema.appConfig).where(eq(schema.appConfig.id, key)).limit(1);
-  if (result.length > 0) {
-    try { return JSON.parse(result[0].value); } catch (e) { return defaultVal; }
-  }
-  return defaultVal;
-}
-
-async function setDbConfig(key, value) {
-  const existing = await db.select().from(schema.appConfig).where(eq(schema.appConfig.id, key)).limit(1);
-  if (existing.length > 0) {
-    await db.update(schema.appConfig).set({ value: JSON.stringify(value) }).where(eq(schema.appConfig.id, key));
-  } else {
-    await db.insert(schema.appConfig).values({ id: key, value: JSON.stringify(value) });
-  }
-}
 
 const paramsFilePath = path.join(process.cwd(), "building_parameters.json");
 

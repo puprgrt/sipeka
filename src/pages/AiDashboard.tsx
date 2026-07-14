@@ -22,6 +22,10 @@ export default function AiDashboard() {
   const [uploadedFileName, setUploadedFileName] = useState("");
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
   const [photoFindings, setPhotoFindings] = useState<any[]>([]);
+  const [photoAiSummary, setPhotoAiSummary] = useState<string>("");
+  const [photoAiRecommendations, setPhotoAiRecommendations] = useState<string[]>([]);
+  const [photoAiCompliance, setPhotoAiCompliance] = useState<string>("");
+  const [photoAiConfidence, setPhotoAiConfidence] = useState<number>(0);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -60,6 +64,12 @@ export default function AiDashboard() {
           }));
           setPhotoFindings(mappedFindings);
         }
+        
+        if (data.summary) setPhotoAiSummary(data.summary);
+        if (data.recommendations) setPhotoAiRecommendations(data.recommendations);
+        if (data.complianceStatus) setPhotoAiCompliance(data.complianceStatus);
+        if (data.confidenceScore) setPhotoAiConfidence(data.confidenceScore);
+        
       } catch (err) {
         console.error("Analysis error:", err);
       } finally {
@@ -391,6 +401,10 @@ export default function AiDashboard() {
                 photoUrl={uploadedPhotoUrl} 
                 fileName={uploadedFileName} 
                 findings={photoFindings}
+                aiSummary={photoAiSummary}
+                aiRecommendations={photoAiRecommendations}
+                aiComplianceStatus={photoAiCompliance}
+                aiConfidenceScore={photoAiConfidence}
                 onClose={() => setUploadedPhotoUrl(null)} 
               />
             )}
