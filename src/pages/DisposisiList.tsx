@@ -24,7 +24,8 @@ export default function DisposisiList() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
   const [dinasConfig, setDinasConfig] = useState<any>(null);
-  
+  const [appConfig, setAppConfig] = useState<any>(null);
+
   const [activeTab, setActiveTab] = useState("Semua");
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
   const [dispositionLogs, setDispositionLogs] = useState<any[]>([]);
@@ -51,6 +52,17 @@ export default function DisposisiList() {
   const [recallsList, setRecallsList] = useState<any[]>([]);
 
   const [activeRole, setActiveRole] = useState(() => localStorage.getItem("activeRole") || "Administrator");
+  const [timTeknisUsers, setTimTeknisUsers] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch("/api/users")
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setTimTeknisUsers(data.filter(u => u.role === "Tim_Teknis"));
+        }
+      }).catch(err => console.error("Failed to fetch Tim Teknis", err));
+  }, []);
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -102,6 +114,11 @@ export default function DisposisiList() {
     fetch("/api/dinas")
       .then(res => res.json())
       .then(data => setDinasConfig(data));
+      
+    fetch("/api/app-settings")
+      .then(res => res.json())
+      .then(data => setAppConfig(data))
+      .catch(err => console.error("Failed to fetch app-settings", err));
   }, [location.state]);
 
   useEffect(() => {
@@ -133,7 +150,7 @@ export default function DisposisiList() {
       setDispKode(initialData.kode || "B.1");
       setDispNomorSurat(initialData.nomorSurat || `PUPR/B-0${selectedAssessment.id.substring(0, 3)}/2026`);
       setDispNoAgenda(initialData.noAgenda || `AGD-${selectedAssessment.id.substring(0, 5).toUpperCase()}`);
-      setDispDiteruskan(initialData.diteruskan || (activeRole === "Koordinator" ? ["Tim Teknis Penilai"] : ["Kepala Bidang Bangunan Gedung"]));
+      setDispDiteruskan(initialData.diteruskan || (activeRole === "Koordinator" ? ["Tim Teknis Penilai"] : ["Kepala Bidang Bangunan"]));
       setDispHarap(initialData.harap || ["Tanggapan dan Saran"]);
       setDispCatatan(initialData.catatan || (
         selectedAssessment.status === "Menunggu_Validasi" 
@@ -605,7 +622,7 @@ export default function DisposisiList() {
                                     </style>
                                   </head>
                                   <body>
-                                    <h1>Pemerintah Kabupaten / Kota<br/>Dinas Pekerjaan Umum dan Penataan Ruang</h1>
+                                    <h1>Pemerintah Kabupaten Garut<br/>${dinasConfig?.namaDinas || 'Dinas Pekerjaan Umum dan Penataan Ruang'}</h1>
                                     <hr style="border: 2px solid black; margin-bottom: 30px;" />
                                     <h2><u>SURAT KEPUTUSAN PENETAPAN TINGKAT KERUSAKAN BANGUNAN</u></h2>
                                     <p>Nomor: ${selectedAssessment.id.split('-')[0].toUpperCase()}/PUPR/${new Date().getFullYear()}</p>
@@ -1064,7 +1081,7 @@ export default function DisposisiList() {
                               setDispKode(initialData.kode || "B.1");
                               setDispNomorSurat(initialData.nomorSurat || `PUPR/B-0${selectedAssessment.id.substring(0, 3)}/2026`);
                               setDispNoAgenda(initialData.noAgenda || `AGD-${selectedAssessment.id.substring(0, 5).toUpperCase()}`);
-                              setDispDiteruskan(initialData.diteruskan || ["Kepala Bidang Bangunan Gedung"]);
+                              setDispDiteruskan(initialData.diteruskan || ["Kepala Bidang Bangunan"]);
                               setDispHarap(initialData.harap || ["Tanggapan dan Saran"]);
                               setDispCatatan(initialData.catatan || (
                                 selectedAssessment.status === "Menunggu_Validasi" 
@@ -1121,13 +1138,13 @@ export default function DisposisiList() {
                     {/* Header Disposisi */}
                     <div className="flex items-center gap-4 border-b-2 border-slate-900 pb-4 mb-4">
                       <img 
-                        src="https://upload.wikimedia.org/wikipedia/commons/b/b3/Coat_of_arms_of_Garut_Regency.svg" 
-                        alt="Logo Kabupaten Garut" 
+                        src={appConfig?.logoKiri || "https://upload.wikimedia.org/wikipedia/commons/b/b3/Coat_of_arms_of_Garut_Regency.svg"} 
+                        alt="Logo Instansi Kiri" 
                         className="w-12 h-12 object-contain shrink-0"
                         referrerPolicy="no-referrer"
                       />
                       <div className="text-center flex-1 font-sans">
-                        <h2 className="text-sm font-black uppercase tracking-widest text-slate-900 leading-tight">Pemerintah {dinasConfig?.alamat ? (dinasConfig.alamat.includes(',') ? dinasConfig.alamat.split(',').pop()?.trim() : 'Kabupaten Garut') : 'Kabupaten Garut'}</h2>
+                        <h2 className="text-sm font-black uppercase tracking-widest text-slate-900 leading-tight">Pemerintah Kabupaten Garut</h2>
                         <h1 className="text-base font-black uppercase tracking-widest mt-1 text-slate-950 leading-tight">{dinasConfig?.namaDinas || 'Dinas Pekerjaan Umum dan Penataan Ruang'}</h1>
                         <p className="text-[9px] font-mono mt-1 text-slate-600 uppercase">{dinasConfig?.alamat || 'Jalan Raya Pembangunan No. 123, Tarogong Kidul, Garut'}</p>
                       </div>
@@ -1232,10 +1249,9 @@ export default function DisposisiList() {
                         {isEditingDisposisi ? (
                           <div className="space-y-2">
                             {[
-                              "Kepala Bidang Bangunan Gedung",
-                              "Tim Teknis Penilai",
-                              "Sekretaris Dinas",
-                              "Kepala Seksi Perencanaan"
+                              "Kepala Bidang Bangunan",
+                              "Koordinator",
+                              ...timTeknisUsers.map(u => `Tim Teknis - ${u.namaLengkap}`)
                             ].map((roleOption) => {
                               const checked = dispDiteruskan.includes(roleOption);
                               return (
@@ -1259,20 +1275,32 @@ export default function DisposisiList() {
                           </div>
                         ) : (
                           <ol className="list-decimal pl-4 space-y-2">
-                            <li className={cn(dispDiteruskan.includes("Kepala Bidang Bangunan Gedung") ? "font-bold text-slate-800" : "text-slate-400")}>
-                              Kepala Bidang Bangunan Gedung 
-                              {dispDiteruskan.includes("Kepala Bidang Bangunan Gedung") && <span className="inline-block w-4 h-4 border border-slate-900 rounded-sm ml-2 align-middle bg-slate-900 text-white flex items-center justify-center font-bold">✓</span>}
-                            </li>
-                            <li className={cn(dispDiteruskan.includes("Tim Teknis Penilai") ? "font-bold text-slate-800" : "text-slate-400")}>
-                              Tim Teknis Penilai 
-                              {dispDiteruskan.includes("Tim Teknis Penilai") && <span className="inline-block w-4 h-4 border border-slate-900 rounded-sm ml-2 align-middle bg-slate-900 text-white flex items-center justify-center font-bold">✓</span>}
-                            </li>
-                            <li className={cn(dispDiteruskan.includes("Sekretaris Dinas") ? "font-bold text-slate-800" : "text-slate-400")}>
-                              Sekretaris Dinas 
-                              {dispDiteruskan.includes("Sekretaris Dinas") && <span className="inline-block w-4 h-4 border border-slate-900 rounded-sm ml-2 align-middle bg-slate-900 text-white flex items-center justify-center font-bold">✓</span>}
-                            </li>
-                            {dispDiteruskan.filter(r => !["Kepala Bidang Bangunan Gedung", "Tim Teknis Penilai", "Sekretaris Dinas"].includes(r)).map((r, rIdx) => (
-                              <li key={rIdx} className="font-bold text-slate-800">
+                            {[
+                              "Kepala Bidang Bangunan",
+                              "Koordinator",
+                              ...timTeknisUsers.map(u => `Tim Teknis - ${u.namaLengkap}`)
+                            ].map((roleOption) => {
+                              const checked = dispDiteruskan.includes(roleOption);
+                              return (
+                                <li key={roleOption} className={cn(checked ? "font-bold text-slate-800" : "text-slate-400")}>
+                                  {roleOption}
+                                  {checked && <span className="inline-block w-4 h-4 border border-slate-900 rounded-sm ml-2 align-middle bg-slate-900 text-white flex items-center justify-center font-bold">✓</span>}
+                                </li>
+                              );
+                            })}
+                            
+                            {/* Opsi kustom lainnya yang pernah tersimpan di disposisi lama tapi tidak ada di default list */}
+                            {dispDiteruskan.filter(r => ![
+                              "Kepala Bidang Bangunan",
+                              "Kepala Bidang Bangunan Gedung",
+                              "Kepala Bidang",
+                              "Sekretaris Dinas",
+                              "Kepala Seksi Perencanaan",
+                              "Koordinator",
+                              ...timTeknisUsers.map(u => `Tim Teknis - ${u.namaLengkap}`),
+                              "Tim Teknis Penilai" // Support untuk data lama
+                            ].includes(r)).map((r, rIdx) => (
+                              <li key={`other-${rIdx}`} className="font-bold text-slate-800">
                                 {r}
                                 <span className="inline-block w-4 h-4 border border-slate-900 rounded-sm ml-2 align-middle bg-slate-900 text-white flex items-center justify-center font-bold">✓</span>
                               </li>

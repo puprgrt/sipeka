@@ -768,10 +768,25 @@ async function createDisposisiNotifications(idPermohonan: string, diteruskan: st
     };
 
     for (const item of diteruskan) {
-      const targetRole = roleMapping[item];
-      if (targetRole) {
+      let targetRole: string | undefined = roleMapping[item];
+      let targetUserId: number | null = null;
+      let finalTargetRole: string | null = targetRole || null;
+
+      if (item.startsWith("Tim Teknis - ")) {
+        const userName = item.substring("Tim Teknis - ".length);
+        const [u] = await db.select().from(schema.users).where(and(eq(schema.users.role, "Tim_Teknis"), eq(schema.users.namaLengkap, userName))).limit(1);
+        if (u) {
+          targetUserId = u.idUser;
+          finalTargetRole = null; // Kirim spesifik ke user ini
+        } else {
+          finalTargetRole = "Tim_Teknis"; // Fallback ke semua Tim Teknis
+        }
+      }
+
+      if (finalTargetRole || targetUserId) {
         const [inserted] = await db.insert(schema.notifications).values({
-          targetRole,
+          targetRole: finalTargetRole,
+          userId: targetUserId,
           title: "Disposisi Baru Ditugaskan",
           message: `Anda mendapat tugas disposisi baru untuk "${b.namaSekolahInstansi}" (${b.namaMassaBangunan}). Catatan: ${notes || "Harap ditindaklanjuti."}`,
           idPermohonan: idPermohonan,

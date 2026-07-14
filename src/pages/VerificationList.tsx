@@ -31,6 +31,7 @@ export default function VerificationList() {
   };
   const [loading, setLoading] = useState(true);
   const [dinasConfig, setDinasConfig] = useState<any>(null);
+  const [appConfig, setAppConfig] = useState<any>(null);
   
   const [activeTab, setActiveTab] = useState("Semua");
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
@@ -98,12 +99,11 @@ export default function VerificationList() {
       } else {
         alert("Gagal menyimpan verifikasi.");
       }
-    } catch (err) {
-      console.error(err);
-      alert("Terjadi kesalahan jaringan.");
-    } finally {
-      setSavingVerification(false);
+    } catch (error) {
+      console.error(error);
+      alert("Terjadi kesalahan sistem.");
     }
+    setSavingVerification(false);
   };
 
   useEffect(() => {
@@ -133,6 +133,11 @@ export default function VerificationList() {
     fetch("/api/dinas")
       .then(res => res.json())
       .then(data => setDinasConfig(data));
+      
+    fetch("/api/app-settings")
+      .then(res => res.json())
+      .then(data => setAppConfig(data))
+      .catch(err => console.error("Failed to fetch app-settings", err));
   }, []);
 
   useEffect(() => {
@@ -872,13 +877,13 @@ export default function VerificationList() {
                     {/* Header Disposisi */}
                     <div className="flex items-center gap-4 border-b-2 border-slate-900 pb-4 mb-4">
                       <img 
-                        src="https://upload.wikimedia.org/wikipedia/commons/b/b3/Coat_of_arms_of_Garut_Regency.svg" 
-                        alt="Logo Kabupaten Garut" 
+                        src={appConfig?.logoKiri || "https://upload.wikimedia.org/wikipedia/commons/b/b3/Coat_of_arms_of_Garut_Regency.svg"} 
+                        alt="Logo Instansi Kiri" 
                         className="w-12 h-12 object-contain shrink-0"
                         referrerPolicy="no-referrer"
                       />
                       <div className="text-center flex-1 font-sans">
-                        <h2 className="text-sm font-black uppercase tracking-widest text-slate-900 leading-tight">Pemerintah {dinasConfig?.alamat ? (dinasConfig.alamat.includes(',') ? dinasConfig.alamat.split(',').pop()?.trim() : 'Kabupaten Garut') : 'Kabupaten Garut'}</h2>
+                        <h2 className="text-sm font-black uppercase tracking-widest text-slate-900 leading-tight">Pemerintah Kabupaten Garut</h2>
                         <h1 className="text-base font-black uppercase tracking-widest mt-1 text-slate-950 leading-tight">{dinasConfig?.namaDinas || 'Dinas Pekerjaan Umum dan Penataan Ruang'}</h1>
                         <p className="text-[9px] font-mono mt-1 text-slate-600 uppercase">{dinasConfig?.alamat || 'Jalan Raya Pembangunan No. 123, Tarogong Kidul, Garut'}</p>
                       </div>
@@ -945,9 +950,9 @@ export default function VerificationList() {
                       <div className="border-r border-slate-900 p-3 relative">
                         <p className="font-bold mb-3 uppercase tracking-wider border-b border-slate-300 pb-1 inline-block">Diteruskan Kepada Yth:</p>
                         <ol className="list-decimal pl-4 space-y-2">
-                          <li className="font-bold text-slate-800">Kepala Bidang Bangunan Gedung <span className="inline-block w-4 h-4 border border-slate-900 rounded-sm ml-2 align-middle bg-slate-900 text-white flex items-center justify-center font-bold">✓</span></li>
-                          <li className="text-slate-600">Tim Teknis Penilai <span className="inline-block w-4 h-4 border border-slate-900 rounded-sm ml-2 align-middle" /></li>
-                          <li className="text-slate-600">Sekretaris Dinas <span className="inline-block w-4 h-4 border border-slate-900 rounded-sm ml-2 align-middle" /></li>
+                          <li className="font-bold text-slate-800">Kepala Bidang Bangunan <span className="inline-block w-4 h-4 border border-slate-900 rounded-sm ml-2 align-middle bg-slate-900 text-white flex items-center justify-center font-bold">✓</span></li>
+                          <li className="text-slate-600">Koordinator <span className="inline-block w-4 h-4 border border-slate-900 rounded-sm ml-2 align-middle" /></li>
+                          <li className="text-slate-600">Tim Teknis <span className="inline-block w-4 h-4 border border-slate-900 rounded-sm ml-2 align-middle" /></li>
                         </ol>
                       </div>
                       <div className="border-r border-slate-900 p-3 relative">
