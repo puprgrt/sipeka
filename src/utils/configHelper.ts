@@ -41,7 +41,10 @@ export async function readLetterParamsFile() {
       alamat: "Jalan Raya Pembangunan No. 123, Sukagalih, Kec. Tarogong Kidul, Kabupaten Garut, Jawa Barat 44151",
       email: "",
       website: "",
-      nomorTelepon: ""
+      nomorTelepon: "",
+      namaKepala: "Ir. H. Kepala Dinas, M.T.",
+      nipKepala: "19700101 199803 1 004",
+      jabatan: "Kepala Dinas Pekerjaan Umum dan Penataan Ruang"
     },
     pengelola: {
       logoKiri: "",
@@ -51,7 +54,10 @@ export async function readLetterParamsFile() {
       alamat: "Alamat Lembaga",
       email: "",
       website: "",
-      nomorTelepon: ""
+      nomorTelepon: "",
+      namaKepala: "Nama Kepala Lembaga",
+      nipKepala: "19800101 200501 1 001",
+      jabatan: "Kepala Sekolah"
     }
   };
 
@@ -96,5 +102,37 @@ export async function readAiSettings() {
 
 export async function writeAiSettings(data: any) {
   await setDbConfig('ai_settings', data);
+  return true;
+}
+
+export async function readDocumentTemplates() {
+  const { getDefaultTemplates } = await import('./templateUtils');
+  const defaults = getDefaultTemplates();
+  const dbVal = await getDbConfig('document_templates', null);
+  
+  if (!dbVal) return defaults;
+  
+  // Merge: pastikan semua template default ada, tapi gunakan konten dari DB jika sudah diedit
+  return defaults.map(defaultTpl => {
+    const saved = (dbVal as any[]).find((t: any) => t.id === defaultTpl.id);
+    if (saved) {
+      return {
+        ...defaultTpl,
+        kontenHtml: saved.kontenHtml || defaultTpl.kontenHtml,
+        updatedAt: saved.updatedAt,
+      };
+    }
+    return defaultTpl;
+  });
+}
+
+export async function writeDocumentTemplates(templates: any[]) {
+  // Simpan hanya id, kontenHtml, dan updatedAt (metadata lain ada di default)
+  const toSave = templates.map((t: any) => ({
+    id: t.id,
+    kontenHtml: t.kontenHtml,
+    updatedAt: t.updatedAt || new Date().toISOString(),
+  }));
+  await setDbConfig('document_templates', toSave);
   return true;
 }

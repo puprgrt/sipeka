@@ -12,6 +12,7 @@ interface DocumentGenerationStepProps {
   submitting: boolean;
   setStep: (step: number) => void;
   hasCriticalDamage: boolean;
+  suratPermohonanDriveLink?: string;
 }
 
 export default function DocumentGenerationStep({
@@ -22,7 +23,8 @@ export default function DocumentGenerationStep({
   handleSubmit,
   submitting,
   setStep,
-  hasCriticalDamage
+  hasCriticalDamage,
+  suratPermohonanDriveLink
 }: DocumentGenerationStepProps) {
   return (
 <motion.div 
@@ -46,20 +48,33 @@ export default function DocumentGenerationStep({
                     Sesuai aturan kedinasan, Anda wajib membuat surat permohonan resmi terlebih dahulu sebelum dapat melanjutkan ke tahap ringkasan dan pengiriman.
                   </p>
                   
-                  <button
-                    onClick={handleGenerateLetter}
-                    disabled={isGeneratingLetter}
-                    className="mt-6 inline-flex items-center px-6 py-3 text-sm font-bold rounded-xl shadow-md text-white bg-pu-blue hover:bg-blue-700 disabled:opacity-50 transition-all hover:scale-105"
-                  >
-                    {isGeneratingLetter ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Menggenerasi Surat Resmi...
-                      </>
-                    ) : (
-                      "✨ Generate Surat Permohonan Otomatis"
+                  <div className="flex flex-col sm:flex-row gap-3 mt-6">
+                    <button
+                      onClick={handleGenerateLetter}
+                      disabled={isGeneratingLetter}
+                      className="inline-flex items-center px-6 py-3 text-sm font-bold rounded-xl shadow-md text-white bg-pu-blue hover:bg-blue-700 disabled:opacity-50 transition-all hover:scale-105"
+                    >
+                      {isGeneratingLetter ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Menggenerasi Surat Resmi...
+                        </>
+                      ) : (
+                        "✨ Generate Surat Permohonan Otomatis"
+                      )}
+                    </button>
+                    
+                    {suratPermohonanDriveLink && (
+                      <a 
+                        href={suratPermohonanDriveLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center px-6 py-3 text-sm font-bold rounded-xl shadow-sm text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all hover:scale-105"
+                      >
+                        <FileTextIcon className="w-4 h-4 mr-2" /> Unduh Template Asli (Word)
+                      </a>
                     )}
-                  </button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-6">
@@ -82,6 +97,16 @@ export default function DocumentGenerationStep({
                       <FileTextIcon className="w-4 h-4 mr-2" />
                       Buka Editor Surat (Google Docs)
                     </button>
+                    {suratPermohonanDriveLink && (
+                      <a 
+                        href={suratPermohonanDriveLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center px-4 py-2.5 text-xs font-bold rounded-xl text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-all shadow-sm"
+                      >
+                        <FileTextIcon className="w-4 h-4 mr-2" /> Unduh Template (Word)
+                      </a>
+                    )}
                   </div>
                 </div>
               )}

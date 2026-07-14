@@ -4,6 +4,7 @@ import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COM
 import { MapPin, Camera, Save, AlertCircle, X, CloudUpload, HelpCircle, Printer, Info, CheckCircle, FileText as FileTextIcon, Loader2, Building, Check, ClipboardList, Send, Paintbrush, Plus, Minus } from "lucide-react";
 import { cn, getAuditHeaders } from "../lib/utils";
 import { addOfflineAssessment, getOfflineAssessments, deleteOfflineAssessment } from "../lib/indexedDbQueue";
+import { replaceTemplatePlaceholders } from "../utils/templateUtils";
 import { uploadToDrive } from "../lib/driveService";
 import { getAccessToken, googleSignIn, initAuth } from "../lib/firebaseAuth";
 import { createDocument } from "../lib/docsService";
@@ -161,6 +162,8 @@ export function useAssessmentForm() {
   const [letterReferenceNo, setLetterReferenceNo] = useState("");
   const [generatedDocLink, setGeneratedDocLink] = useState("");
   const [previewTab, setPreviewTab] = useState<"design" | "embedded">("design");
+  const [suratPermohonanTemplate, setSuratPermohonanTemplate] = useState("");
+  const [suratPermohonanDriveLink, setSuratPermohonanDriveLink] = useState("");
 
   // Auto-save and draft restoration states
   const [isDirty, setIsDirty] = useState(false);
@@ -377,6 +380,17 @@ export function useAssessmentForm() {
       .then(res => res.json())
       .then(data => setLetterConfig(data))
       .catch(err => console.error("Failed to fetch letter config", err));
+
+    fetch("/api/document-templates")
+      .then(res => res.json())
+      .then((templates: any[]) => {
+        const surat = templates.find((t: any) => t.id === 'surat_permohonan');
+        if (surat) {
+          setSuratPermohonanTemplate(surat.kontenHtml);
+          setSuratPermohonanDriveLink(surat.driveLink || "");
+        }
+      })
+      .catch(err => console.error("Failed to fetch document templates", err));
 
     return () => {
       if (typeof unsubscribe === 'function') unsubscribe();
@@ -656,7 +670,30 @@ export function useAssessmentForm() {
       const kopText = pengelolaKop ? `${pengelolaKop.namaInstansiAtas || "PEMERINTAH KABUPATEN GARUT"}\n${pengelolaKop.namaInstansiBawah || schoolName || "UPTD SATUAN PENDIDIKAN"}\n${getParamLabel("address", "Alamat")}: ${pengelolaKop.alamat || address || "Jl. Raya Pembangunan No. 123"}${pengelolaKop.nomorTelepon ? ` | Telp: ${pengelolaKop.nomorTelepon}` : ""}${pengelolaKop.email ? ` | Email: ${pengelolaKop.email}` : ""}\n=========================================\n\n` : "";
 
       const docTitle = `Surat Permohonan Penilaian Kerusakan - ${schoolName || "Instansi"}`;
-      let docContent = `${kopText}SURAT PERMOHONAN PENILAIAN KERUSAKAN BANGUNAN GEDUNG
+      let docContent = "";
+      
+      if (suratPermohonanTemplate && suratPermohonanTemplate.includes("{{")) {
+        // Use dynamic template
+        docContent = replaceTemplatePlaceholders(suratPermohonanTemplate, {
+          namaInstansiAtas: pengelolaKop?.namaInstansiAtas || "PEMERINTAH KABUPATEN GARUT",
+          namaInstansiBawah: pengelolaKop?.namaInstansiBawah || schoolName || "UPTD SATUAN PENDIDIKAN",
+          alamatPemohon: pengelolaKop?.alamat || address || "Jl. Raya Pembangunan No. 123",
+          nomorSurat: letterReferenceNo,
+          tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+          namaSekolah: schoolName,
+          namaBangunan: buildingName,
+          npsn: npsn,
+          luasBangunan: String(buildingArea),
+          jumlahLantai: String(floorCount),
+          alamatBangunan: address,
+          koordinatGps: coordinates ? `${coordinates.lat}, ${coordinates.lng}` : "-",
+          namaPengirim: pengelolaKop?.namaKepala || "Nama Pengirim",
+          jabatanPengirim: pengelolaKop?.jabatan || "Jabatan",
+          nipPengirim: pengelolaKop?.nipKepala || "-"
+        });
+      } else {
+        // Fallback hardcoded
+        docContent = `${kopText}SURAT PERMOHONAN PENILAIAN KERUSAKAN BANGUNAN GEDUNG
           
 Nomor Surat: ${letterReferenceNo}
 Perihal: Permohonan Penilaian Kerusakan Fisik Bangunan Gedung
@@ -670,6 +707,7 @@ ${getParamLabel("floorCount", "Jumlah Lantai")}: ${floorCount} Lantai
 ${getParamLabel("address", "Alamat")}: ${address}
 Koordinat GPS: ${coordinates ? `Latitude: ${coordinates.lat}, Longitude: ${coordinates.lng}` : "-"}
 `;
+      }
 
       // Append dynamic custom parameters
       const stdKeys = ["schoolName", "buildingName", "npsn", "address", "buildingArea", "floorCount"];
@@ -1299,6 +1337,7 @@ Pengelola Bangunan / Pemohon`;
     updateComponentMeta,
     updateComponentDamage,
     removeComponentPhoto,
-    calculateFinalResult
+    calculateFinalResult,
+    suratPermohonanDriveLink
   };
 }

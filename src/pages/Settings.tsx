@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Brain, Loader2, Edit2, Trash2, Plus, Save, X, Info, Camera, HelpCircle, Layers, Users, Phone, Mail, Shield, UserCog, FileText, Printer, UploadCloud, Settings as SettingsIcon, GripVertical, Sun, Moon } from "lucide-react";
+import { Brain, Loader2, Edit2, Trash2, Plus, Save, X, Info, Camera, HelpCircle, Layers, Users, Phone, Mail, Shield, UserCog, FileText, Printer, UploadCloud, Settings as SettingsIcon, GripVertical, Sun, Moon, Check } from "lucide-react";
 import { cn } from "../lib/utils";
 import {
   DndContext,
@@ -454,7 +454,7 @@ export default function Settings() {
   const getAvailableTabsList = (role: string) => {
     switch (role) {
       case "Administrator":
-        return ["aplikasi", "komponen", "katalog", "users", "formulir", "param_profil", "dinas", "surat", "ai"];
+        return ["aplikasi", "komponen", "katalog", "users", "formulir", "param_profil", "dinas", "surat", "template", "ai"];
       case "Kadis":
       case "Kabid":
         return ["aplikasi", "dinas", "surat", "users"];
@@ -498,6 +498,9 @@ export default function Settings() {
     email: string;
     website: string;
     nomorTelepon: string;
+    namaKepala: string;
+    nipKepala: string;
+    jabatan: string;
   }
   interface LetterConfig {
     sistem: LetterSection;
@@ -507,17 +510,31 @@ export default function Settings() {
   interface AppConfig {
     logoKiri: string;
     logoKanan: string;
+    templateDriveLink?: string;
   }
   
-  const [appConfig, setAppConfig] = useState<AppConfig>({ logoKiri: "", logoKanan: "" });
+  const [appConfig, setAppConfig] = useState<AppConfig>({ logoKiri: "", logoKanan: "", templateDriveLink: "" });
   const [loadingAppConfig, setLoadingAppConfig] = useState(false);
   const [editingAppConfig, setEditingAppConfig] = useState(false);
-  const [appConfigForm, setAppConfigForm] = useState<AppConfig>({ logoKiri: "", logoKanan: "" });
+  const [appConfigForm, setAppConfigForm] = useState<AppConfig>({ logoKiri: "", logoKanan: "", templateDriveLink: "" });
 
   const [letterConfig, setLetterConfig] = useState<LetterConfig | null>(null);
   const [loadingLetter, setLoadingLetter] = useState(false);
   const [editingLetter, setEditingLetter] = useState(false);
   const [letterForm, setLetterForm] = useState<LetterConfig | null>(null);
+
+  // === Pusat Template State ===
+  const [docTemplates, setDocTemplates] = useState<any[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [editingTemplateContent, setEditingTemplateContent] = useState("");
+  const [editingTemplateDriveLink, setEditingTemplateDriveLink] = useState("");
+  const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  
+  const [editingDriveLink, setEditingDriveLink] = useState(false);
+  const [driveLinkInput, setDriveLinkInput] = useState("");
+
   const [katalogList, setKatalogList] = useState<KatalogConfig[]>([]);
   const [classifications, setClassifications] = useState<ClassificationConfig[]>([]);
   const [loadingKatalog, setLoadingKatalog] = useState(false);
@@ -855,6 +872,81 @@ export default function Settings() {
     }
   };
 
+  // === PUSAT TEMPLATE FUNCTIONS ===
+  const fetchDocTemplates = async () => {
+    setLoadingTemplates(true);
+    try {
+      const res = await fetch("/api/document-templates");
+      const data = await res.json();
+      setDocTemplates(data);
+    } catch (error) {
+      console.error("Gagal mengambil template dokumen", error);
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+
+  const handleSaveTemplate = async (templateId: string, kontenHtml: string, driveLink: string) => {
+    setSavingTemplate(true);
+    try {
+      const res = await fetch(`/api/document-templates/${templateId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kontenHtml, driveLink })
+      });
+      const updated = await res.json();
+      setDocTemplates(prev => prev.map(t => t.id === templateId ? { ...t, ...updated } : t));
+      setEditingTemplateId(null);
+      setEditingTemplateContent("");
+      setEditingTemplateDriveLink("");
+      setSaveToast(`Template "${updated.nama}" berhasil disimpan!`);
+      setTimeout(() => setSaveToast(null), 3000);
+    } catch (error) {
+      console.error(error);
+      alert("Gagal menyimpan template");
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const handleResetTemplate = async (templateId: string) => {
+    if (!window.confirm("Apakah Anda yakin ingin mereset template ini ke versi default? Perubahan Anda akan hilang.")) return;
+    try {
+      const res = await fetch(`/api/document-templates/${templateId}/reset`, { method: "POST" });
+      const updated = await res.json();
+      setDocTemplates(prev => prev.map(t => t.id === templateId ? { ...t, ...updated } : t));
+      if (editingTemplateId === templateId) {
+        setEditingTemplateContent(updated.kontenHtml);
+        setEditingTemplateDriveLink(updated.driveLink || "");
+      }
+      setSaveToast(`Template "${updated.nama}" berhasil direset ke default!`);
+      setTimeout(() => setSaveToast(null), 3000);
+    } catch (error) {
+      console.error(error);
+      alert("Gagal mereset template");
+    }
+  };
+
+  const handleSaveDriveLink = async () => {
+    try {
+      const updatedConfig = { ...appConfig, templateDriveLink: driveLinkInput };
+      const res = await fetch("/api/app-settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedConfig)
+      });
+      if (res.ok) {
+        setAppConfig(updatedConfig);
+        setAppConfigForm(updatedConfig);
+        setEditingDriveLink(false);
+        setSaveToast("Link Google Drive berhasil disimpan!");
+        setTimeout(() => setSaveToast(null), 3000);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const handleAppLogoUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'logoKiri' | 'logoKanan') => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
@@ -909,6 +1001,7 @@ export default function Settings() {
     fetchLetterConfig();
     fetchAppConfig();
     fetchAiConfig();
+    fetchDocTemplates();
   }, []);
 
   // Real-time auto-refresh untuk tab users
@@ -1179,6 +1272,7 @@ export default function Settings() {
     { id: "param_profil", label: "Parameter Profil", icon: UserCog },
     { id: "dinas", label: "Profil Dinas", icon: Shield },
     { id: "surat", label: "Kop Surat", icon: Printer },
+    { id: "template", label: "Pusat Template", icon: FileText },
     { id: "ai", label: "Pengaturan AI", icon: Brain },
   ];
 
@@ -1418,6 +1512,22 @@ export default function Settings() {
                     <img src={appConfigForm.logoKanan} alt="Preview Logo Kanan" className="h-16 object-contain" />
                   </div>
                 )}
+              </div>
+              
+              {/* Template Drive Link */}
+              <div className="space-y-4 md:col-span-2 border-t border-slate-200 pt-6 mt-2">
+                <label className="block text-[11px] font-bold text-slate-600">Link Folder Google Drive (Template Dokumen)</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    disabled={!editingAppConfig}
+                    value={appConfigForm.templateDriveLink || ""} 
+                    onChange={e => setAppConfigForm({ ...appConfigForm, templateDriveLink: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white focus:bg-white text-xs disabled:opacity-60"
+                    placeholder="https://drive.google.com/drive/folders/..." 
+                  />
+                </div>
+                <p className="text-[10px] text-slate-500 font-mono">Tautan ke folder Google Drive yang berisi format asli (Word/Excel) dari template dokumen aplikasi.</p>
               </div>
             </div>
           )}
@@ -2653,6 +2763,48 @@ export default function Settings() {
                         />
                       </div>
                     </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Nama Pejabat</label>
+                        <input 
+                          type="text" 
+                          disabled={!editingLetter}
+                          value={letterForm.sistem.namaKepala || ''} 
+                          onChange={e => setLetterForm({
+                            ...letterForm,
+                            sistem: { ...letterForm.sistem, namaKepala: e.target.value }
+                          })}
+                          className="w-full px-3 py-1.5 border border-slate-300 rounded-lg bg-white focus:bg-white text-xs disabled:opacity-60" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">NIP Pejabat</label>
+                        <input 
+                          type="text" 
+                          disabled={!editingLetter}
+                          value={letterForm.sistem.nipKepala || ''} 
+                          onChange={e => setLetterForm({
+                            ...letterForm,
+                            sistem: { ...letterForm.sistem, nipKepala: e.target.value }
+                          })}
+                          className="w-full px-3 py-1.5 border border-slate-300 rounded-lg bg-white focus:bg-white text-xs disabled:opacity-60" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-1">Jabatan</label>
+                        <input 
+                          type="text" 
+                          disabled={!editingLetter}
+                          value={letterForm.sistem.jabatan || ''} 
+                          onChange={e => setLetterForm({
+                            ...letterForm,
+                            sistem: { ...letterForm.sistem, jabatan: e.target.value }
+                          })}
+                          className="w-full px-3 py-1.5 border border-slate-300 rounded-lg bg-white focus:bg-white text-xs disabled:opacity-60" 
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -2799,6 +2951,48 @@ export default function Settings() {
                       />
                     </div>
                   </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Nama Pimpinan / Kepsek</label>
+                      <input 
+                        type="text" 
+                        disabled={!editingLetter}
+                        value={letterForm.pengelola.namaKepala || ''} 
+                        onChange={e => setLetterForm({
+                          ...letterForm,
+                          pengelola: { ...letterForm.pengelola, namaKepala: e.target.value }
+                        })}
+                        className="w-full px-3 py-1.5 border border-slate-300 rounded-lg bg-white focus:bg-white text-xs disabled:opacity-60" 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">NIP</label>
+                      <input 
+                        type="text" 
+                        disabled={!editingLetter}
+                        value={letterForm.pengelola.nipKepala || ''} 
+                        onChange={e => setLetterForm({
+                          ...letterForm,
+                          pengelola: { ...letterForm.pengelola, nipKepala: e.target.value }
+                        })}
+                        className="w-full px-3 py-1.5 border border-slate-300 rounded-lg bg-white focus:bg-white text-xs disabled:opacity-60" 
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Jabatan</label>
+                      <input 
+                        type="text" 
+                        disabled={!editingLetter}
+                        value={letterForm.pengelola.jabatan || ''} 
+                        onChange={e => setLetterForm({
+                          ...letterForm,
+                          pengelola: { ...letterForm.pengelola, jabatan: e.target.value }
+                        })}
+                        className="w-full px-3 py-1.5 border border-slate-300 rounded-lg bg-white focus:bg-white text-xs disabled:opacity-60" 
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -2892,6 +3086,277 @@ export default function Settings() {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================== TAB: PUSAT TEMPLATE ========================== */}
+      {activeTab === "template" && (
+        <div className="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/50 shadow-lg overflow-hidden flex flex-col p-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">Pusat Template Dokumen</h2>
+              <p className="mt-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">
+                Kelola template surat dan dokumen yang digunakan di seluruh aplikasi. Gunakan variabel {"{{namaVariabel}}"} untuk data dinamis.
+              </p>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-2 mt-2 md:mt-0">
+              {editingDriveLink ? (
+                <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                  <input
+                     type="text"
+                     value={driveLinkInput}
+                     onChange={(e) => setDriveLinkInput(e.target.value)}
+                     placeholder="Link Google Drive..."
+                     className="text-[10px] px-2 py-1.5 rounded-lg border border-slate-300 min-w-[200px] md:min-w-[250px] outline-none focus:border-pu-blue"
+                  />
+                  <button onClick={handleSaveDriveLink} className="p-1.5 bg-pu-blue text-white rounded-lg shadow hover:bg-blue-800 transition-colors"><Check className="w-4 h-4"/></button>
+                  <button onClick={() => setEditingDriveLink(false)} className="p-1.5 bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300 transition-colors"><X className="w-4 h-4"/></button>
+                </div>
+              ) : (
+                 <div className="flex items-center gap-2">
+                    {appConfig?.templateDriveLink ? (
+                      <a 
+                        href={appConfig.templateDriveLink} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="inline-flex items-center px-4 py-2 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 text-xs font-bold rounded-xl shadow-sm transition-all hover:scale-105 active:scale-95"
+                      >
+                        <CloudUpload className="h-4 w-4 mr-2" /> Google Drive Folder
+                      </a>
+                    ) : (
+                      <span className="text-[10px] italic text-slate-400 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">Folder belum diatur</span>
+                    )}
+                    <button 
+                      onClick={() => { setDriveLinkInput(appConfig?.templateDriveLink || ""); setEditingDriveLink(true); }} 
+                      className="p-2 border border-slate-300 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-all shadow-sm"
+                      title="Edit Link Folder Google Drive"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                 </div>
+              )}
+            </div>
+          </div>
+
+          {loadingTemplates ? (
+            <div className="py-12 text-center text-slate-500 font-medium animate-pulse">Memuat template dokumen...</div>
+          ) : editingTemplateId ? (
+            // === EDITOR MODE ===
+            (() => {
+              const tpl = docTemplates.find(t => t.id === editingTemplateId);
+              if (!tpl) return null;
+              return (
+                <div className="space-y-4">
+                  {/* Header Editor */}
+                  <div className="flex items-center justify-between bg-slate-50 rounded-xl p-4 border border-slate-200/60">
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => { setEditingTemplateId(null); setEditingTemplateContent(""); setPreviewTemplateId(null); }}
+                        className="p-2 hover:bg-slate-200 rounded-lg transition-colors text-slate-600"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                      <div>
+                        <h3 className="font-bold text-slate-800 text-sm">{tpl.nama}</h3>
+                        <p className="text-[10px] text-slate-500 font-mono">{tpl.deskripsi}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleResetTemplate(editingTemplateId)}
+                        className="px-3 py-1.5 border border-amber-300 text-amber-700 bg-amber-50 font-bold text-[10px] rounded-lg hover:bg-amber-100 transition-colors"
+                      >
+                        Reset Default
+                      </button>
+                      <button
+                        onClick={() => setPreviewTemplateId(previewTemplateId ? null : editingTemplateId)}
+                        className="px-3 py-1.5 border border-slate-300 text-slate-700 font-bold text-[10px] rounded-lg hover:bg-slate-100 transition-colors"
+                      >
+                        {previewTemplateId ? "Tutup Preview" : "Preview"}
+                      </button>
+                      <button
+                        onClick={() => handleSaveTemplate(editingTemplateId, editingTemplateContent, editingTemplateDriveLink)}
+                        disabled={savingTemplate}
+                        className="px-4 py-1.5 bg-pu-blue text-white font-bold text-[10px] rounded-lg hover:bg-blue-800 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                      >
+                        {savingTemplate ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                        Simpan Template
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    {/* Editor Textarea */}
+                    <div className={cn("space-y-4", previewTemplateId ? "lg:col-span-1" : "lg:col-span-2")}>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Link Template Asli (Google Drive)</label>
+                        <input
+                          type="text"
+                          value={editingTemplateDriveLink}
+                          onChange={e => setEditingTemplateDriveLink(e.target.value)}
+                          placeholder="https://drive.google.com/file/d/..."
+                          className="w-full px-4 py-2 border border-slate-300 rounded-xl bg-white text-xs focus:border-pu-blue focus:ring-1 focus:ring-pu-blue/30 transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Konten Template</label>
+                        <textarea
+                          value={editingTemplateContent}
+                          onChange={e => setEditingTemplateContent(e.target.value)}
+                          rows={20}
+                        className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-white text-xs font-mono leading-relaxed focus:border-pu-blue focus:ring-1 focus:ring-pu-blue/30 transition-colors resize-y"
+                        placeholder="Masukkan konten template..."
+                        spellCheck={false}
+                      />
+                      {tpl.updatedAt && (
+                        <p className="text-[9px] text-slate-400 font-mono">
+                          Terakhir diubah: {new Date(tpl.updatedAt).toLocaleString('id-ID')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Preview Panel */}
+                  {previewTemplateId && (
+                      <div className="lg:col-span-1 space-y-2">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Preview (Data Contoh)</label>
+                        <div className="border border-slate-200 rounded-xl bg-white p-4 overflow-auto max-h-[550px] text-xs">
+                          {tpl.kategori === 'surat' && editingTemplateContent.includes('<') ? (
+                            <div dangerouslySetInnerHTML={{ __html: (() => {
+                              const dummyData: Record<string, string> = {};
+                              tpl.placeholders?.forEach((p: any) => { dummyData[p.key] = p.contoh; });
+                              let result = editingTemplateContent;
+                              for (const [key, value] of Object.entries(dummyData)) {
+                                result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), `<mark class="bg-yellow-100 px-0.5 rounded">${value}</mark>`);
+                              }
+                              result = result.replace(/\{\{[a-zA-Z0-9_]+\}\}/g, '<mark class="bg-red-100 px-0.5 rounded text-red-600">-</mark>');
+                              return result;
+                            })() }} />
+                          ) : (
+                            <pre className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-slate-700">
+                              {(() => {
+                                const dummyData: Record<string, string> = {};
+                                tpl.placeholders?.forEach((p: any) => { dummyData[p.key] = p.contoh; });
+                                let result = editingTemplateContent;
+                                for (const [key, value] of Object.entries(dummyData)) {
+                                  result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), `[${value}]`);
+                                }
+                                result = result.replace(/\{\{[a-zA-Z0-9_]+\}\}/g, '[-]');
+                                return result;
+                              })()}
+                            </pre>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Variable List */}
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest">Variabel yang Tersedia</label>
+                      <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3 space-y-1.5 max-h-[550px] overflow-y-auto">
+                        {tpl.placeholders?.map((p: any) => (
+                          <button
+                            key={p.key}
+                            onClick={() => {
+                              const ta = document.querySelector('textarea') as HTMLTextAreaElement;
+                              if (ta) {
+                                const start = ta.selectionStart;
+                                const end = ta.selectionEnd;
+                                const text = editingTemplateContent;
+                                const before = text.substring(0, start);
+                                const after = text.substring(end);
+                                setEditingTemplateContent(before + `{{${p.key}}}` + after);
+                                setTimeout(() => {
+                                  ta.focus();
+                                  ta.selectionStart = ta.selectionEnd = start + p.key.length + 4;
+                                }, 50);
+                              }
+                            }}
+                            className="w-full text-left p-2 rounded-lg hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-slate-200 group"
+                          >
+                            <div className="flex items-center justify-between">
+                              <code className="text-[10px] font-bold text-pu-blue bg-blue-50 px-1.5 py-0.5 rounded group-hover:bg-blue-100 transition-colors">
+                                {`{{${p.key}}}`}
+                              </code>
+                              <Plus className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                            <p className="text-[9px] text-slate-600 mt-0.5 font-medium">{p.label}</p>
+                            <p className="text-[8px] text-slate-400 font-mono">Contoh: {p.contoh}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()
+          ) : (
+            // === CARD GRID MODE ===
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {docTemplates.map(tpl => (
+                <motion.div
+                  key={tpl.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white/70 border border-slate-200/60 rounded-xl p-5 hover:shadow-lg hover:border-pu-blue/30 transition-all cursor-pointer group"
+                  onClick={() => {
+                    setEditingTemplateId(tpl.id);
+                    setEditingTemplateContent(tpl.kontenHtml);
+                    setEditingTemplateDriveLink(tpl.driveLink || "");
+                    setPreviewTemplateId(null);
+                  }}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center shadow-sm",
+                        tpl.kategori === 'surat' ? "bg-blue-50 text-blue-600" : "bg-emerald-50 text-emerald-600"
+                      )}>
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-slate-800 text-sm group-hover:text-pu-blue transition-colors">{tpl.nama}</h3>
+                        <p className="text-[9px] text-slate-500 font-mono uppercase tracking-wider">
+                          {tpl.kategori === 'surat' ? 'Template Surat' : 'Template Lampiran'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-[8px] font-bold",
+                      tpl.updatedAt ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"
+                    )}>
+                      {tpl.updatedAt ? "Diedit" : "Default"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-600 leading-relaxed mb-3">{tpl.deskripsi}</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] font-mono text-slate-400">
+                        {tpl.placeholders?.length || 0} variabel
+                      </span>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleResetTemplate(tpl.id); }}
+                        className="px-2 py-1 text-[9px] font-bold text-amber-600 hover:bg-amber-50 rounded-md transition-colors border border-transparent hover:border-amber-200"
+                      >
+                        Reset
+                      </button>
+                      <span className="px-2 py-1 text-[9px] font-bold text-pu-blue bg-blue-50 rounded-md group-hover:bg-blue-100 transition-colors">
+                        Edit →
+                      </span>
+                    </div>
+                  </div>
+                  {tpl.updatedAt && (
+                    <p className="text-[8px] text-slate-400 font-mono mt-2 border-t border-slate-100 pt-2">
+                      Terakhir diubah: {new Date(tpl.updatedAt).toLocaleString('id-ID')}
+                    </p>
+                  )}
+                </motion.div>
+              ))}
             </div>
           )}
         </div>

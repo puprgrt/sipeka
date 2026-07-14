@@ -4,6 +4,7 @@ import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COM
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { cn, getAuditHeaders, parsePhotos } from "../lib/utils";
+import { replaceTemplatePlaceholders } from "../utils/templateUtils";
 import { DataTable } from "../components/ui/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { createCalendarEvent } from "../lib/calendarService";
@@ -32,6 +33,8 @@ export default function VerificationList() {
   const [loading, setLoading] = useState(true);
   const [dinasConfig, setDinasConfig] = useState<any>(null);
   const [appConfig, setAppConfig] = useState<any>(null);
+  const [lembarDisposisiTemplate, setLembarDisposisiTemplate] = useState<string>("");
+  const [lembarDisposisiDriveLink, setLembarDisposisiDriveLink] = useState<string>("");
   
   const [activeTab, setActiveTab] = useState("Semua");
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
@@ -138,6 +141,17 @@ export default function VerificationList() {
       .then(res => res.json())
       .then(data => setAppConfig(data))
       .catch(err => console.error("Failed to fetch app-settings", err));
+      
+    fetch("/api/document-templates")
+      .then(res => res.json())
+      .then((templates: any[]) => {
+        const disposisi = templates.find((t: any) => t.id === 'lembar_disposisi');
+        if (disposisi) {
+          setLembarDisposisiTemplate(disposisi.kontenHtml);
+          setLembarDisposisiDriveLink(disposisi.driveLink || "");
+        }
+      })
+      .catch(err => console.error("Failed to fetch templates", err));
   }, []);
 
   useEffect(() => {
@@ -875,12 +889,45 @@ export default function VerificationList() {
                       </p>
                     </div>
                     <button 
-                      onClick={() => window.print()}
+                      onClick={() => {
+                        const printWindow = window.open('', '_blank');
+                        if (printWindow) {
+                          let htmlContent = "";
+                          if (lembarDisposisiTemplate && lembarDisposisiTemplate.includes('<')) {
+                            htmlContent = replaceTemplatePlaceholders(lembarDisposisiTemplate, {
+                              namaInstansiAtas: 'PEMERINTAH KABUPATEN GARUT',
+                              namaDinas: dinasConfig?.namaDinas || 'Dinas Pekerjaan Umum dan Penataan Ruang',
+                              alamatDinas: dinasConfig?.alamat || 'Jl. Prof. KH. Cecep Syarifudin No. 117, Garut',
+                              nomorAgenda: `AGD-${selectedAssessment.id.substring(0, 5).toUpperCase()}`,
+                              tanggalDisposisi: format(new Date(selectedAssessment.date), "dd MMMM yyyy", { locale: id }),
+                              asalSurat: selectedAssessment.schoolName,
+                              perihal: 'Permohonan Penilaian Kerusakan Bangunan',
+                              catatanPimpinan: 'Mohon segera diverifikasi kelengkapan administrasinya. Jika lengkap, jadwalkan peninjauan lapangan.'
+                            });
+                            htmlContent = `<html><head><title>Lembar Disposisi</title><style>body{font-family:'Times New Roman',serif;padding:20px;} .disposisi-header{text-align:center;border-bottom:3px double black;padding-bottom:10px;margin-bottom:20px;} .disposisi-title{text-align:center;font-weight:bold;font-size:18px;text-decoration:underline;margin-bottom:20px;} .disposisi-meta{width:100%;margin-bottom:20px;border-collapse:collapse;} .disposisi-meta td{padding:5px;} .disposisi-meta td:first-child{width:20%;font-weight:bold;}</style></head><body>${htmlContent}<script>window.print();</script></body></html>`;
+                          } else {
+                            htmlContent = `<html><head><title>Lembar Disposisi</title><style>body{font-family:'Times New Roman',serif;padding:40px;}h2,h1,p{text-align:center;margin:0;}hr{border:2px solid black;margin:20px 0;}h3{text-align:center;text-decoration:underline;}table{width:100%;margin-top:20px;}td{padding:5px;vertical-align:top;}</style></head><body><h2>PEMERINTAH KABUPATEN GARUT</h2><h1>${dinasConfig?.namaDinas || 'DINAS PEKERJAAN UMUM DAN PENATAAN RUANG'}</h1><p>${dinasConfig?.alamat || 'Jl. Prof. KH. Cecep Syarifudin No. 117, Garut'}</p><hr/><h3>LEMBAR DISPOSISI</h3><table><tr><td width="20%">No. Agenda</td><td>: AGD-${selectedAssessment.id.substring(0, 5).toUpperCase()}</td></tr><tr><td>Tanggal</td><td>: ${format(new Date(selectedAssessment.date), "dd MMMM yyyy", { locale: id })}</td></tr><tr><td>Asal Surat</td><td>: ${selectedAssessment.schoolName}</td></tr><tr><td>Perihal</td><td>: Permohonan Penilaian Kerusakan Bangunan</td></tr></table><script>window.print();</script></body></html>`;
+                          }
+                          printWindow.document.write(htmlContent);
+                          printWindow.document.close();
+                        }
+                      }}
                       className="inline-flex items-center text-[10px] font-bold uppercase tracking-widest text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors border border-slate-200/60"
                     >
                       <FileText className="w-3.5 h-3.5 mr-1.5" />
                       Cetak Lembar
                     </button>
+                    {lembarDisposisiDriveLink && (
+                      <a
+                        href={lembarDisposisiDriveLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center text-[10px] font-bold uppercase tracking-widest text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors border border-emerald-200/60 ml-2"
+                      >
+                        <FileText className="w-3.5 h-3.5 mr-1.5" />
+                        Unduh Template Asli
+                      </a>
+                    )}
                   </div>
 
                   <div className="border-2 border-slate-900 p-6 relative font-serif text-slate-900 bg-[#fafafa]">

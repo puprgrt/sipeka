@@ -4,6 +4,7 @@ import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COM
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { cn, getAuditHeaders } from "../lib/utils";
+import { replaceTemplatePlaceholders } from "../utils/templateUtils";
 import { DataTable } from "../components/ui/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { createCalendarEvent } from "../lib/calendarService";
@@ -16,8 +17,9 @@ import { Download } from "lucide-react";
 import { 
   Eye, Clock, Calendar, Building, MapPin, FileText, 
   CheckCircle2, User, Loader2, ArrowRight, ExternalLink, X, HelpCircle,
-  RefreshCw, Lock
+  RefreshCw, Lock, Table
 } from "lucide-react";
+import * as XLSX from "xlsx";
 
 export default function DisposisiList() {
   const location = useLocation();
@@ -25,6 +27,12 @@ export default function DisposisiList() {
   const [loading, setLoading] = useState(true);
   const [dinasConfig, setDinasConfig] = useState<any>(null);
   const [appConfig, setAppConfig] = useState<any>(null);
+  const [suratHasilTemplate, setSuratHasilTemplate] = useState<string>("");
+  const [lembarDisposisiTemplate, setLembarDisposisiTemplate] = useState<string>("");
+  
+  const [suratHasilDriveLink, setSuratHasilDriveLink] = useState<string>("");
+  const [lembarDisposisiDriveLink, setLembarDisposisiDriveLink] = useState<string>("");
+  const [lampiranExcelDriveLink, setLampiranExcelDriveLink] = useState<string>("");
 
   const [activeTab, setActiveTab] = useState("Semua");
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
@@ -119,6 +127,26 @@ export default function DisposisiList() {
       .then(res => res.json())
       .then(data => setAppConfig(data))
       .catch(err => console.error("Failed to fetch app-settings", err));
+      
+    fetch("/api/document-templates")
+      .then(res => res.json())
+      .then((templates: any[]) => {
+        const surat = templates.find((t: any) => t.id === 'surat_hasil_perhitungan');
+        if (surat) {
+          setSuratHasilTemplate(surat.kontenHtml);
+          setSuratHasilDriveLink(surat.driveLink || "");
+        }
+        const disposisi = templates.find((t: any) => t.id === 'lembar_disposisi');
+        if (disposisi) {
+          setLembarDisposisiTemplate(disposisi.kontenHtml);
+          setLembarDisposisiDriveLink(disposisi.driveLink || "");
+        }
+        const lampiran = templates.find((t: any) => t.id === 'lampiran_perhitungan');
+        if (lampiran) {
+          setLampiranExcelDriveLink(lampiran.driveLink || "");
+        }
+      })
+      .catch(err => console.error("Failed to fetch templates", err));
   }, [location.state]);
 
   useEffect(() => {
@@ -607,13 +635,30 @@ export default function DisposisiList() {
                         </p>
                         <button
                           onClick={() => {
-                            // Dummy print functionality
                             const printWindow = window.open('', '_blank');
                             if (printWindow) {
-                              printWindow.document.write(`
+                              let htmlContent: string;
+                              if (suratHasilTemplate && suratHasilTemplate.includes('<')) {
+                                // Gunakan template dari Pusat Template
+                                htmlContent = replaceTemplatePlaceholders(suratHasilTemplate, {
+                                  namaInstansiAtas: 'PEMERINTAH KABUPATEN GARUT',
+                                  namaDinas: dinasConfig?.namaDinas || 'Dinas Pekerjaan Umum dan Penataan Ruang',
+                                  alamatDinas: dinasConfig?.alamat || 'Jl. Prof. KH. Cecep Syarifudin No. 117, Garut',
+                                  nomorSurat: `${selectedAssessment.id.split('-')[0].toUpperCase()}/PUPR/${new Date().getFullYear()}`,
+                                  tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+                                  namaSekolah: selectedAssessment.schoolName,
+                                  namaBangunan: selectedAssessment.buildingName,
+                                  totalKerusakan: `${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%`,
+                                  kategoriKerusakan: selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan',
+                                  namaKadis: dispNamaPimpinan || 'Ir. H. Kepala Dinas, M.T.',
+                                  nipKadis: dispNipPimpinan || '19700101 199803 1 004',
+                                });
+                              } else {
+                                // Fallback hardcoded
+                                htmlContent = `
                                 <html>
                                   <head>
-                                    <title>Surat Keputusan Resmi</title>
+                                    <title>Surat Hasil Perhitungan Penilaian Kerusakan</title>
                                     <style>
                                       body { font-family: 'Times New Roman', serif; padding: 40px; text-align: center; line-height: 1.6; }
                                       h1 { font-size: 20px; font-weight: bold; text-transform: uppercase; margin-bottom: 20px; }
@@ -624,7 +669,7 @@ export default function DisposisiList() {
                                   <body>
                                     <h1>Pemerintah Kabupaten Garut<br/>${dinasConfig?.namaDinas || 'Dinas Pekerjaan Umum dan Penataan Ruang'}</h1>
                                     <hr style="border: 2px solid black; margin-bottom: 30px;" />
-                                    <h2><u>SURAT KEPUTUSAN PENETAPAN TINGKAT KERUSAKAN BANGUNAN</u></h2>
+                                    <h2><u>SURAT HASIL PERHITUNGAN PENILAIAN KERUSAKAN BANGUNAN</u></h2>
                                     <p>Nomor: ${selectedAssessment.id.split('-')[0].toUpperCase()}/PUPR/${new Date().getFullYear()}</p>
                                     <div class="content">
                                       <p>Berdasarkan hasil survei teknis dan analisis kerusakan pada:</p>
@@ -640,21 +685,98 @@ export default function DisposisiList() {
                                       <p>Ditetapkan di Tempat</p>
                                       <p>Tanggal: ${new Date().toLocaleDateString('id-ID')}</p>
                                       <br/><br/><br/>
-                                      <p><b><u>Ir. H. KEPALA DINAS, M.T.</u></b></p>
-                                      <p>NIP. 19700101 199803 1 004</p>
+                                      <p><b><u>${dispNamaPimpinan || 'Ir. H. KEPALA DINAS, M.T.'}</u></b></p>
+                                      <p>NIP. ${dispNipPimpinan || '19700101 199803 1 004'}</p>
                                      </div>
                                     <script>window.print();</script>
                                   </body>
-                                </html>
-                              `);
+                                </html>`;
+                              }
+                              printWindow.document.write(htmlContent);
                               printWindow.document.close();
                             }
                           }}
                           className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm"
                         >
                           <FileText className="w-4 h-4" />
-                          Cetak Surat Keputusan
+                          Cetak Surat Hasil Perhitungan
                         </button>
+                        
+                        {suratHasilDriveLink && (
+                          <a
+                            href={suratHasilDriveLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm mt-2"
+                          >
+                            <FileText className="w-4 h-4" />
+                            Unduh Template Asli (Word)
+                          </a>
+                        )}
+
+                        <button
+                          onClick={() => {
+                            if (!selectedAssessment) return;
+                            const wsData = [
+                              ["LAMPIRAN PERHITUNGAN VOLUME KERUSAKAN BANGUNAN"],
+                              [],
+                              ["Nama Sekolah/Instansi", selectedAssessment.schoolName],
+                              ["Nama Bangunan", selectedAssessment.buildingName],
+                              ["Tanggal Penilaian", new Date().toLocaleDateString('id-ID')],
+                              ["Jumlah Lantai", selectedAssessment.finalResult?.category === "1 Lantai" ? 1 : selectedAssessment.finalResult?.category === "2 Lantai" ? 2 : 3],
+                              [],
+                              ["Total Kerusakan", `${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%`],
+                              ["Kategori", selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan'],
+                              [],
+                              ["No", "Komponen", "Bobot (%)", "Klasifikasi Kerusakan", "Volume (%)", "Nilai Kerusakan"]
+                            ];
+
+                            let no = 1;
+                            selectedAssessment.finalResult?.components?.forEach(comp => {
+                              wsData.push([
+                                no++,
+                                comp.name,
+                                comp.weight,
+                                comp.classification || "-",
+                                comp.volumePercentage || 0,
+                                comp.damageValue || 0
+                              ]);
+                            });
+
+                            const ws = XLSX.utils.aoa_to_sheet(wsData);
+                            
+                            // Auto-size columns slightly
+                            const wscols = [
+                              {wch: 5},
+                              {wch: 35},
+                              {wch: 12},
+                              {wch: 25},
+                              {wch: 12},
+                              {wch: 15}
+                            ];
+                            ws['!cols'] = wscols;
+
+                            const wb = XLSX.utils.book_new();
+                            XLSX.utils.book_append_sheet(wb, ws, "Lampiran");
+                            XLSX.writeFile(wb, `Lampiran_Kerusakan_${selectedAssessment.schoolName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
+                          }}
+                          className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm mt-2"
+                        >
+                          <Table className="w-4 h-4" />
+                          Cetak Lampiran Perhitungan Excel
+                        </button>
+
+                        {lampiranExcelDriveLink && (
+                          <a
+                            href={lampiranExcelDriveLink}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm mt-2"
+                          >
+                            <Table className="w-4 h-4" />
+                            Unduh Template Asli (Excel)
+                          </a>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1080,6 +1202,46 @@ export default function DisposisiList() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          const printWindow = window.open('', '_blank');
+                          if (printWindow) {
+                            let htmlContent = "";
+                            if (lembarDisposisiTemplate && lembarDisposisiTemplate.includes('<')) {
+                              htmlContent = replaceTemplatePlaceholders(lembarDisposisiTemplate, {
+                                namaInstansiAtas: 'PEMERINTAH KABUPATEN GARUT',
+                                namaDinas: dinasConfig?.namaDinas || 'Dinas Pekerjaan Umum dan Penataan Ruang',
+                                alamatDinas: dinasConfig?.alamat || 'Jl. Prof. KH. Cecep Syarifudin No. 117, Garut',
+                                nomorAgenda: dispNoAgenda,
+                                tanggalDisposisi: format(new Date(selectedAssessment.date), "dd MMMM yyyy", { locale: id }),
+                                asalSurat: selectedAssessment.schoolName,
+                                perihal: 'Permohonan Penilaian Kerusakan Bangunan',
+                                catatanPimpinan: dispCatatan
+                              });
+                              htmlContent = `<html><head><title>Lembar Disposisi</title><style>body{font-family:'Times New Roman',serif;padding:20px;} .disposisi-header{text-align:center;border-bottom:3px double black;padding-bottom:10px;margin-bottom:20px;} .disposisi-title{text-align:center;font-weight:bold;font-size:18px;text-decoration:underline;margin-bottom:20px;} .disposisi-meta{width:100%;margin-bottom:20px;border-collapse:collapse;} .disposisi-meta td{padding:5px;} .disposisi-meta td:first-child{width:20%;font-weight:bold;}</style></head><body>${htmlContent}<script>window.print();</script></body></html>`;
+                            } else {
+                              htmlContent = `<html><head><title>Lembar Disposisi</title><style>body{font-family:'Times New Roman',serif;padding:40px;}h2,h1,p{text-align:center;margin:0;}hr{border:2px solid black;margin:20px 0;}h3{text-align:center;text-decoration:underline;}table{width:100%;margin-top:20px;}td{padding:5px;vertical-align:top;}</style></head><body><h2>PEMERINTAH KABUPATEN GARUT</h2><h1>${dinasConfig?.namaDinas || 'DINAS PEKERJAAN UMUM DAN PENATAAN RUANG'}</h1><p>${dinasConfig?.alamat || 'Jl. Prof. KH. Cecep Syarifudin No. 117, Garut'}</p><hr/><h3>LEMBAR DISPOSISI</h3><table><tr><td width="20%">No. Agenda</td><td>: ${dispNoAgenda}</td></tr><tr><td>Tanggal</td><td>: ${format(new Date(selectedAssessment.date), "dd MMMM yyyy", { locale: id })}</td></tr><tr><td>Asal Surat</td><td>: ${selectedAssessment.schoolName}</td></tr><tr><td>Perihal</td><td>: Permohonan Penilaian Kerusakan Bangunan</td></tr><tr><td colspan="2"><br/><b>Catatan Pimpinan:</b><br/>${dispCatatan}</td></tr></table><script>window.print();</script></body></html>`;
+                            }
+                            printWindow.document.write(htmlContent);
+                            printWindow.document.close();
+                          }
+                        }}
+                        className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-1.5"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        Cetak
+                      </button>
+                      {lembarDisposisiDriveLink && (
+                        <a
+                          href={lembarDisposisiDriveLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors flex items-center gap-1.5 ml-2"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          Unduh Asli
+                        </a>
+                      )}
                       {isEditingDisposisi ? (
                         <>
                           <button

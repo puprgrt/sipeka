@@ -138,7 +138,8 @@ export default function AssessmentForm() {
     updateComponentMeta,
     updateComponentDamage,
     removeComponentPhoto,
-    calculateFinalResult
+    calculateFinalResult,
+    suratPermohonanDriveLink
   } = useAssessmentForm();
 
   return (
@@ -330,6 +331,7 @@ export default function AssessmentForm() {
             submitting={submitting}
             setStep={setStep}
             hasCriticalDamage={hasCriticalDamage}
+            suratPermohonanDriveLink={suratPermohonanDriveLink}
           />
         )}
                 {step === 2 && (
