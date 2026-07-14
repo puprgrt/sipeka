@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI } from "../types";
+import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI, DAMAGE_MULTIPLIERS } from "../types";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { cn, getAuditHeaders } from "../lib/utils";
@@ -729,23 +729,45 @@ export default function DisposisiList() {
                               ["Nama Sekolah/Instansi", selectedAssessment.schoolName],
                               ["Nama Bangunan", selectedAssessment.buildingName],
                               ["Tanggal Penilaian", new Date().toLocaleDateString('id-ID')],
-                              ["Jumlah Lantai", selectedAssessment.finalResult?.category === "1 Lantai" ? 1 : selectedAssessment.finalResult?.category === "2 Lantai" ? 2 : 3],
+                              ["Jumlah Lantai", selectedAssessment.floorCount || 1],
                               [],
                               ["Total Kerusakan", `${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%`],
                               ["Kategori", selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan'],
                               [],
-                              ["No", "Komponen", "Bobot (%)", "Klasifikasi Kerusakan", "Volume (%)", "Nilai Kerusakan"]
+                              ["No", "Komponen", "Bobot (%)", "Tkt Kerusakan (%)", "Nilai Kerusakan (%)", "Risiko Keselamatan"]
                             ];
 
                             let no = 1;
-                            selectedAssessment.finalResult?.components?.forEach(comp => {
+                            const floorCount = selectedAssessment.floorCount || 1;
+                            const weights = floorCount === 2 
+                              ? COMPONENT_WEIGHTS_2_LANTAI 
+                              : floorCount >= 3 
+                                ? COMPONENT_WEIGHTS_3_LANTAI 
+                                : COMPONENT_WEIGHTS_1_LANTAI;
+                            
+                            Object.keys(weights).filter(name => weights[name] > 0).forEach(name => {
+                              const weight = weights[name];
+                              const compData = selectedAssessment.components?.find(c => c.name === name);
+                              const isSafetyRisk = compData?.safetyImpact ? "Ya" : "Tidak";
+                              
+                              let componentDamageFraction = 0;
+                              compData?.damageDetails?.forEach(detail => {
+                                const multiplier = DAMAGE_MULTIPLIERS[detail.level] || 0;
+                                const volumeFraction = (detail.percentage || 0) / 100;
+                                componentDamageFraction += volumeFraction * multiplier;
+                              });
+                              componentDamageFraction = Math.min(componentDamageFraction, 1.0);
+                              
+                              const totalCompDamagePct = componentDamageFraction * 100;
+                              const nilaiKerusakanThdMassa = componentDamageFraction * weight;
+
                               wsData.push([
                                 no++,
-                                comp.name,
-                                comp.weight,
-                                comp.classification || "-",
-                                comp.volumePercentage || 0,
-                                comp.damageValue || 0
+                                name,
+                                weight.toFixed(2),
+                                totalCompDamagePct.toFixed(2),
+                                nilaiKerusakanThdMassa.toFixed(2),
+                                isSafetyRisk
                               ]);
                             });
 
