@@ -25,6 +25,8 @@ export default function SafetyCheckStep({
   setStep,
   hasCriticalDamage
 }: SafetyCheckStepProps) {
+  const isTahap1Complete = SAFETY_QUESTIONS.every(q => safetyChecks[q.id] !== undefined);
+
   return (
     <motion.div 
       key="step2"
@@ -93,7 +95,16 @@ export default function SafetyCheckStep({
         <button onClick={() => setStep(1)} className="inline-flex items-center px-4 py-2.5 text-sm font-bold rounded-xl text-slate-600 bg-white/50 backdrop-blur-sm border border-white/50 shadow-sm hover:bg-white/80 transition-all hover:scale-105 active:scale-95">
           Kembali
         </button>
-        <button onClick={() => setStep(hasCriticalDamage ? 4 : 3)} className="inline-flex items-center px-6 py-2.5 text-sm font-bold rounded-xl shadow-md text-pu-blue bg-pu-yellow hover:bg-yellow-400 transition-all hover:scale-105 active:scale-95">
+        <button 
+          onClick={() => setStep(hasCriticalDamage ? 4 : 3)} 
+          disabled={!isTahap1Complete}
+          className={cn(
+            "inline-flex items-center px-6 py-2.5 text-sm font-bold rounded-xl shadow-md transition-all",
+            isTahap1Complete 
+              ? "text-pu-blue bg-pu-yellow hover:bg-yellow-400 hover:scale-105 active:scale-95" 
+              : "text-slate-400 bg-slate-200 cursor-not-allowed"
+          )}
+        >
           {hasCriticalDamage ? "Lihat Kesimpulan" : "Lanjut ke Penilaian Detail"}
         </button>
       </div>

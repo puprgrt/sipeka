@@ -79,6 +79,16 @@ export default function DamageAnalysisStep({
   DAMAGE_MULTIPLIERS,
   setComponents
 }: DamageAnalysisStepProps) {
+  const isTahap2Complete = components.every(comp => {
+    if (comp.safetyImpact) return true;
+    if (!comp.damageDetails || comp.damageDetails.length === 0) return false;
+    const hasVolume = comp.damageDetails.some(d => d.percentage > 0);
+    if (!hasVolume) return false;
+    const missingPhotos = comp.damageDetails.some(d => d.percentage > 0 && (!d.photos || d.photos.length === 0));
+    if (missingPhotos) return false;
+    return true;
+  });
+
   return (
 <motion.div 
             key="step-penilaian"
@@ -468,7 +478,16 @@ export default function DamageAnalysisStep({
             <button onClick={() => setStep(2)} className="inline-flex items-center px-4 py-2.5 text-sm font-bold rounded-xl text-slate-600 bg-white/50 backdrop-blur-sm border border-white/50 shadow-sm hover:bg-white/80 transition-all hover:scale-105 active:scale-95">
               Kembali
             </button>
-            <button onClick={() => setStep(4)} className="inline-flex items-center px-6 py-2.5 text-sm font-bold rounded-xl shadow-md text-pu-blue bg-pu-yellow hover:bg-yellow-400 transition-all hover:scale-105 active:scale-95">
+            <button 
+              onClick={() => setStep(4)} 
+              disabled={!isTahap2Complete}
+              className={cn(
+                "inline-flex items-center px-6 py-2.5 text-sm font-bold rounded-xl shadow-md transition-all",
+                isTahap2Complete
+                  ? "text-pu-blue bg-pu-yellow hover:bg-yellow-400 hover:scale-105 active:scale-95"
+                  : "text-slate-400 bg-slate-200 cursor-not-allowed"
+              )}
+            >
               {isPermohonanFlow ? "Lanjut ke Surat Permohonan" : "Lihat Ringkasan"}
             </button>
           </div>
