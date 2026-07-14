@@ -95,7 +95,6 @@ export default function DamageAnalysisStep({
             <div className="p-6 space-y-6">
               {components.map((comp, compIndex) => {
                 const weight = componentWeights[comp.name] || 0;
-                if (weight === 0) return null;
 
                 const currentDetails = comp.damageDetails || [];
                 const getPercentage = (lvl: string) => currentDetails.find(d => d.level === lvl)?.percentage || 0;

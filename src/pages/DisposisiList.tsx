@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI, DAMAGE_MULTIPLIERS } from "../types";
+import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI } from "../types";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { cn, getAuditHeaders } from "../lib/utils";
@@ -13,7 +13,6 @@ import { getAccessToken, googleSignIn } from "../lib/firebaseAuth";
 import { motion, AnimatePresence } from "motion/react";
 import SmartPhotoViewer from '../components/SmartPhotoViewer';
 import { exportAssessmentToPdf } from "../lib/exportPdf";
-import { exportAssessmentToExcel } from "../lib/exportExcel";
 import { Download } from "lucide-react";
 import { 
   Eye, Clock, Calendar, Building, MapPin, FileText, 
@@ -653,15 +652,8 @@ export default function DisposisiList() {
                                   alamatDinas: dinasConfig?.alamat || 'Jl. Prof. KH. Cecep Syarifudin No. 117, Garut',
                                   nomorSurat: `${selectedAssessment.id.split('-')[0].toUpperCase()}/PUPR/${new Date().getFullYear()}`,
                                   tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-                                  nomorSuratPermohonan: selectedAssessment.customFields?.nomorSuratPermohonan || '-',
-                                  tanggalSuratPermohonan: selectedAssessment.date ? new Date(selectedAssessment.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-',
                                   namaSekolah: selectedAssessment.schoolName,
                                   namaBangunan: selectedAssessment.buildingName,
-                                  npsn: selectedAssessment.npsn || '-',
-                                  luasBangunan: String(selectedAssessment.buildingArea || '-'),
-                                  jumlahLantai: String(selectedAssessment.floorCount || '-'),
-                                  alamatBangunan: selectedAssessment.address || '-',
-                                  koordinatGps: selectedAssessment.coordinates ? `${selectedAssessment.coordinates.lat}, ${selectedAssessment.coordinates.lng}` : '-',
                                   totalKerusakan: `${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%`,
                                   kategoriKerusakan: selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan',
                                   namaKadis: dispNamaPimpinan || 'Ir. H. Kepala Dinas, M.T.',
@@ -686,15 +678,10 @@ export default function DisposisiList() {
                                     <h2><u>SURAT HASIL PERHITUNGAN PENILAIAN KERUSAKAN BANGUNAN</u></h2>
                                     <p>Nomor: ${selectedAssessment.id.split('-')[0].toUpperCase()}/PUPR/${new Date().getFullYear()}</p>
                                     <div class="content">
-                                      <p>Menindaklanjuti Surat Permohonan Nomor: ${selectedAssessment.customFields?.nomorSuratPermohonan || '-'} tanggal ${selectedAssessment.date ? new Date(selectedAssessment.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'} perihal permohonan penilaian kerusakan bangunan, dan berdasarkan hasil survei teknis serta analisis perhitungan kerusakan yang telah dilaksanakan pada:</p>
+                                      <p>Berdasarkan hasil survei teknis dan analisis kerusakan pada:</p>
                                       <table style="width: 100%; text-align: left; margin: 20px 0;">
                                         <tr><td width="30%">Nama Instansi</td><td>: ${selectedAssessment.schoolName}</td></tr>
                                         <tr><td>Nama Bangunan</td><td>: ${selectedAssessment.buildingName}</td></tr>
-                                        <tr><td>NPSN / NUP</td><td>: ${selectedAssessment.npsn || '-'}</td></tr>
-                                        <tr><td>Luas Bangunan</td><td>: ${selectedAssessment.buildingArea || '-'} m²</td></tr>
-                                        <tr><td>Jumlah Lantai</td><td>: ${selectedAssessment.floorCount || '-'} Lantai</td></tr>
-                                        <tr><td>Alamat</td><td>: ${selectedAssessment.address || '-'}</td></tr>
-                                        <tr><td>Koordinat GPS</td><td>: ${selectedAssessment.coordinates ? `${selectedAssessment.coordinates.lat}, ${selectedAssessment.coordinates.lng}` : '-'}</td></tr>
                                         <tr><td>Total Kerusakan</td><td>: ${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%</td></tr>
                                         <tr><td>Kategori</td><td>: ${selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan'}</td></tr>
                                       </table>
@@ -736,7 +723,48 @@ export default function DisposisiList() {
                         <button
                           onClick={() => {
                             if (!selectedAssessment) return;
-                            exportAssessmentToExcel(selectedAssessment);
+                            const wsData = [
+                              ["LAMPIRAN PERHITUNGAN VOLUME KERUSAKAN BANGUNAN"],
+                              [],
+                              ["Nama Sekolah/Instansi", selectedAssessment.schoolName],
+                              ["Nama Bangunan", selectedAssessment.buildingName],
+                              ["Tanggal Penilaian", new Date().toLocaleDateString('id-ID')],
+                              ["Jumlah Lantai", selectedAssessment.finalResult?.category === "1 Lantai" ? 1 : selectedAssessment.finalResult?.category === "2 Lantai" ? 2 : 3],
+                              [],
+                              ["Total Kerusakan", `${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%`],
+                              ["Kategori", selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan'],
+                              [],
+                              ["No", "Komponen", "Bobot (%)", "Klasifikasi Kerusakan", "Volume (%)", "Nilai Kerusakan"]
+                            ];
+
+                            let no = 1;
+                            selectedAssessment.finalResult?.components?.forEach(comp => {
+                              wsData.push([
+                                no++,
+                                comp.name,
+                                comp.weight,
+                                comp.classification || "-",
+                                comp.volumePercentage || 0,
+                                comp.damageValue || 0
+                              ]);
+                            });
+
+                            const ws = XLSX.utils.aoa_to_sheet(wsData);
+                            
+                            // Auto-size columns slightly
+                            const wscols = [
+                              {wch: 5},
+                              {wch: 35},
+                              {wch: 12},
+                              {wch: 25},
+                              {wch: 12},
+                              {wch: 15}
+                            ];
+                            ws['!cols'] = wscols;
+
+                            const wb = XLSX.utils.book_new();
+                            XLSX.utils.book_append_sheet(wb, ws, "Lampiran");
+                            XLSX.writeFile(wb, `Lampiran_Kerusakan_${selectedAssessment.schoolName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
                           }}
                           className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm mt-2"
                         >

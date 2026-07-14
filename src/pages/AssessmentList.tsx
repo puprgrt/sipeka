@@ -308,53 +308,74 @@ export default function AssessmentList() {
         }
 
         const floorCount = assessment.floorCount || 1;
-        const weights = floorCount === 2 
-          ? COMPONENT_WEIGHTS_2_LANTAI 
-          : floorCount >= 3 
-            ? COMPONENT_WEIGHTS_3_LANTAI 
-            : COMPONENT_WEIGHTS_1_LANTAI;
+        let componentsConfig: any[] = [];
+        try {
+          const res = await fetch("/api/components");
+          componentsConfig = await res.json();
+        } catch (error) {
+          console.error("Failed to fetch components config for spreadsheet", error);
+        }
 
-        const systemMap: Record<string, string> = {
-          "Pondasi & Sloof": "STRUKTUR",
-          "Kolom": "STRUKTUR",
-          "Balok": "STRUKTUR",
-          "Plat Lantai": "STRUKTUR",
-          "Tangga": "STRUKTUR",
-          "Atap": "STRUKTUR",
-          "Dinding / Partisi": "ARSITEKTUR",
-          "Plafond": "ARSITEKTUR",
-          "Lantai": "ARSITEKTUR",
-          "Kusen": "ARSITEKTUR",
-          "Pintu": "ARSITEKTUR",
-          "Jendela": "ARSITEKTUR",
-          "Finishing Plafond": "ARSITEKTUR",
-          "Finishing Dinding": "ARSITEKTUR",
-          "Finishing Kusen & Pintu": "ARSITEKTUR",
-          "Instalasi Listrik": "UTILITAS",
-          "Instalasi Air Bersih": "UTILITAS",
-          "Drainase Limbah": "UTILITAS"
-        };
+        let weights: Record<string, number> = {};
+        let systemMap: Record<string, string> = {};
+        let unitMap: Record<string, string> = {};
 
-        const unitMap: Record<string, string> = {
-          "Pondasi & Sloof": "Estimasi",
-          "Kolom": "unit",
-          "Balok": "unit",
-          "Plat Lantai": "unit",
-          "Tangga": "unit",
-          "Atap": "%",
-          "Dinding / Partisi": "%",
-          "Plafond": "%",
-          "Lantai": "%",
-          "Kusen": "unit",
-          "Pintu": "unit",
-          "Jendela": "unit",
-          "Finishing Plafond": "%",
-          "Finishing Dinding": "%",
-          "Finishing Kusen & Pintu": "%",
-          "Instalasi Listrik": "Estimasi",
-          "Instalasi Air Bersih": "Estimasi",
-          "Drainase Limbah": "m1"
-        };
+        if (Array.isArray(componentsConfig) && componentsConfig.length > 0) {
+          componentsConfig.forEach((c: any) => {
+            systemMap[c.namaKomponen] = (c.kategoriKomponen || "STRUKTUR").toUpperCase();
+            unitMap[c.namaKomponen] = c.satuan || "%";
+            let weightStr = floorCount === 1 ? c.bobotFormA : floorCount === 2 ? c.bobotFormB : c.bobotFormC;
+            weights[c.namaKomponen] = parseFloat(weightStr || "0");
+          });
+        } else {
+          weights = floorCount === 2 
+            ? COMPONENT_WEIGHTS_2_LANTAI 
+            : floorCount >= 3 
+              ? COMPONENT_WEIGHTS_3_LANTAI 
+              : COMPONENT_WEIGHTS_1_LANTAI;
+
+          systemMap = {
+            "Pondasi & Sloof": "STRUKTUR",
+            "Kolom": "STRUKTUR",
+            "Balok": "STRUKTUR",
+            "Plat Lantai": "STRUKTUR",
+            "Tangga": "STRUKTUR",
+            "Atap": "STRUKTUR",
+            "Dinding / Partisi": "ARSITEKTUR",
+            "Plafond": "ARSITEKTUR",
+            "Lantai": "ARSITEKTUR",
+            "Kusen": "ARSITEKTUR",
+            "Pintu": "ARSITEKTUR",
+            "Jendela": "ARSITEKTUR",
+            "Finishing Plafond": "ARSITEKTUR",
+            "Finishing Dinding": "ARSITEKTUR",
+            "Finishing Kusen & Pintu": "ARSITEKTUR",
+            "Instalasi Listrik": "UTILITAS",
+            "Instalasi Air Bersih": "UTILITAS",
+            "Drainase Limbah": "UTILITAS"
+          };
+
+          unitMap = {
+            "Pondasi & Sloof": "Estimasi",
+            "Kolom": "unit",
+            "Balok": "unit",
+            "Plat Lantai": "unit",
+            "Tangga": "unit",
+            "Atap": "%",
+            "Dinding / Partisi": "%",
+            "Plafond": "%",
+            "Lantai": "%",
+            "Kusen": "unit",
+            "Pintu": "unit",
+            "Jendela": "unit",
+            "Finishing Plafond": "%",
+            "Finishing Dinding": "%",
+            "Finishing Kusen & Pintu": "%",
+            "Instalasi Listrik": "Estimasi",
+            "Instalasi Air Bersih": "Estimasi",
+            "Drainase Limbah": "m1"
+          };
+        }
 
         const headerRows = [
             ["FORMULIR PENILAIAN KERUSAKAN BANGUNAN (FORMAT ANALISIS PUPR)"],

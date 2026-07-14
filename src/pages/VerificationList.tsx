@@ -12,14 +12,11 @@ import SmartPhotoViewer from '../components/SmartPhotoViewer';
 import { appendToSheet } from "../lib/sheetsService";
 import { getAccessToken, googleSignIn } from "../lib/firebaseAuth";
 import { motion, AnimatePresence } from "motion/react";
-import {
+import { 
   Eye, Clock, Calendar, ClipboardList, Building, MapPin, FileText, 
   CheckCircle2, User, Loader2, ArrowRight, ExternalLink, X, HelpCircle,
-  Image as ImageIcon, Maximize2, ShieldCheck, FileSignature, AlertTriangle, Cpu, Table
+  Image, Maximize2, ShieldCheck, FileSignature, AlertTriangle, Cpu
 } from "lucide-react";
-import { exportAssessmentToPdf } from "../lib/exportPdf";
-import { exportAssessmentToExcel } from "../lib/exportExcel";
-import ComprehensiveAssessmentTable from "../components/assessment/ComprehensiveAssessmentTable";
 
 export default function VerificationList() {
   const [searchParams] = useSearchParams();
@@ -51,6 +48,16 @@ export default function VerificationList() {
   const [isAiDetecting, setIsAiDetecting] = useState(false);
   const [aiAnalysisResult, setAiAnalysisResult] = useState<{ score: number, issues: string[] } | null>(null);
   const [isForwarding, setIsForwarding] = useState(false);
+  const [componentsConfig, setComponentsConfig] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch("/api/components")
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setComponentsConfig(data);
+      })
+      .catch(err => console.error("Failed to load components for verification list", err));
+  }, []);
 
   const tabs = [
     { id: 'Semua', label: 'Semua' },
@@ -223,7 +230,16 @@ export default function VerificationList() {
         issues.push("Tidak ada rincian komponen yang dinilai.");
       }
       
-      const structuralDamage = selectedAssessment.components?.find(c => ["Pondasi & Sloof", "Kolom", "Balok"].includes(c.name) && c.damageDetails?.some((d: any) => d.percentage > 0.3));
+      const strukturNames = componentsConfig
+        .filter(c => (c.kategoriKomponen || "").toUpperCase() === "STRUKTUR")
+        .map(c => c.namaKomponen);
+        
+      // Fallback if settings are empty
+      const targetComponents = strukturNames.length > 0 
+        ? strukturNames 
+        : ["Pondasi & Sloof", "Kolom", "Balok"];
+
+      const structuralDamage = selectedAssessment.components?.find(c => targetComponents.includes(c.name) && c.damageDetails?.some((d: any) => d.percentage > 0.3));
       if (structuralDamage && category === "Ringan") {
         score -= 25;
         issues.push("Terdapat kerusakan struktural mayor namun diklaim sebagai Rusak Ringan.");
@@ -632,7 +648,7 @@ export default function VerificationList() {
                       </div>
                     ) : (
                       <div className="p-4 rounded-xl border border-dashed border-slate-200 text-center text-slate-400 space-y-1 bg-slate-50/50">
-                        <ImageIcon className="w-5 h-5 mx-auto text-slate-300 animate-pulse" />
+                        <Image className="w-5 h-5 mx-auto text-slate-300 animate-pulse" />
                         <p className="text-[10px] font-bold">Tidak Ada Foto Dokumentasi Umum</p>
                         <p className="text-[9px] text-slate-400">Silakan periksa foto pada tiap komponen di bawah.</p>
                       </div>
@@ -645,19 +661,14 @@ export default function VerificationList() {
                       <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2.5">
                         Rincian Kerusakan per Komponen
                       </p>
-                      <ComprehensiveAssessmentTable assessment={selectedAssessment} />
-                      
-                      <div className="mt-4 pt-4 border-t border-slate-100">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2.5">
-                          Tindakan Verifikasi per Komponen
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {selectedAssessment.components.filter(comp => {
-                            const fCount = selectedAssessment.floorCount || 1;
-                            const weights = fCount === 2 ? COMPONENT_WEIGHTS_2_LANTAI : fCount >= 3 ? COMPONENT_WEIGHTS_3_LANTAI : COMPONENT_WEIGHTS_1_LANTAI;
-                            return (weights[comp.name] || 0) > 0;
-                          }).map((comp, idx) => (
-                            <div key={idx} className="bg-slate-50 border border-slate-200/60 rounded-xl p-3 text-xs space-y-3">
+                      <div className="space-y-3">
+                        {selectedAssessment.components.filter(comp => {
+                          const fCount = selectedAssessment.floorCount || 1;
+                          const weights = fCount === 2 ? COMPONENT_WEIGHTS_2_LANTAI : fCount >= 3 ? COMPONENT_WEIGHTS_3_LANTAI : COMPONENT_WEIGHTS_1_LANTAI;
+                          return (weights[comp.name] || 0) > 0;
+                        }).map((comp, idx) => (
+                          <div key={idx} className="bg-slate-50 border border-slate-200/60 rounded-xl p-3 text-xs space-y-3">
+                            <div>
                               <div className="flex justify-between items-start mb-2">
                                 <span className="font-bold text-slate-700">{comp.name}</span>
                                 {comp.safetyImpact && (
@@ -666,6 +677,45 @@ export default function VerificationList() {
                                   </span>
                                 )}
                               </div>
+                              {comp.damageDetails && comp.damageDetails.length > 0 ? (
+                                <ul className="space-y-1">
+                                  {comp.damageDetails.map((detail, dIdx) => (
+                                    <li key={dIdx} className="flex justify-between items-center text-slate-600">
+                                      <span className="flex items-center gap-1.5">
+                                        <div className={cn(
+                                          "w-1.5 h-1.5 rounded-full",
+                                          detail.level.includes('Sangat Berat') ? 'bg-red-600' :
+                                          detail.level.includes('Berat') ? 'bg-orange-500' :
+                                          detail.level.includes('Sedang') ? 'bg-yellow-500' :
+                                          detail.level.includes('Ringan') ? 'bg-green-500' : 'bg-slate-300'
+                                        )}></div>
+                                        {detail.level}
+                                      </span>
+                                      <span className="font-mono font-medium">{comp.unit === 'Estimasi' ? '1' : `${detail.percentage.toFixed(1)}%`}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="text-slate-400 italic text-[10px]">Tidak ada kerusakan (0%)</p>
+                              )}
+                              {comp.photo && (
+                                <div className="mt-2.5">
+                                  <div 
+                                    onClick={() => setSmartPreviewPhoto({ url: comp.photo!, componentName: comp.name })}
+                                    className="relative group w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm cursor-pointer hover:shadow-md transition-all bg-slate-100 flex items-center justify-center"
+                                  >
+                                    <img 
+                                      src={comp.photo} 
+                                      alt={`Foto ${comp.name}`} 
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                                    />
+                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                      <Maximize2 className="w-4 h-4 text-white" />
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
 
                             {/* Section Verifikasi Hasil Input */}
                             <div className="pt-2.5 border-t border-slate-200/60 bg-slate-100/40 p-2.5 rounded-lg space-y-2">
@@ -720,7 +770,6 @@ export default function VerificationList() {
                             </div>
                           </div>
                         ))}
-                        </div>
 
                         {/* Button Simpan Verifikasi */}
                         <div className="pt-2">
@@ -898,26 +947,6 @@ export default function VerificationList() {
                         Unduh Template Asli
                       </a>
                     )}
-                    <button
-                      onClick={() => {
-                        if (!selectedAssessment) return;
-                        exportAssessmentToPdf(selectedAssessment, formParams);
-                      }}
-                      className="inline-flex items-center text-[10px] font-bold uppercase tracking-widest text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors border border-blue-200/60 ml-2"
-                    >
-                      <FileText className="w-3.5 h-3.5 mr-1.5" />
-                      Cetak Formulir PDF
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (!selectedAssessment) return;
-                        exportAssessmentToExcel(selectedAssessment);
-                      }}
-                      className="inline-flex items-center text-[10px] font-bold uppercase tracking-widest text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg transition-colors border border-emerald-200/60 ml-2"
-                    >
-                      <Table className="w-3.5 h-3.5 mr-1.5" />
-                      Cetak Excel
-                    </button>
                   </div>
 
                   <div className="border-2 border-slate-900 p-6 relative font-serif text-slate-900 bg-[#fafafa]">

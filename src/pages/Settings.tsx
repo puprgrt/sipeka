@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Brain, Loader2, Edit2, Trash2, Plus, Save, X, Info, Camera, HelpCircle, Layers, Users, Phone, Mail, Shield, UserCog, FileText, Printer, UploadCloud, CloudUpload, Settings as SettingsIcon, GripVertical, Sun, Moon, Check } from "lucide-react";
+import { Brain, Loader2, Edit2, Trash2, Plus, Save, X, Info, Camera, HelpCircle, Layers, Users, Phone, Mail, Shield, UserCog, FileText, Printer, UploadCloud, Settings as SettingsIcon, GripVertical, Sun, Moon, Check } from "lucide-react";
 import { cn } from "../lib/utils";
 import {
   DndContext,

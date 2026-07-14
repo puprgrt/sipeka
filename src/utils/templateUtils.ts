@@ -49,15 +49,8 @@ export const PLACEHOLDERS_SURAT_HASIL: PlaceholderInfo[] = [
   { key: "alamatDinas", label: "Alamat Dinas", contoh: "Jl. Prof. KH. Cecep Syarifudin No. 117, Garut" },
   { key: "nomorSurat", label: "Nomor Surat", contoh: "AB1C2D/PUPR/2026" },
   { key: "tanggal", label: "Tanggal", contoh: "14 Juli 2026" },
-  { key: "nomorSuratPermohonan", label: "Nomor Surat Permohonan", contoh: "045/SDN-01/VII/2026" },
-  { key: "tanggalSuratPermohonan", label: "Tanggal Surat Permohonan", contoh: "10 Juli 2026" },
   { key: "namaSekolah", label: "Nama Instansi/Sekolah", contoh: "SDN 1 Tarogong Kidul" },
   { key: "namaBangunan", label: "Nama Bangunan", contoh: "Gedung Utama Lantai 1" },
-  { key: "npsn", label: "NPSN/NUP", contoh: "20211234" },
-  { key: "luasBangunan", label: "Luas Bangunan (m²)", contoh: "450" },
-  { key: "jumlahLantai", label: "Jumlah Lantai", contoh: "2" },
-  { key: "alamatBangunan", label: "Alamat Bangunan", contoh: "Jl. Raya Samarang No. 10, Garut" },
-  { key: "koordinatGps", label: "Koordinat GPS", contoh: "-7.2115, 107.9015" },
   { key: "totalKerusakan", label: "Total Persentase Kerusakan", contoh: "35.50%" },
   { key: "kategoriKerusakan", label: "Kategori Kerusakan", contoh: "Rusak Sedang" },
   { key: "namaKadis", label: "Nama Kepala Dinas", contoh: "Ir. H. Kepala Dinas, M.T." },
@@ -153,15 +146,10 @@ export const DEFAULT_TEMPLATE_SURAT_HASIL = `<html>
   <p style="text-align:center;">Nomor: {{nomorSurat}}</p>
 
   <div class="content">
-    <p>Menindaklanjuti Surat Permohonan Nomor: {{nomorSuratPermohonan}} tanggal {{tanggalSuratPermohonan}} perihal permohonan penilaian kerusakan bangunan, dan berdasarkan hasil survei teknis serta analisis perhitungan kerusakan yang telah dilaksanakan pada:</p>
+    <p>Berdasarkan hasil survei teknis dan analisis perhitungan kerusakan yang telah dilaksanakan pada:</p>
     <table>
       <tr><td>Nama Instansi</td><td>: {{namaSekolah}}</td></tr>
       <tr><td>Nama Bangunan</td><td>: {{namaBangunan}}</td></tr>
-      <tr><td>NPSN / NUP</td><td>: {{npsn}}</td></tr>
-      <tr><td>Luas Bangunan</td><td>: {{luasBangunan}} m²</td></tr>
-      <tr><td>Jumlah Lantai</td><td>: {{jumlahLantai}} Lantai</td></tr>
-      <tr><td>Alamat</td><td>: {{alamatBangunan}}</td></tr>
-      <tr><td>Koordinat GPS</td><td>: {{koordinatGps}}</td></tr>
       <tr><td>Total Kerusakan</td><td>: {{totalKerusakan}}</td></tr>
       <tr><td>Kategori</td><td>: {{kategoriKerusakan}}</td></tr>
     </table>
