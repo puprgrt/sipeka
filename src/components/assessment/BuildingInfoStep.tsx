@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { cn } from "../../lib/utils";
-import { MapPin, Paintbrush, X, CloudUpload, Camera, AlertCircle, CheckCircle } from "lucide-react";
+import { MapPin, Paintbrush, X, CloudUpload, Camera, AlertCircle, CheckCircle, Plus } from "lucide-react";
 
 interface BuildingParam {
   id: string;
@@ -24,7 +24,7 @@ interface BuildingInfoStepProps {
   setIsAnnotatorOpen: (open: boolean) => void;
   removePhoto: (idx: number) => void;
   uploadingPhoto: boolean;
-  handlePhotoUpload: (e: any) => void;
+  handlePhotoUpload: (e: any, targetIdx?: number) => void;
   setStep: (step: number) => void;
   isPermohonanFlow: boolean;
 }
@@ -64,8 +64,8 @@ export default function BuildingInfoStep({
   if (!coordinates) {
     missing.push({ label: "Koordinat GPS" });
   }
-  if (photos.length === 0) {
-    missing.push({ label: "Foto Kondisi" });
+  if (photos.length < 4) {
+    missing.push({ label: "4 Sisi Foto Bangunan (Depan, Belakang, Kanan, Kiri)" });
   }
 
   const hasMissing = missing.length > 0;
@@ -142,35 +142,87 @@ export default function BuildingInfoStep({
         </div>
 
         <div>
-          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 mt-4">Foto Kondisi Bangunan</label>
+          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 mt-4">Foto Kondisi Bangunan (Wajib 4 Sisi)</label>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {photos.map((photo, idx) => (
-              <div key={idx} className="relative group rounded-xl overflow-hidden border border-slate-300 bg-slate-100 aspect-square shadow-sm">
-                <img src={photo} alt={`Foto ${idx+1}`} className="w-full h-full object-cover cursor-pointer" onClick={() => setSmartPreviewPhoto({ url: photo, componentName: 'Informasi Umum' })} />
-                <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      setAnnotatingPhotoUrl(photo);
-                      setAnnotatingContext({ type: "main", photoIdx: idx });
-                      setIsAnnotatorOpen(true);
-                    }}
-                    className="bg-pu-yellow hover:bg-yellow-400 text-slate-950 p-2.5 rounded-xl transition-all hover:scale-110 shadow cursor-pointer"
-                    title="Coret / Anotasi"
-                  >
-                    <Paintbrush className="h-4 w-4 stroke-[2.5]" />
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => removePhoto(idx)} 
-                    className="bg-rose-500 hover:bg-rose-600 text-white p-2.5 rounded-xl transition-all hover:scale-110 shadow cursor-pointer"
-                    title="Hapus"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+            {/* 4 Required Slots */}
+            {['Depan', 'Belakang', 'Samping Kanan', 'Samping Kiri'].map((label, idx) => {
+              const photo = photos[idx];
+              return (
+                <div key={`req-${idx}`} className="relative group rounded-xl overflow-hidden border border-slate-300 bg-slate-100 aspect-square shadow-sm flex flex-col">
+                  <div className="absolute top-2 left-2 z-10 bg-black/60 text-white text-[9px] font-bold px-2 py-1 rounded-md">Tampak {label}</div>
+                  {photo ? (
+                    <>
+                      <img src={photo} alt={`Foto ${label}`} className="w-full h-full object-cover cursor-pointer" onClick={() => setSmartPreviewPhoto({ url: photo, componentName: `Tampak ${label}` })} />
+                      <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setAnnotatingPhotoUrl(photo);
+                            setAnnotatingContext({ type: "main", photoIdx: idx });
+                            setIsAnnotatorOpen(true);
+                          }}
+                          className="bg-pu-yellow hover:bg-yellow-400 text-slate-950 p-2 rounded-xl transition-all hover:scale-110 shadow cursor-pointer"
+                          title="Coret / Anotasi"
+                        >
+                          <Paintbrush className="h-4 w-4 stroke-[2.5]" />
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => removePhoto(idx)} 
+                          className="bg-rose-500 hover:bg-rose-600 text-white p-2 rounded-xl transition-all hover:scale-110 shadow cursor-pointer"
+                          title="Hapus"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <label className={cn("flex-1 flex flex-col items-center justify-center text-slate-500 hover:bg-white/40 hover:text-slate-800 hover:border-pu-blue transition-all cursor-pointer bg-white/20 backdrop-blur-sm", uploadingPhoto && "opacity-50 cursor-not-allowed")}>
+                      {uploadingPhoto ? (
+                        <CloudUpload className="h-6 w-6 mb-1.5 animate-bounce text-pu-blue" />
+                      ) : (
+                        <Camera className="h-6 w-6 mb-1.5 opacity-50" />
+                      )}
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-center px-1">{uploadingPhoto ? "Mengunggah..." : `Unggah`}</span>
+                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhotoUpload(e, idx)} disabled={uploadingPhoto} />
+                    </label>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
+
+            {/* Extra Photos */}
+            {photos.slice(4).map((photo, j) => {
+              const idx = j + 4;
+              return (
+                <div key={`extra-${idx}`} className="relative group rounded-xl overflow-hidden border border-slate-300 bg-slate-100 aspect-square shadow-sm flex flex-col">
+                  <div className="absolute top-2 left-2 z-10 bg-black/60 text-white text-[9px] font-bold px-2 py-1 rounded-md">Tambahan {j+1}</div>
+                  <img src={photo} alt={`Foto Tambahan ${j+1}`} className="w-full h-full object-cover cursor-pointer" onClick={() => setSmartPreviewPhoto({ url: photo, componentName: 'Informasi Umum' })} />
+                  <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setAnnotatingPhotoUrl(photo);
+                        setAnnotatingContext({ type: "main", photoIdx: idx });
+                        setIsAnnotatorOpen(true);
+                      }}
+                      className="bg-pu-yellow hover:bg-yellow-400 text-slate-950 p-2 rounded-xl transition-all hover:scale-110 shadow cursor-pointer"
+                      title="Coret / Anotasi"
+                    >
+                      <Paintbrush className="h-4 w-4 stroke-[2.5]" />
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => removePhoto(idx)} 
+                      className="bg-rose-500 hover:bg-rose-600 text-white p-2 rounded-xl transition-all hover:scale-110 shadow cursor-pointer"
+                      title="Hapus"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
             
             <label className={cn("border-2 border-dashed border-slate-300/50 rounded-xl flex flex-col items-center justify-center text-slate-500 hover:bg-white/40 hover:text-slate-800 hover:border-pu-blue transition-all cursor-pointer aspect-square shadow-inner bg-white/20 backdrop-blur-sm", uploadingPhoto && "opacity-50 cursor-not-allowed")}>
               {uploadingPhoto ? (
@@ -180,11 +232,11 @@ export default function BuildingInfoStep({
                 </>
               ) : (
                 <>
-                  <Camera className="h-8 w-8 mb-2 opacity-50" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-center px-2 opacity-70">Tambah Foto</span>
+                  <Plus className="h-8 w-8 mb-2 opacity-50" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-center px-2 opacity-70">Foto Lainnya</span>
                 </>
               )}
-              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} disabled={uploadingPhoto} />
+              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handlePhotoUpload(e)} disabled={uploadingPhoto} />
             </label>
           </div>
         </div>

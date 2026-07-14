@@ -736,7 +736,7 @@ Koordinat GPS: ${coordinates ? `Latitude: ${coordinates.lat}, Longitude: ${coord
     }
   };
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, targetIdx?: number) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       setUploadingPhoto(true);
@@ -744,7 +744,7 @@ Koordinat GPS: ${coordinates ? `Latitude: ${coordinates.lat}, Longitude: ${coord
         const reader = new FileReader();
         reader.onloadend = () => {
           setAnnotatingPhotoUrl(reader.result as string);
-          setAnnotatingContext({ type: "main" }); // photoIdx undefined means appending new photo
+          setAnnotatingContext({ type: "main", photoIdx: targetIdx }); // photoIdx undefined means appending new photo
           setIsAnnotatorOpen(true);
           setUploadingPhoto(false);
           if (e.target) {
