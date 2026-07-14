@@ -118,7 +118,7 @@ export async function readDocumentTemplates() {
     if (saved) {
       return {
         ...defaultTpl,
-        kontenHtml: saved.kontenHtml || defaultTpl.kontenHtml,
+        kontenHtml: saved.kontenHtml !== undefined ? saved.kontenHtml : defaultTpl.kontenHtml,
         driveLink: saved.driveLink !== undefined ? saved.driveLink : defaultTpl.driveLink,
         updatedAt: saved.updatedAt,
       };
