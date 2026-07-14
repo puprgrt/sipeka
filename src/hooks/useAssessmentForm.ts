@@ -296,7 +296,7 @@ export function useAssessmentForm() {
       if (compIndex !== undefined && level) {
         setComponents(prev => {
           const newComps = [...prev];
-          const comp = { ...newComps[compIndex] };
+          const comp = { ...newComps[compIndex], damageDetails: [...(newComps[compIndex].damageDetails || [])] };
           let detailIndex = comp.damageDetails.findIndex(d => d.level === level);
           
           if (detailIndex === -1) {
@@ -1116,7 +1116,7 @@ Pengelola Bangunan / Pemohon`;
             setIsDirty(true);
             setComponents(prev => {
               const newComps = [...prev];
-              const comp = { ...newComps[compIndex] };
+              const comp = { ...newComps[compIndex], damageDetails: [...(newComps[compIndex].damageDetails || [])] };
               let detailIndex = comp.damageDetails.findIndex(d => d.level === level);
               
               if (detailIndex === -1) {
@@ -1201,7 +1201,7 @@ Pengelola Bangunan / Pemohon`;
     setIsDirty(true);
     setComponents(prev => {
       const newComps = [...prev];
-      const comp = { ...newComps[compIndex] };
+      const comp = { ...newComps[compIndex], damageDetails: [...(newComps[compIndex].damageDetails || [])] };
       const detailIndex = comp.damageDetails.findIndex(d => d.level === level);
       
       if (detailIndex !== -1) {
