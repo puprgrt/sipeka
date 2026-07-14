@@ -23,9 +23,45 @@ router.post("/api/users/fcm-token", async (req, res) => {
   }
 });
 
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
+  process.env.SUPABASE_SECRET_KEY || ''
+);
+
 router.get("/api/users", async (req, res) => {
   try {
     await initMasterData();
+
+    // 1. Sync new users from Supabase Auth -> public.users
+    try {
+      if (process.env.SUPABASE_SECRET_KEY) {
+        const { data: authUsers, error } = await supabaseAdmin.auth.admin.listUsers();
+        if (!error && authUsers?.users) {
+          const existingUsers = await db.select().from(schema.users);
+          const existingEmails = new Set(existingUsers.map(u => u.email));
+
+          const newUsersToInsert = authUsers.users
+            .filter((au: any) => au.email && !existingEmails.has(au.email))
+            .map((au: any) => ({
+              uid: au.id,
+              namaLengkap: au.user_metadata?.full_name || au.email!.split('@')[0],
+              email: au.email,
+              role: 'Pengelola_Bangunan' as any,
+              kontakWhatsapp: ''
+            }));
+
+          if (newUsersToInsert.length > 0) {
+            await db.insert(schema.users).values(newUsersToInsert);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Could not sync auth users:", e);
+    }
+
+    // 2. Fetch and return combined list
     const data = await db.select().from(schema.users).orderBy(schema.users.idUser);
     res.json(data);
   } catch (error) {

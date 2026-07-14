@@ -911,6 +911,19 @@ export default function Settings() {
     fetchAiConfig();
   }, []);
 
+  // Real-time auto-refresh untuk tab users
+  useEffect(() => {
+    let interval: any;
+    if (activeTab === "users") {
+      interval = setInterval(() => {
+        fetchUsers(true);
+      }, 3000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeTab]);
+
   const fetchAiConfig = async () => {
     try {
       const res = await fetch('/api/ai-settings');
@@ -979,8 +992,8 @@ export default function Settings() {
     }
   };
 
-  const fetchUsers = async () => {
-    setLoadingUsers(true);
+  const fetchUsers = async (silent = false) => {
+    if (!silent) setLoadingUsers(true);
     try {
       const res = await fetch("/api/users");
       const data = await res.json();
@@ -988,7 +1001,7 @@ export default function Settings() {
     } catch (error) {
       console.error(error);
     } finally {
-      setLoadingUsers(false);
+      if (!silent) setLoadingUsers(false);
     }
   };
 
