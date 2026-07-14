@@ -119,6 +119,7 @@ export async function readDocumentTemplates() {
       return {
         ...defaultTpl,
         kontenHtml: saved.kontenHtml || defaultTpl.kontenHtml,
+        driveLink: saved.driveLink !== undefined ? saved.driveLink : defaultTpl.driveLink,
         updatedAt: saved.updatedAt,
       };
     }
@@ -131,6 +132,7 @@ export async function writeDocumentTemplates(templates: any[]) {
   const toSave = templates.map((t: any) => ({
     id: t.id,
     kontenHtml: t.kontenHtml,
+    driveLink: t.driveLink,
     updatedAt: t.updatedAt || new Date().toISOString(),
   }));
   await setDbConfig('document_templates', toSave);
