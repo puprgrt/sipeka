@@ -3,7 +3,7 @@ import { useLocation, Link } from "react-router-dom";
 import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI, DAMAGE_MULTIPLIERS } from "../types";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { cn, getAuditHeaders } from "../lib/utils";
+import { getAuditHeaders, getDirectImageUrl, parsePhotos, cn } from "../lib/utils";
 import { DataTable } from "../components/ui/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { createCalendarEvent } from "../lib/calendarService";
@@ -1105,15 +1105,31 @@ export default function AssessmentList() {
                         Parameter Tambahan Pemohon
                       </p>
                       <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200/55">
-                        {Object.entries(selectedAssessment.customFields).map(([key, value]) => {
+                        {Object.entries(selectedAssessment.customFields)
+                          .filter(([key, value]) => {
+                            if (["id", "date", "schoolName", "buildingName", "npsn", "buildingArea", "floorCount", "address", "city", "province", "components", "photos", "finalResult", "status", "userId", "userName", "customFields", "verification", "safetyChecks", "documentLink", "idBangunan"].includes(key) || key.toLowerCase().includes('foto')) return false;
+                            if (typeof value === "object" && value !== null) return false;
+                            return true;
+                          })
+                          .map(([key, value]) => {
                           // Make readable title from CamelCase
                           const readableKey = key
                             .replace(/([A-Z])/g, " $1")
                             .replace(/^./, str => str.toUpperCase());
+                            
+                          const strValue = value?.toString() || "-";
+                          const isUrl = strValue.startsWith('http');
+                          
                           return (
                             <div key={key} className="space-y-0.5">
                               <p className="text-slate-500 font-semibold text-[9px] uppercase">{readableKey}</p>
-                              <p className="font-bold text-slate-700">{value?.toString() || "-"}</p>
+                              {isUrl ? (
+                                <a href={strValue} target="_blank" rel="noreferrer" className="font-bold text-pu-blue hover:underline break-all text-[10px]">
+                                  Buka Tautan
+                                </a>
+                              ) : (
+                                <p className="font-bold text-slate-700 break-words">{strValue}</p>
+                              )}
                             </div>
                           );
                         })}
@@ -1122,23 +1138,26 @@ export default function AssessmentList() {
                   )}
 
                   {/* Foto Utama Bangunan */}
-                  {selectedAssessment.photos && selectedAssessment.photos.length > 0 && (
+                  {parsePhotos(selectedAssessment.photos).length > 0 && (
                     <div className="pt-4 border-t border-slate-100">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2.5">
                         Foto Bukti Fisik Bangunan
                       </p>
                       <div className="flex flex-wrap gap-3">
-                        {selectedAssessment.photos.map((photo, i) => (
+                        {parsePhotos(selectedAssessment.photos).map((photo, i) => (
                           <div 
                             key={i}
                             onClick={() => setSmartPreviewPhoto(photo)}
-                            className="relative group w-24 h-24 rounded-xl overflow-hidden border border-slate-200 shadow-sm cursor-pointer hover:shadow-md transition-all bg-slate-100"
+                            className="relative group w-24 h-24 rounded-xl overflow-hidden border border-slate-200 shadow-sm cursor-pointer hover:shadow-md transition-all bg-slate-100 flex items-center justify-center"
                           >
                             <img 
                               src={photo} 
                               alt={`Foto Bangunan ${i+1}`} 
                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
                             />
+                            <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <Search className="w-5 h-5 text-white" />
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1189,19 +1208,21 @@ export default function AssessmentList() {
                                         <span className="text-slate-800 bg-slate-200 px-1.5 rounded">{comp.unit === 'Estimasi' ? '1' : `${detail.percentage.toFixed(1)}%`}</span>
                                       </span>
                                     </div>
-                                    {detail.photos && detail.photos.length > 0 && (
-                                      <div className="flex gap-2 mt-1.5 pl-3">
-                                        {detail.photos.map((p, i) => (
-                                          <div
+                                    {parsePhotos(detail.photos).length > 0 && (
+                                      <div className="mt-2 flex flex-wrap gap-2">
+                                        {parsePhotos(detail.photos).map((p, i) => (
+                                          <div 
                                             key={i}
-                                            onClick={() => setSmartPreviewPhoto(p)}
-                                            className="relative group w-10 h-10 rounded-lg overflow-hidden border border-slate-300 shadow-sm cursor-pointer hover:shadow-md transition-all bg-slate-100 flex items-center justify-center shrink-0"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSmartPreviewPhoto(p);
+                                            }}
+                                            className="relative group w-12 h-12 rounded-lg overflow-hidden border border-slate-200 cursor-pointer"
                                           >
-                                            <img 
-                                              src={p} 
-                                              alt={`Foto ${comp.name} ${detail.level}`} 
-                                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
-                                            />
+                                            <img src={p} alt={`Detail ${i+1}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                            <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                              <Search className="w-3 h-3 text-white" />
+                                            </div>
                                           </div>
                                         ))}
                                       </div>

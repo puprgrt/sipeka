@@ -802,15 +802,31 @@ export default function DisposisiList() {
                         Parameter Tambahan Pemohon
                       </p>
                       <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200/55">
-                        {Object.entries(selectedAssessment.customFields).map(([key, value]) => {
+                        {Object.entries(selectedAssessment.customFields)
+                          .filter(([key, value]) => {
+                            if (["id", "date", "schoolName", "buildingName", "npsn", "buildingArea", "floorCount", "address", "city", "province", "components", "photos", "finalResult", "status", "userId", "userName", "customFields", "verification", "safetyChecks", "documentLink", "idBangunan"].includes(key) || key.toLowerCase().includes('foto')) return false;
+                            if (typeof value === "object" && value !== null) return false;
+                            return true;
+                          })
+                          .map(([key, value]) => {
                           // Make readable title from CamelCase
                           const readableKey = key
                             .replace(/([A-Z])/g, " $1")
                             .replace(/^./, str => str.toUpperCase());
+                            
+                          const strValue = value?.toString() || "-";
+                          const isUrl = strValue.startsWith('http');
+                          
                           return (
                             <div key={key} className="space-y-0.5">
                               <p className="text-slate-500 font-semibold text-[9px] uppercase">{readableKey}</p>
-                              <p className="font-bold text-slate-700">{value?.toString() || "-"}</p>
+                              {isUrl ? (
+                                <a href={strValue} target="_blank" rel="noreferrer" className="font-bold text-pu-blue hover:underline break-all text-[10px]">
+                                  Buka Tautan
+                                </a>
+                              ) : (
+                                <p className="font-bold text-slate-700 break-words">{strValue}</p>
+                              )}
                             </div>
                           );
                         })}

@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI } from "../types";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { cn, getAuditHeaders } from "../lib/utils";
+import { cn, getAuditHeaders, parsePhotos } from "../lib/utils";
 import { DataTable } from "../components/ui/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { createCalendarEvent } from "../lib/calendarService";
@@ -560,7 +560,7 @@ export default function VerificationList() {
                       <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200/55">
                         {Object.entries(selectedAssessment.customFields)
                           .filter(([key, value]) => {
-                            if (["id", "date", "schoolName", "buildingName", "npsn", "buildingArea", "floorCount", "address", "city", "province", "components", "photos", "finalResult", "status", "userId", "userName", "customFields"].includes(key)) return false;
+                            if (["id", "date", "schoolName", "buildingName", "npsn", "buildingArea", "floorCount", "address", "city", "province", "components", "photos", "finalResult", "status", "userId", "userName", "customFields", "verification", "safetyChecks", "documentLink", "idBangunan"].includes(key) || key.toLowerCase().includes('foto')) return false;
                             if (typeof value === "object" && value !== null) return false;
                             return true;
                           })
@@ -568,10 +568,20 @@ export default function VerificationList() {
                           const readableKey = key
                             .replace(/([A-Z])/g, " $1")
                             .replace(/^./, str => str.toUpperCase());
+                            
+                          const strValue = value?.toString() || "-";
+                          const isUrl = strValue.startsWith('http');
+                          
                           return (
                             <div key={key} className="space-y-0.5">
                               <p className="text-slate-500 font-semibold text-[9px] uppercase">{readableKey}</p>
-                              <p className="font-bold text-slate-700">{value?.toString() || "-"}</p>
+                              {isUrl ? (
+                                <a href={strValue} target="_blank" rel="noreferrer" className="font-bold text-pu-blue hover:underline break-all text-[10px]">
+                                  Buka Tautan
+                                </a>
+                              ) : (
+                                <p className="font-bold text-slate-700 break-words">{strValue}</p>
+                              )}
                             </div>
                           );
                         })}
@@ -584,9 +594,9 @@ export default function VerificationList() {
                     <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2.5">
                       Foto Dokumentasi Bangunan
                     </p>
-                    {selectedAssessment.photos && selectedAssessment.photos.length > 0 ? (
+                    {parsePhotos(selectedAssessment.photos).length > 0 ? (
                       <div className="grid grid-cols-3 gap-2">
-                        {selectedAssessment.photos.map((photo, pIdx) => (
+                        {parsePhotos(selectedAssessment.photos).map((photo, pIdx) => (
                           <div 
                             key={pIdx} 
                             onClick={() => setSmartPreviewPhoto({ url: photo, componentName: 'Umum' })}
