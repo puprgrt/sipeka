@@ -8,12 +8,14 @@ import {
   Eye, Clock, Calendar, Building, FileText, MapPin, CheckCircle2, User, 
   Loader2, ArrowRight, ExternalLink, X, HelpCircle, FileCheck
 } from "lucide-react";
+import DocumentPreviewModal from "../components/DocumentPreviewModal";
 
 export default function VerifikasiAdministrasi() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Menunggu_Validasi");
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const [verifSurat, setVerifSurat] = useState(false);
   const [verifData, setVerifData] = useState(false);
@@ -242,14 +244,12 @@ export default function VerifikasiAdministrasi() {
                       <p className="text-xs font-bold text-rose-800 uppercase tracking-widest">Surat Permohonan Resmi</p>
                       <p className="text-[10px] text-rose-600 mt-1">Dokumen PDF hasil generate otomatis dari instansi</p>
                     </div>
-                    <a 
-                      href={selectedAssessment.customFields.documentLink}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button 
+                      onClick={() => setPreviewUrl(selectedAssessment.customFields.documentLink)}
                       className="px-4 py-2 bg-rose-600 text-white text-xs font-bold rounded-lg hover:bg-rose-700 transition-colors shadow-sm"
                     >
-                      Buka Dokumen PDF
-                    </a>
+                      Buka Preview Dokumen
+                    </button>
                   </div>
                 )}
 
@@ -325,6 +325,12 @@ export default function VerifikasiAdministrasi() {
           </div>
         )}
       </AnimatePresence>
+
+      <DocumentPreviewModal 
+        isOpen={!!previewUrl}
+        onClose={() => setPreviewUrl(null)}
+        documentUrl={previewUrl}
+      />
     </motion.div>
   );
 }

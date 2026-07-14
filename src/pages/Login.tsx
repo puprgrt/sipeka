@@ -245,15 +245,15 @@ export default function Login() {
       const errMsg = err?.message || "";
       if (err?.code === "auth/popup-closed-by-user" || errMsg.includes("popup-closed-by-user")) {
         setError(
-          "Pendaftaran/Masuk via Google dibatalkan atau diblokir oleh browser. Hal ini sangat umum terjadi ketika aplikasi dijalankan di dalam iFrame Pratinjau AI Studio. Silakan gunakan tombol 'Akses Simulasi Role' di atas untuk masuk instan, atau klik ikon 'Buka di Tab Baru' di pojok kanan atas pratinjau untuk menggunakan Google Sign-In secara normal."
+          "Pendaftaran/Masuk via Google dibatalkan atau diblokir oleh browser. Silakan coba lagi atau gunakan login manual."
         );
-      } else if (errMsg.includes("access_denied") || errMsg.includes("unverified") || errMsg.includes("403")) {
+      } else if (errMsg.includes("access_denied") || errMsg.includes("unverified") || errMsg.includes("403") || errMsg.includes("redirect_uri_mismatch")) {
         setError(
-          "Akses Google Terblokir (Error 403: access_denied). Project Firebase ini dalam status 'Testing'. Silakan tambahkan email Anda ke daftar 'Test Users' di Google Cloud Console -> OAuth Consent Screen, ATAU gunakan tab 'Akses Simulasi Role' di atas untuk masuk secara instan ke peran mana pun tanpa hambatan."
+          "Akses Google Terblokir. Pastikan email Anda telah didaftarkan dan Site URL Supabase dikonfigurasi dengan benar."
         );
       } else {
         setError(
-          "Gagal masuk dengan Google (OAuth belum diverifikasi / dibatasi). Rekomendasi: Gunakan fitur 'Akses Simulasi Role' di atas untuk langsung mencoba semua dashboard (Admin, Tim Teknis, Kadis, dll.) dengan satu klik."
+          "Gagal masuk dengan Google. Silakan hubungi Administrator atau gunakan Masuk Akun manual."
         );
       }
     } finally {
@@ -365,8 +365,8 @@ export default function Login() {
         <div className="w-full md:w-7/12 p-8 flex flex-col justify-between bg-slate-950 text-slate-100">
           
           <div>
-            {/* Nav Tabs */}
-            <div className="flex border-b border-white/10 mb-6">
+            {/* Login Modes Tabs (Hidden per user request) */}
+            <div className="hidden gap-4 mb-6 border-b border-white/10">
               <button
                 type="button"
                 onClick={() => { setActiveTab("credentials"); setError(null); }}

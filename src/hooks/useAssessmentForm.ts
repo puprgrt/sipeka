@@ -25,6 +25,65 @@ import SmartPhotoViewer from "../components/SmartPhotoViewer";
 
 
 
+const compressDataUrlToFile = async (dataUrl: string, fileName: string): Promise<File> => {
+  return new Promise((resolve) => {
+    if (!dataUrl.startsWith("data:image")) {
+      // Return as-is if it's already a URL or unrecognized
+      const arr = dataUrl.split(',');
+      if (arr.length < 2) {
+        resolve(new File([""], fileName));
+        return;
+      }
+      const mimeMatch = arr[0].match(/:(.*?);/);
+      const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+      const bstr = atob(arr[1] || "");
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while(n--){
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      resolve(new File([u8arr], fileName, {type:mime}));
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+      const MAX_DIM = 1200; // Resize to max 1200px
+      if (width > height) {
+        if (width > MAX_DIM) {
+          height *= MAX_DIM / width;
+          width = MAX_DIM;
+        }
+      } else {
+        if (height > MAX_DIM) {
+          width *= MAX_DIM / height;
+          height = MAX_DIM;
+        }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(new File([blob], fileName, { type: 'image/jpeg' }));
+          } else {
+            resolve(new File([""], fileName));
+          }
+        }, 'image/jpeg', 0.6); // 60% quality compression
+      } else {
+        resolve(new File([""], fileName));
+      }
+    };
+    img.onerror = () => resolve(new File([""], fileName));
+    img.src = dataUrl;
+  });
+};
+
 export function useAssessmentForm() {
 
   const navigate = useNavigate();
@@ -718,12 +777,11 @@ Koordinat GPS: ${coordinates ? `Latitude: ${coordinates.lat}, Longitude: ${coord
     // Attempt Google Workspace integrations if token is available
     const token = await getAccessToken();
     let documentLink = generatedDocLink;
-    if (token) {
+    if (token && isPermohonanFlow) {
       try {
         if (!documentLink) {
           const docTitle = `Surat Permohonan Penilaian Kerusakan - ${schoolName}`;
-          const docContent = isPermohonanFlow
-            ? `SURAT PERMOHONAN PENILAIAN KERUSAKAN BANGUNAN KEDINASAN
+          const docContent = `SURAT PERMOHONAN PENILAIAN KERUSAKAN BANGUNAN KEDINASAN
             
 Nomor Surat: ${letterReferenceNo}
 Perihal: Permohonan Penilaian Kerusakan Fisik Bangunan Gedung
@@ -740,18 +798,7 @@ Koordinat GPS: ${coordinates ? `Latitude: ${coordinates.lat}, Longitude: ${coord
 Dengan hormat, bersama ini kami sampaikan dokumen permohonan resmi penilaian kondisi fisik bangunan gedung agar kiranya dapat diagendakan survei dan analisis teknis lapangan oleh Tim Teknis Dinas PUPR.
 
 Hormat Kami,
-Pengelola Bangunan / Pemohon`
-            : `SURAT PERMOHONAN PENILAIAN KERUSAKAN BANGUNAN
-
-${getParamLabel("schoolName", "Nama Sekolah / Instansi")}: ${schoolName}
-${getParamLabel("buildingName", "Nama Bangunan")}: ${buildingName}
-${getParamLabel("npsn", "NPSN")}: ${npsn}
-${getParamLabel("buildingArea", "Luas Bangunan")}: ${buildingArea} m2
-${getParamLabel("address", "Alamat")}: ${address}
-Kategori Kerusakan Awal: Rusak ${finalResult.category} (${finalResult.totalDamagePercentage.toFixed(1)}%)
-
-Demikian permohonan ini kami sampaikan agar dapat ditindaklanjuti.
-          `;
+Pengelola Bangunan / Pemohon`;
           let docContentWithParams = docContent;
           const stdKeys = ["schoolName", "buildingName", "npsn", "address", "buildingArea", "floorCount"];
           formParams.forEach(p => {
@@ -768,12 +815,8 @@ Demikian permohonan ini kami sampaikan agar dapat ditindaklanjuti.
         
         await sendEmail(
           'enjangwahyudin@gmail.com', // fallback/test email
-          isPermohonanFlow
-            ? `Permohonan Baru (Menunggu Survei): ${schoolName} - ${buildingName}`
-            : `Permohonan Baru: ${schoolName} - ${buildingName}`,
-          isPermohonanFlow
-            ? `Terdapat permohonan baru untuk ${schoolName} (Massa Bangunan: ${buildingName}).\nSurat permohonan resmi kedinasan telah digenerate.\nLihat dokumen resmi: ${documentLink}`
-            : `Terdapat permohonan penilaian kerusakan baru untuk ${schoolName}.\nHasil sementara: Rusak ${finalResult.category} (${finalResult.totalDamagePercentage.toFixed(1)}%).\nLihat dokumen permohonan: ${documentLink}`
+          `Permohonan Baru (Menunggu Survei): ${schoolName} - ${buildingName}`,
+          `Terdapat permohonan baru untuk ${schoolName} (Massa Bangunan: ${buildingName}).\nSurat permohonan resmi kedinasan telah digenerate.\nLihat dokumen resmi: ${documentLink}`
         );
       } catch (err) {
         console.warn("Failed to complete Google Workspace integrations", err);
@@ -790,6 +833,73 @@ Demikian permohonan ini kami sampaikan agar dapat ditindaklanjuti.
 
     const activeUserId = localStorage.getItem("activeUserId");
     
+    // Proses kompresi & unggah foto ke Google Drive jika ada koneksi
+    let finalPhotos = [...photos];
+    let finalComponents = JSON.parse(JSON.stringify(components)); // Deep copy untuk payload
+
+    if (token && window.navigator.onLine) {
+      try {
+        const saved = localStorage.getItem("smart_files_db");
+        const parsedFilesDb = saved ? JSON.parse(saved) : [];
+
+        // 1. Upload Foto Utama Bangunan
+        for (let i = 0; i < finalPhotos.length; i++) {
+          if (finalPhotos[i].startsWith("data:image")) {
+            const file = await compressDataUrlToFile(finalPhotos[i], `Foto_Utama_${i+1}.jpg`);
+            if (file.size > 0) {
+              const driveUrl = await uploadToDrive(file, schoolName || "Bangunan Tanpa Nama");
+              finalPhotos[i] = driveUrl; // Ganti Base64 dengan URL Google Drive
+              
+              parsedFilesDb.push({
+                id: "file-" + Date.now().toString() + "-" + i,
+                name: `Foto Utama ${i+1} - ${schoolName || "Bangunan"}.jpg`,
+                type: "image",
+                size: file.size,
+                updatedAt: new Date().toISOString(),
+                author: user?.displayName || "Pengelola",
+                folderId: null,
+                accessRole: ["Administrator", "Pengelola_Bangunan", "Tim_Teknis"],
+                previewUrl: driveUrl
+              });
+            }
+          }
+        }
+
+        // 2. Upload Foto Kerusakan Komponen
+        for (let c = 0; c < finalComponents.length; c++) {
+          for (let d = 0; d < finalComponents[c].damageDetails.length; d++) {
+             const compPhotos = finalComponents[c].damageDetails[d].photos || [];
+             for (let p = 0; p < compPhotos.length; p++) {
+                if (compPhotos[p].startsWith("data:image")) {
+                   const file = await compressDataUrlToFile(compPhotos[p], `Foto_${finalComponents[c].name.replace(/\//g, '_')}_${d}_${p}.jpg`);
+                   if (file.size > 0) {
+                     const driveUrl = await uploadToDrive(file, schoolName || "Bangunan Tanpa Nama");
+                     finalComponents[c].damageDetails[d].photos[p] = driveUrl; // Ganti Base64 dengan URL Google Drive
+                     
+                     parsedFilesDb.push({
+                       id: "file-comp-" + Date.now().toString() + "-" + c + "-" + d + "-" + p,
+                       name: `Foto ${finalComponents[c].name} - ${schoolName || "Bangunan"}.jpg`,
+                       type: "image",
+                       size: file.size,
+                       updatedAt: new Date().toISOString(),
+                       author: user?.displayName || "Pengelola",
+                       folderId: null,
+                       accessRole: ["Administrator", "Pengelola_Bangunan", "Tim_Teknis"],
+                       previewUrl: driveUrl
+                     });
+                   }
+                }
+             }
+          }
+        }
+        
+        // Simpan pembaruan ke Manajemen File
+        localStorage.setItem("smart_files_db", JSON.stringify(parsedFilesDb));
+      } catch (e) {
+        console.warn("Gagal mengunggah beberapa foto ke Google Drive:", e);
+      }
+    }
+
     const payload = {
       idBangunan,
       idUserPengelola: activeUserId ? Number(activeUserId) : undefined,
@@ -800,8 +910,8 @@ Demikian permohonan ini kami sampaikan agar dapat ditindaklanjuti.
       buildingArea,
       floorCount,
       coordinates,
-      photos,
-      components,
+      photos: finalPhotos,
+      components: finalComponents,
       finalResult,
       safetyChecks,
       documentLink: documentLink ? documentLink.replace(/\/edit$/, "/export?format=pdf") : null,

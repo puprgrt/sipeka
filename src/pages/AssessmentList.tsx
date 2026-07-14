@@ -11,6 +11,7 @@ import { appendToSheet } from "../lib/sheetsService";
 import { getAccessToken, googleSignIn } from "../lib/firebaseAuth";
 import { motion, AnimatePresence } from "motion/react";
 import SmartPhotoViewer from '../components/SmartPhotoViewer';
+import DocumentPreviewModal from "../components/DocumentPreviewModal";
 import { 
   Eye, Clock, Calendar, Building, MapPin, FileText, 
   CheckCircle2, User, Loader2, ArrowRight, ExternalLink, X, HelpCircle, Edit, Trash2,
@@ -23,6 +24,7 @@ export default function AssessmentList() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Semua");
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null | undefined>(null);
   
   const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
   const [editForm, setEditForm] = useState({
@@ -965,6 +967,12 @@ export default function AssessmentList() {
               )}
             </AnimatePresence>
 
+            <DocumentPreviewModal 
+              isOpen={!!previewUrl}
+              onClose={() => setPreviewUrl(null)}
+              documentUrl={previewUrl || null}
+            />
+
             <div className="bg-white/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-sm">
               <DataTable columns={columns} data={filteredAssessments} />
             </div>
@@ -1366,14 +1374,12 @@ export default function AssessmentList() {
                           <p className="text-[10px] text-blue-700/80 mt-0.5">Disimpan aman dalam format PDF untuk arsip kedinasan.</p>
                         </div>
                       </div>
-                      <a
-                        href={selectedAssessment.documentLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        onClick={() => setPreviewUrl(selectedAssessment.documentLink)}
                         className="inline-flex items-center px-4 py-2 text-xs font-bold rounded-xl text-white bg-blue-600 hover:bg-blue-700 shadow transition-all hover:scale-105"
                       >
-                        Buka Dokumen PDF
-                      </a>
+                        Buka Preview Dokumen
+                      </button>
                     </div>
                   ) : (
                     <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-center text-[11px] text-slate-500 italic">

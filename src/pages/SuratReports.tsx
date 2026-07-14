@@ -4,7 +4,10 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { cn } from "../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, Inbox, Send, Eye, FileCheck, FileDown, Search, X } from "lucide-react";
+import { 
+  FileText, Inbox, Send, Eye, FileCheck, FileDown, Search, X, Calendar, Building, MapPin, Layers, ExternalLink, Printer, CheckCircle
+} from "lucide-react";
+import DocumentPreviewModal from "../components/DocumentPreviewModal";
 
 export default function SuratReports() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -12,6 +15,7 @@ export default function SuratReports() {
   const [activeTab, setActiveTab] = useState<"masuk" | "keluar">("masuk");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const fetchAssessments = () => {
     fetch("/api/assessments")
@@ -257,14 +261,12 @@ export default function SuratReports() {
                     <div className="text-xs text-slate-500 font-semibold uppercase">Dokumen Surat</div>
                     <div className="col-span-2">
                       {selectedAssessment.customFields?.documentLink ? (
-                        <a 
-                          href={selectedAssessment.customFields.documentLink}
-                          target="_blank"
-                          rel="noreferrer"
+                        <button 
+                          onClick={() => setPreviewUrl(selectedAssessment.customFields.documentLink)}
                           className="inline-flex items-center gap-2 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-xs font-bold hover:bg-rose-100 transition-colors"
                         >
-                          <FileDown className="w-4 h-4" /> Buka PDF Surat
-                        </a>
+                          <FileText className="w-4 h-4" /> Buka Preview Surat
+                        </button>
                       ) : (
                         <span className="text-xs italic text-slate-400">Tidak ada dokumen PDF terlampir.</span>
                       )}
@@ -276,6 +278,12 @@ export default function SuratReports() {
           </div>
         )}
       </AnimatePresence>
+
+      <DocumentPreviewModal 
+        isOpen={!!previewUrl}
+        onClose={() => setPreviewUrl(null)}
+        documentUrl={previewUrl}
+      />
     </div>
   );
 }
