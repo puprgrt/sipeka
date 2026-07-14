@@ -1152,7 +1152,7 @@ Pengelola Bangunan / Pemohon`;
         const imageBase64 = reader.result as string;
         try {
           const response = await fetch("/api/gemini/analyze-damage", {
-  
+            method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ imageBase64, componentName: compName })
           });
