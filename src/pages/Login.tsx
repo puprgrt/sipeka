@@ -99,9 +99,56 @@ export default function Login() {
   // If already logged in, redirect to dashboard
   useEffect(() => {
     const unsubscribe = initAuth(
-      (user) => {
+      async (user) => {
         if (user) {
-          navigate("/", { replace: true });
+          // Check if we already have local session set up
+          const isLocalLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+          const localRole = localStorage.getItem("activeRole");
+          
+          if (isLocalLoggedIn && localRole) {
+            navigate("/", { replace: true });
+            return;
+          }
+
+          // Otherwise, process the fresh OAuth redirect login
+          setLoading(true);
+          let userRole = "Pengelola_Bangunan"; // Default role
+          let displayName = user.displayName || "Pengguna";
+          let activeUserId = "";
+
+          // Check for users in database
+          try {
+            const res = await fetch("/api/users");
+            if (res.ok) {
+              const dbUsers = await res.json();
+              if (Array.isArray(dbUsers)) {
+                const dbUser = dbUsers.find((u: any) => u.email?.toLowerCase() === user.email?.toLowerCase());
+                if (dbUser) {
+                  userRole = dbUser.role;
+                  displayName = dbUser.namaLengkap;
+                  activeUserId = String(dbUser.idUser);
+                }
+              }
+            }
+          } catch (err) {
+            console.warn("Could not query DB users list", err);
+          }
+
+          setSuccess(`Selamat datang, ${displayName}!`);
+          localStorage.setItem("isLoggedIn", "true");
+          localStorage.setItem("userEmail", user.email || "");
+          localStorage.setItem("userName", displayName);
+          localStorage.setItem("userPhoto", user.photoURL || "");
+          localStorage.setItem("activeRole", userRole);
+          localStorage.setItem("actualRole", userRole);
+          if (activeUserId) {
+            localStorage.setItem("activeUserId", activeUserId);
+          }
+          
+          setTimeout(() => {
+            window.dispatchEvent(new Event("storage"));
+            navigate("/", { replace: true });
+          }, 800);
         }
       },
       () => {
@@ -190,19 +237,9 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const result = await googleSignIn();
-      if (result) {
-        setSuccess(`Selamat datang kembali, ${result.user.displayName || "Pengguna"}!`);
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("userEmail", result.user.email || "");
-        localStorage.setItem("userName", result.user.displayName || "");
-        localStorage.setItem("userPhoto", result.user.photoURL || "");
-        
-        setTimeout(() => {
-          window.dispatchEvent(new Event("storage"));
-          navigate("/", { replace: true });
-        }, 800);
-      }
+      await googleSignIn();
+      // Supabase OAuth redirects to Google, so execution will not continue here.
+      // Logic is handled in initAuth callback.
     } catch (err: any) {
       console.error("Google Login failed", err);
       const errMsg = err?.message || "";

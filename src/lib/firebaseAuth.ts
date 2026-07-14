@@ -1,74 +1,71 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User, updatePassword, sendPasswordResetEmail } from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
-export { auth };
-
-const provider = new GoogleAuthProvider();
-provider.addScope('https://www.googleapis.com/auth/drive.file'); 
-provider.addScope('https://www.googleapis.com/auth/drive.metadata.readonly');
-provider.addScope('https://www.googleapis.com/auth/gmail.send');
-provider.addScope('https://www.googleapis.com/auth/documents');
-provider.addScope('https://www.googleapis.com/auth/spreadsheets');
-provider.addScope('https://www.googleapis.com/auth/calendar.events');
-
-let isSigningIn = false;
+import { supabase } from './supabaseClient';
+import type { User } from '@supabase/supabase-js';
 
 // Get the token from localStorage if it exists so reloading is persistent
 let cachedAccessToken: string | null = typeof window !== 'undefined' ? localStorage.getItem('firebase_google_access_token') : null;
 
 export const initAuth = (
-  onAuthSuccess?: (user: User, token: string) => void,
+  onAuthSuccess?: (user: any, token: string) => void,
   onAuthFailure?: () => void
 ) => {
-  return onAuthStateChanged(auth, async (user: User | null) => {
-    if (user) {
-      // If we don't have the cached token in memory, try to get it from localStorage
-      if (!cachedAccessToken && typeof window !== 'undefined') {
-        cachedAccessToken = localStorage.getItem('firebase_google_access_token');
-      }
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    async (event, session) => {
+      if (session && session.user) {
+        // Extract provider_token from Supabase session if it exists (for Google APIs)
+        if (session.provider_token) {
+          cachedAccessToken = session.provider_token;
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('firebase_google_access_token', cachedAccessToken);
+          }
+        } else if (!cachedAccessToken && typeof window !== 'undefined') {
+           cachedAccessToken = localStorage.getItem('firebase_google_access_token');
+        }
 
-      if (cachedAccessToken) {
-        if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
-      } else if (!isSigningIn) {
+        if (onAuthSuccess) {
+          // Format user to match expected shape slightly (if needed)
+          const formattedUser = {
+            uid: session.user.id,
+            email: session.user.email,
+            displayName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
+            photoURL: session.user.user_metadata?.avatar_url || ''
+          };
+          onAuthSuccess(formattedUser, cachedAccessToken || '');
+        }
+      } else {
         cachedAccessToken = null;
         if (typeof window !== 'undefined') {
           localStorage.removeItem('firebase_google_access_token');
         }
         if (onAuthFailure) onAuthFailure();
       }
-    } else {
-      cachedAccessToken = null;
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('firebase_google_access_token');
-      }
-      if (onAuthFailure) onAuthFailure();
     }
-  });
+  );
+
+  // Return unsubscribe function
+  return () => {
+    subscription.unsubscribe();
+  };
 };
 
-export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+export const googleSignIn = async (): Promise<{ user: any; accessToken: string } | null> => {
   try {
-    isSigningIn = true;
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
-      throw new Error('Failed to get access token from Firebase Auth');
-    }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        scopes: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar.events',
+        redirectTo: typeof window !== 'undefined' ? window.location.origin + '/login' : undefined
+      }
+    });
 
-    cachedAccessToken = credential.accessToken;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('firebase_google_access_token', cachedAccessToken);
+    if (error) {
+      throw error;
     }
-    return { user: result.user, accessToken: cachedAccessToken };
+    
+    // Supabase OAuth redirects the page, so this will not return synchronously
+    return null;
   } catch (error: any) {
     console.error('Sign in error:', error);
     throw error;
-  } finally {
-    isSigningIn = false;
   }
 };
 
@@ -80,21 +77,29 @@ export const getAccessToken = async (): Promise<string | null> => {
 };
 
 export const logout = async () => {
-  await auth.signOut();
+  await supabase.auth.signOut();
   cachedAccessToken = null;
   if (typeof window !== 'undefined') {
     localStorage.removeItem('firebase_google_access_token');
+    // Also clear other SIPEKA custom local storage items
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("userPhoto");
+    localStorage.removeItem("activeRole");
+    localStorage.removeItem("actualRole");
+    localStorage.removeItem("activeUserId");
   }
 };
 
+// Mock functions to prevent imports from breaking in other files
 export const changeFirebasePassword = async (newPassword: string): Promise<void> => {
-  const user = auth.currentUser;
-  if (!user) {
-    throw new Error('Tidak ada pengguna yang sedang masuk ke Firebase Auth.');
-  }
-  await updatePassword(user, newPassword);
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
 };
 
 export const sendFirebasePasswordReset = async (email: string): Promise<void> => {
-  await sendPasswordResetEmail(auth, email);
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  if (error) throw error;
 };
+
