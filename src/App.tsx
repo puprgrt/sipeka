@@ -24,7 +24,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 export default function App() {
   return (
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter basename="/sipeka">
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Layout />}>
