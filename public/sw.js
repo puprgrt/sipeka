@@ -1,6 +1,4 @@
-const isDev = self.location.hostname === 'localhost' || 
-              self.location.hostname === '127.0.0.1' || 
-              self.location.hostname.includes('ais-dev');
+const isDev = true; // FORCE dev mode to bypass cache and fix stale service worker
 
 if (isDev) {
   self.addEventListener('install', (event) => {

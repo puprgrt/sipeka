@@ -176,39 +176,51 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Simulate credential check
-      // For testing, let's treat any demo role's email with password "password" or any matching custom credentials as valid
-      const matchedDemo = DEMO_ROLES.find(r => r.email.toLowerCase() === email.toLowerCase());
-      
-      let userRole = "Pengelola_Bangunan";
-      let displayName = email.split("@")[0];
-      let finalEmail = email;
-
-      if (matchedDemo) {
-        userRole = matchedDemo.role;
-        displayName = matchedDemo.name;
-        finalEmail = matchedDemo.email;
-      } else if (email === "admin@sipeka.com") {
-        userRole = "Administrator";
-        displayName = "Super Admin SI-PEKA";
+      // Validate password for demo
+      if (password !== "password" && password !== "admin123") {
+        throw new Error("Kata sandi salah. (Petunjuk demo: gunakan 'password')");
       }
 
       // Check for users in database if possible
+      let dbUserFound = null;
       try {
         const res = await fetch("/api/users");
         if (res.ok) {
           const dbUsers = await res.json();
           if (Array.isArray(dbUsers)) {
-            const dbUser = dbUsers.find(u => u.email?.toLowerCase() === email.toLowerCase());
-            if (dbUser) {
-              userRole = dbUser.role;
-              displayName = dbUser.namaLengkap;
-              localStorage.setItem("activeUserId", String(dbUser.idUser));
-            }
+            dbUserFound = dbUsers.find(u => u.email?.toLowerCase() === email.toLowerCase());
           }
         }
       } catch (err) {
         console.warn("Could not query DB users list", err);
+      }
+
+      const matchedDemo = DEMO_ROLES.find(r => r.email.toLowerCase() === email.toLowerCase());
+      
+      let userRole = "Pengelola_Bangunan";
+      let displayName = email.split("@")[0];
+      let finalEmail = email;
+      let isValidUser = false;
+
+      if (dbUserFound) {
+        userRole = dbUserFound.role;
+        displayName = dbUserFound.namaLengkap;
+        finalEmail = dbUserFound.email;
+        localStorage.setItem("activeUserId", String(dbUserFound.idUser));
+        isValidUser = true;
+      } else if (matchedDemo) {
+        userRole = matchedDemo.role;
+        displayName = matchedDemo.name;
+        finalEmail = matchedDemo.email;
+        isValidUser = true;
+      } else if (email.toLowerCase() === "admin@sipeka.com") {
+        userRole = "Administrator";
+        displayName = "Super Admin SI-PEKA";
+        isValidUser = true;
+      }
+
+      if (!isValidUser) {
+        throw new Error("Email tidak terdaftar di sistem.");
       }
 
       // Save to localStorage
