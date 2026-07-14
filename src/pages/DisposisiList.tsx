@@ -652,8 +652,15 @@ export default function DisposisiList() {
                                   alamatDinas: dinasConfig?.alamat || 'Jl. Prof. KH. Cecep Syarifudin No. 117, Garut',
                                   nomorSurat: `${selectedAssessment.id.split('-')[0].toUpperCase()}/PUPR/${new Date().getFullYear()}`,
                                   tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+                                  nomorSuratPermohonan: selectedAssessment.customFields?.nomorSuratPermohonan || '-',
+                                  tanggalSuratPermohonan: selectedAssessment.date ? new Date(selectedAssessment.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-',
                                   namaSekolah: selectedAssessment.schoolName,
                                   namaBangunan: selectedAssessment.buildingName,
+                                  npsn: selectedAssessment.npsn || '-',
+                                  luasBangunan: String(selectedAssessment.buildingArea || '-'),
+                                  jumlahLantai: String(selectedAssessment.floorCount || '-'),
+                                  alamatBangunan: selectedAssessment.address || '-',
+                                  koordinatGps: selectedAssessment.coordinates ? `${selectedAssessment.coordinates.lat}, ${selectedAssessment.coordinates.lng}` : '-',
                                   totalKerusakan: `${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%`,
                                   kategoriKerusakan: selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan',
                                   namaKadis: dispNamaPimpinan || 'Ir. H. Kepala Dinas, M.T.',
@@ -678,10 +685,15 @@ export default function DisposisiList() {
                                     <h2><u>SURAT HASIL PERHITUNGAN PENILAIAN KERUSAKAN BANGUNAN</u></h2>
                                     <p>Nomor: ${selectedAssessment.id.split('-')[0].toUpperCase()}/PUPR/${new Date().getFullYear()}</p>
                                     <div class="content">
-                                      <p>Berdasarkan hasil survei teknis dan analisis kerusakan pada:</p>
+                                      <p>Menindaklanjuti Surat Permohonan Nomor: ${selectedAssessment.customFields?.nomorSuratPermohonan || '-'} tanggal ${selectedAssessment.date ? new Date(selectedAssessment.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'} perihal permohonan penilaian kerusakan bangunan, dan berdasarkan hasil survei teknis serta analisis perhitungan kerusakan yang telah dilaksanakan pada:</p>
                                       <table style="width: 100%; text-align: left; margin: 20px 0;">
                                         <tr><td width="30%">Nama Instansi</td><td>: ${selectedAssessment.schoolName}</td></tr>
                                         <tr><td>Nama Bangunan</td><td>: ${selectedAssessment.buildingName}</td></tr>
+                                        <tr><td>NPSN / NUP</td><td>: ${selectedAssessment.npsn || '-'}</td></tr>
+                                        <tr><td>Luas Bangunan</td><td>: ${selectedAssessment.buildingArea || '-'} m²</td></tr>
+                                        <tr><td>Jumlah Lantai</td><td>: ${selectedAssessment.floorCount || '-'} Lantai</td></tr>
+                                        <tr><td>Alamat</td><td>: ${selectedAssessment.address || '-'}</td></tr>
+                                        <tr><td>Koordinat GPS</td><td>: ${selectedAssessment.coordinates ? `${selectedAssessment.coordinates.lat}, ${selectedAssessment.coordinates.lng}` : '-'}</td></tr>
                                         <tr><td>Total Kerusakan</td><td>: ${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%</td></tr>
                                         <tr><td>Kategori</td><td>: ${selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan'}</td></tr>
                                       </table>

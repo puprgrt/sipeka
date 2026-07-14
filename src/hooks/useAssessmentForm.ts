@@ -955,7 +955,8 @@ Pengelola Bangunan / Pemohon`;
       documentLink: documentLink ? documentLink.replace(/\/edit$/, "/export?format=pdf") : null,
       customFields: {
         ...customFields,
-        idBangunan
+        idBangunan,
+        nomorSuratPermohonan: letterReferenceNo
       }
     };
 
