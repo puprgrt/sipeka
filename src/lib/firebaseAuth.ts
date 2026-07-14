@@ -53,7 +53,10 @@ export const googleSignIn = async (): Promise<{ user: any; accessToken: string }
       provider: 'google',
       options: {
         scopes: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar.events',
-        redirectTo: typeof window !== 'undefined' ? window.location.origin + '/login' : undefined
+        redirectTo: typeof window !== 'undefined' ? window.location.origin + '/login' : undefined,
+        queryParams: {
+          prompt: 'select_account'
+        }
       }
     });
 

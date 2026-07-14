@@ -337,7 +337,8 @@ export default function Layout() {
     localStorage.removeItem("actualRole");
     localStorage.removeItem("activeUserId");
     setUser(null);
-    navigate("/login");
+    const baseUrl = import.meta.env.BASE_URL ? import.meta.env.BASE_URL.replace(/\/$/, "") : "";
+    window.location.href = `${baseUrl}/login`;
   };
 
   useEffect(() => {
