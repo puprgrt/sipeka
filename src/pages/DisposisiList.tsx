@@ -26,6 +26,7 @@ export default function DisposisiList() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
   const [dinasConfig, setDinasConfig] = useState<any>(null);
+  const [letterConfig, setLetterConfig] = useState<any>(null);
   const [appConfig, setAppConfig] = useState<any>(null);
   const [suratHasilTemplate, setSuratHasilTemplate] = useState<string>("");
   const [lembarDisposisiTemplate, setLembarDisposisiTemplate] = useState<string>("");
@@ -128,6 +129,11 @@ export default function DisposisiList() {
       .then(data => setAppConfig(data))
       .catch(err => console.error("Failed to fetch app-settings", err));
       
+    fetch("/api/pengaturan-surat")
+      .then(res => res.json())
+      .then(data => setLetterConfig(data))
+      .catch(err => console.error("Failed to fetch pengaturan-surat", err));
+      
     fetch("/api/document-templates")
       .then(res => res.json())
       .then((templates: any[]) => {
@@ -189,15 +195,15 @@ export default function DisposisiList() {
           ? "Analisis selesai. Segera siapkan draft Rekomendasi Penanganan untuk ditandatangani."
           : "Tindak lanjut sesuai dengan prosedur dan kewenangan tugas."
       ));
-      setDispNamaPimpinan(initialData.namaPimpinan || "Ir. H. Kepala Dinas, M.T.");
-      setDispNipPimpinan(initialData.nipPimpinan || "NIP. 19700101 199803 1 004");
+      setDispNamaPimpinan(initialData.namaPimpinan || letterConfig?.sistem?.namaKepala || "Ir. H. Kepala Dinas, M.T.");
+      setDispNipPimpinan(initialData.nipPimpinan || letterConfig?.sistem?.nipKepala || "NIP. 19700101 199803 1 004");
       setDispStatus(selectedAssessment.status || "Menunggu_Validasi");
       setRecallsList(initialData.recalls || []);
       setRecallTargetStatus(selectedAssessment.status || "Menunggu_Validasi");
     } else {
       setDispositionLogs([]);
     }
-  }, [selectedAssessment, selectedAssessment?.status]);
+  }, [selectedAssessment, selectedAssessment?.status, letterConfig]);
 
   const handleSaveDisposisi = async () => {
     if (!selectedAssessment) return;
@@ -1270,8 +1276,8 @@ export default function DisposisiList() {
                                   ? "Analisis selesai. Segera siapkan draft Rekomendasi Penanganan untuk ditandatangani."
                                   : "Tindak lanjut sesuai dengan prosedur dan kewenangan tugas."
                               ));
-                              setDispNamaPimpinan(initialData.namaPimpinan || "Ir. H. Kepala Dinas, M.T.");
-                              setDispNipPimpinan(initialData.nipPimpinan || "NIP. 19700101 199803 1 004");
+                              setDispNamaPimpinan(initialData.namaPimpinan || letterConfig?.sistem?.namaKepala || "Ir. H. Kepala Dinas, M.T.");
+                              setDispNipPimpinan(initialData.nipPimpinan || letterConfig?.sistem?.nipKepala || "NIP. 19700101 199803 1 004");
                               setIsEditingDisposisi(false);
                             }}
                             className="inline-flex items-center text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors border border-slate-200"
