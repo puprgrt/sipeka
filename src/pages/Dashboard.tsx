@@ -494,7 +494,7 @@ export default function Dashboard() {
                   roleBadgeColor = "bg-blue-50 text-blue-700 border-blue-150";
                 } else if (trail.role === "Dinas") {
                   roleBadgeColor = "bg-purple-50 text-purple-700 border-purple-150";
-                } else if (trail.role === "Pengelola_Bangunan" || trail.role === "Pengelola") {
+                } else if (trail.role === "Pengelola_Bangunan") {
                   roleBadgeColor = "bg-emerald-50 text-emerald-700 border-emerald-150";
                 }
 

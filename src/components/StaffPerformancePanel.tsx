@@ -33,7 +33,7 @@ export default function StaffPerformancePanel() {
           data.forEach(t => {
             if (!t.userId || !t.userName) return; 
             // Skip Pengelola Bangunan from staff report, typically staff are internal users
-            if (t.role === "Pengelola_Bangunan" || t.role === "Pengelola") return;
+            if (t.role === "Pengelola_Bangunan") return;
 
             if (!performanceMap.has(t.userId)) {
               performanceMap.set(t.userId, {

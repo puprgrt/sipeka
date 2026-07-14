@@ -614,7 +614,7 @@ export default function AssessmentList() {
       header: "Status Disposisi",
       cell: ({ row }) => {
         const assessment = row.original;
-        if (activeRole === "Pengelola_Bangunan" || activeRole === "Pengelola") {
+        if (activeRole === "Pengelola_Bangunan") {
           return (
             <span className={cn(
               "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
@@ -1037,7 +1037,7 @@ export default function AssessmentList() {
                   </div>
 
                   {/* Revert / Update Status Selector in Drawer */}
-                  {activeRole !== "Pengelola_Bangunan" && activeRole !== "Pengelola" && (
+                  {activeRole !== "Pengelola_Bangunan" && (
                     <div className="flex flex-col gap-2 pt-3 border-t border-slate-100">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                         Ubah / Revert Status Permohonan:
@@ -1381,7 +1381,7 @@ export default function AssessmentList() {
                     </div>
                   )}
 
-                  {activeRole !== "Pengelola_Bangunan" && activeRole !== "Pengelola" ? (
+                  {activeRole !== "Pengelola_Bangunan" ? (
                     <div className="space-y-3">
                       <div className="h-px bg-slate-100 my-2" />
                       <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Aksi Administratif & Teknis Dinas</p>

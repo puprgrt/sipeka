@@ -401,7 +401,7 @@ export default function Layout() {
     const currentRolePerms = rolePermissions[activeRole]?.permissions || {};
 
     // Dashboard
-    if (currentRolePerms.dashboard !== false || activeRole === "Administrator" || activeRole === "Pengelola_Bangunan") {
+    if (currentRolePerms.dashboard !== false || activeRole === "Administrator") {
       items.push({ name: "Dasbor Analitik", href: "/", icon: LayoutDashboard });
       if (activeRole !== "Operator") {
         items.push({ name: "Dashboard AI", href: "/ai", icon: Brain });
@@ -435,11 +435,8 @@ export default function Layout() {
     }
 
     // Kartu Disposisi
-    if (activeRole === "Administrator" || (currentRolePerms.disposition !== false && activeRole !== "Pengelola_Bangunan" && activeRole !== "Tim_Teknis")) {
-      // Actually, since we have the permission boolean:
-      if (activeRole === "Administrator" || currentRolePerms.disposition) {
-        items.push({ name: "Kartu Disposisi", href: "/disposisi", icon: ClipboardList });
-      }
+    if (activeRole === "Administrator" || currentRolePerms.disposition) {
+      items.push({ name: "Kartu Disposisi", href: "/disposisi", icon: ClipboardList });
     }
 
     // Smart File Manager (Baru)
@@ -454,7 +451,7 @@ export default function Layout() {
     items.push({ name: "Detail Profil Saya", href: "/profile", icon: UserCog });
 
     // Pengaturan
-    if (currentRolePerms.showSettings !== false || activeRole === "Administrator" || activeRole === "Pengelola_Bangunan") {
+    if (currentRolePerms.showSettings !== false || activeRole === "Administrator") {
       items.push({ name: "Pengaturan", href: "/settings", icon: SettingsIcon });
     }
 

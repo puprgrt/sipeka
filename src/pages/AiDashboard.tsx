@@ -89,7 +89,7 @@ export default function AiDashboard() {
       .then(data => {
         if (Array.isArray(data)) {
           // Filter by user role if Pengelola_Bangunan
-          const filtered = ((activeRole === "Pengelola_Bangunan" || activeRole === "Pengelola") && activeUserId)
+          const filtered = (activeRole === "Pengelola_Bangunan" && activeUserId)
             ? data.filter(a => String(a.idUserPengelola) === activeUserId)
             : data;
           setAssessments(filtered);

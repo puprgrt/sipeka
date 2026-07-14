@@ -32,7 +32,7 @@ export const DEFAULT_ROLE_PERMISSIONS = {
   Pengelola_Bangunan: {
     name: "Pengelola Bangunan",
     description: "Petugas eksternal (Kepala Sekolah/Operator Madrasah) yang mendaftarkan profil bangunan dan mengajukan penilaian mandiri.",
-    permissions: { dashboard: false, manageUsers: false, survey: false, disposition: false, reports: false, editKamus: false, showMap: true, showSettings: false, aiEngine: false }
+    permissions: { dashboard: true, manageUsers: false, survey: false, disposition: false, reports: false, editKamus: false, showMap: true, showSettings: true, aiEngine: false }
   }
 };
 
