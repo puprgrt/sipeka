@@ -16,7 +16,7 @@ import SmartPhotoViewer from '../components/SmartPhotoViewer';
 import DocumentPreviewModal from "../components/DocumentPreviewModal";
 import { 
   Eye, Clock, Calendar, Building, MapPin, FileText, 
-  CheckCircle2, User, Loader2, ArrowRight, ExternalLink, X, HelpCircle, Edit, Trash2,
+  CheckCircle2, User, Loader2, ArrowRight, ExternalLink, X, HelpCircle, Edit, Trash2, PlusCircle,
   Search, Filter, ArrowUpDown, SlidersHorizontal, RefreshCw
 } from "lucide-react";
 import { STATUS_TABS, STATUS_OPTIONS, getStatusBadgeClasses, formatStatusText } from "../lib/statusUtils";
@@ -741,6 +741,15 @@ export default function AssessmentList() {
             <h2 className="text-lg font-bold text-slate-800">Daftar Penilaian</h2>
             <p className="mt-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rekapitulasi seluruh penilaian kerusakan bangunan</p>
           </div>
+          {(activeRole === "Administrator" || activeRole === "Pengelola_Bangunan") && (
+            <Link 
+              to="/new" 
+              className="inline-flex items-center gap-2 bg-pu-blue text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-blue-800 transition-colors shadow-sm"
+            >
+              <PlusCircle className="w-4 h-4" />
+              Tambah Penilaian
+            </Link>
+          )}
         </div>
 
         {/* Disposition Tabs */}

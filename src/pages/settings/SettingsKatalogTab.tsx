@@ -57,7 +57,7 @@ export default function SettingsKatalogTab({ onToast }: SettingsKatalogTabProps)
     setIsAddingKatalog(true); setEditingKatalogId(null);
     setKatalogForm({
       idKomponen: components.find(c => !filterComponent || c.namaKomponen === filterComponent)?.idKomponen || components[0]?.idKomponen || undefined,
-      idKlasifikasi: classifications.find(cl => cl.namaKlasifikasi === "Ringan")?.idKlasifikasi || undefined,
+      idKlasifikasi: classifications.find(cl => cl.namaKlasifikasi === "Rusak Ringan")?.idKlasifikasi || undefined,
       deskripsiPupr: "", urlFotoContoh: ""
     });
   };
@@ -94,13 +94,31 @@ export default function SettingsKatalogTab({ onToast }: SettingsKatalogTabProps)
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredKatalog.map((kat) => {
-            const isRingan = kat.namaKlasifikasi === "Ringan";
-            const isSedang = kat.namaKlasifikasi === "Sedang";
-            const isBerat = kat.namaKlasifikasi === "Berat";
+            const isTidakRusak = kat.namaKlasifikasi === "Tidak Rusak";
+            const isSangatRingan = kat.namaKlasifikasi === "Rusak Sangat Ringan";
+            const isRingan = kat.namaKlasifikasi === "Rusak Ringan";
+            const isSedang = kat.namaKlasifikasi === "Rusak Sedang";
+            const isBerat = kat.namaKlasifikasi === "Rusak Berat";
+            const isSangatBerat = kat.namaKlasifikasi === "Rusak Sangat Berat";
+            
+            const cardClass = isSangatRingan ? "bg-teal-50/20 border-teal-200/80" 
+                            : isRingan ? "bg-green-50/20 border-green-200/80" 
+                            : isSedang ? "bg-yellow-50/20 border-yellow-200/80" 
+                            : isBerat ? "bg-orange-50/20 border-orange-200/80" 
+                            : isSangatBerat ? "bg-red-50/20 border-red-200/80" 
+                            : "bg-slate-50/20 border-slate-200";
+                            
+            const badgeClass = isSangatRingan ? "bg-teal-600/90" 
+                             : isRingan ? "bg-green-600/90" 
+                             : isSedang ? "bg-yellow-600/90" 
+                             : isBerat ? "bg-orange-600/90" 
+                             : isSangatBerat ? "bg-red-600/90" 
+                             : "bg-slate-600/90";
+
             return (
               <motion.div layout key={kat.idKatalog} className={cn(
                 "rounded-2xl border overflow-hidden flex flex-col shadow-sm transition-all hover:shadow-md hover:scale-[1.01]",
-                isRingan ? "bg-green-50/20 border-green-200/80" : isSedang ? "bg-yellow-50/20 border-yellow-200/80" : isBerat ? "bg-orange-50/20 border-orange-200/80" : "bg-slate-50/20 border-slate-200"
+                cardClass
               )}>
                 <div className="relative aspect-video bg-slate-100 flex items-center justify-center overflow-hidden">
                   {kat.urlFotoContoh ? (
@@ -110,7 +128,7 @@ export default function SettingsKatalogTab({ onToast }: SettingsKatalogTabProps)
                   )}
                   <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
                     <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white bg-pu-blue/90 uppercase tracking-wider backdrop-blur-sm shadow-sm">{kat.namaKomponen}</span>
-                    <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-bold text-white uppercase tracking-wider backdrop-blur-sm shadow-sm", isRingan ? "bg-green-600/90" : isSedang ? "bg-yellow-600/90" : isBerat ? "bg-orange-600/90" : "bg-slate-600/90")}>Rusak {kat.namaKlasifikasi}</span>
+                    <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-bold text-white uppercase tracking-wider backdrop-blur-sm shadow-sm", badgeClass)}>{kat.namaKlasifikasi}</span>
                   </div>
                 </div>
                 <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
@@ -161,7 +179,7 @@ export default function SettingsKatalogTab({ onToast }: SettingsKatalogTabProps)
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Tingkat Kerusakan</label>
                   <select value={katalogForm.idKlasifikasi || ""} onChange={e => setKatalogForm({...katalogForm, idKlasifikasi: parseInt(e.target.value)})} className="w-full text-xs p-3 rounded-xl border border-slate-200 bg-white focus:border-pu-blue focus:ring-pu-blue font-medium">
                     <option value="">-- Pilih Tingkat Kerusakan --</option>
-                    {classifications.filter(cl => ["Ringan", "Sedang", "Berat"].includes(cl.namaKlasifikasi)).map(cl => (<option key={cl.idKlasifikasi} value={cl.idKlasifikasi}>{cl.namaKlasifikasi}</option>))}
+                    {classifications.map(cl => (<option key={cl.idKlasifikasi} value={cl.idKlasifikasi}>{cl.namaKlasifikasi}</option>))}
                   </select>
                 </div>
                 <div>
