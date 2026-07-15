@@ -78,6 +78,7 @@ interface SmartPreviewModalProps {
 }
 
 export default function SmartPreviewModal(props: SmartPreviewModalProps) {
+  const [isMakingPublic, setIsMakingPublic] = React.useState(true);
   const {
     selectedFile, setSelectedFile, setFiles, activeRole,
     isEditingMetadata, setIsEditingMetadata,
@@ -114,11 +115,17 @@ export default function SmartPreviewModal(props: SmartPreviewModalProps) {
   React.useEffect(() => {
     // Ensure the file is public so iframe preview doesn't show "You need access"
     if (selectedFile && selectedFile.type !== 'folder' && selectedFile.id) {
+      setIsMakingPublic(true);
       import('../../lib/driveService').then(({ makeFilePublic }) => {
-        makeFilePublic(selectedFile.id).catch((err) => {
+        makeFilePublic(selectedFile.id).then(() => {
+          setIsMakingPublic(false);
+        }).catch((err) => {
           console.error("Auto makeFilePublic failed:", err);
+          setIsMakingPublic(false); // Still show it and let user request access
         });
       });
+    } else {
+      setIsMakingPublic(false);
     }
   }, [selectedFile]);
 
@@ -255,11 +262,18 @@ export default function SmartPreviewModal(props: SmartPreviewModalProps) {
 
             {(selectedFile.type === 'word' || selectedFile.type === 'excel' || selectedFile.type === 'other') && selectedFile.previewUrl ? (
               <div className="w-full h-full p-1 bg-white rounded-xl border border-slate-200">
-                <iframe 
+                {isMakingPublic ? (
+                  <div className="w-full h-full rounded-lg bg-slate-100 flex flex-col items-center justify-center">
+                    <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="mt-4 text-slate-500 font-medium text-sm">Menyiapkan pratinjau publik...</p>
+                  </div>
+                ) : (
+                  <iframe 
                   src={selectedFile.previewUrl.replace(/\/view.*$/, '/preview')}
                   className="w-full h-full rounded-lg"
                   title="Google Drive Preview"
                 />
+                )}
               </div>
             ) : selectedFile.type === 'excel' && selectedFile.excelData ? (
               <ExcelPreview
