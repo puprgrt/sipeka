@@ -1,0 +1,10 @@
+export { default as SettingsAiTab } from './SettingsAiTab';
+export { default as SettingsAppTab } from './SettingsAppTab';
+export { default as SettingsComponentTab } from './SettingsComponentTab';
+export { default as SettingsDinasTab } from './SettingsDinasTab';
+export { default as SettingsKatalogTab } from './SettingsKatalogTab';
+export { default as SettingsUsersTab } from './SettingsUsersTab';
+export { default as SettingsFormTab } from './SettingsFormTab';
+export { default as SettingsProfileParamTab } from './SettingsProfileParamTab';
+export { default as SettingsLetterTab } from './SettingsLetterTab';
+export { default as SettingsTemplateTab } from './SettingsTemplateTab';

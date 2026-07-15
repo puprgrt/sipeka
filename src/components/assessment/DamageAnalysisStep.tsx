@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Tooltip } from 'react-tooltip';
-import { Info, Plus, Minus, Paintbrush, X, Camera, HelpCircle, Sparkles, Loader2 } from 'lucide-react';
+import { Info, Plus, Minus, Paintbrush, X, Camera, HelpCircle, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface DamageAnalysisStepProps {
@@ -27,35 +27,7 @@ interface DamageAnalysisStepProps {
   setComponents: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
-export const PONDASI_OPTIONS = [
-  { level: "Tidak Rusak", label: "Pondasi diindikasi dalam kondisi baik" },
-  { level: "Rusak Sangat Ringan", label: "Penurunan merata pada seluruh struktur bangunan" },
-  { level: "Rusak Ringan", label: "Penurunan merata pada seluruh struktur bangunan dan/atau Sedikit beda penurunan (differential settlement) antar kolom / dinding, tetapi tidak berakibat kerusakan pada struktur atasnya." },
-  { level: "Rusak Sedang", label: "Penurunan > 1/250 L (L adalah Jarak Antar Kolom), dan menyebabkan kerusakan awal pada struktur atasnya." },
-  { level: "Rusak Berat", label: "Bangunan miring secara kasat mata, Lantai dasar naik/menggelembung" },
-  { level: "Rusak Sangat Berat", label: "Pondasi patah, bergeser akibat longsor, struktur atas menjadi rusak" },
-  { level: "Komponen Tidak Sesuai", label: "Material, dimensi, dan konstruksi pondasi diindikasi tidak sesuai dengan persyaratan teknis (merujuk pada Rencana Teknis apabila ada, Petunjuk Teknis, dan/atau SNI)" }
-];
-
-export const LISTRIK_OPTIONS = [
-  { level: "Tidak Rusak", label: "Jaringan listrik dalam kondisi baik" },
-  { level: "Rusak Sangat Ringan", label: "Sebagian kecil komponen dari panel-panel LP rusak, ada sedikit jalur kabel instalasi shortage, sebagian kecil armature rusak ringan, sehingga biaya perbaikan kurang dari 10% dari biaya instalasi baru" },
-  { level: "Rusak Ringan", label: "Beberapa komponen dari panel-panel LP rusak, sebagian kecil jalur kabel instalasi shortage, sehingga armature rusak ringan, sehingga biaya perbaikan 10-25% dari biaya instalasi baru" },
-  { level: "Rusak Sedang", label: "Beberapa komponen dari panel-panel LP rusak, sebagian kecil jalur kabel instalasi shortage, sehingga armature rusak berat dan ringan, sehingga biaya perbaikan 25-50% dari biaya instalasi baru" },
-  { level: "Rusak Berat", label: "Sebagian besar komponen panel-panel LP rusak, sebagian besar kabel instalasi shortage, sebagian besar armature rusak, sehingga biaya perbaikan 50-65 % dari instalasi baru" },
-  { level: "Rusak Sangat Berat", label: "Sebagian besar komponen panel-panel LP rusak, sebagian besar kabel instalasi shortage, seluruh armature rusak berat, sehingga biaya perbaikan lebih dari 65 % dari instalasi baru" },
-  { level: "Komponen Tidak Sesuai", label: "Material, dimensi, dan konstruksi jaringan listrik diindikasi tidak sesuai dengan persyaratan teknis (merujuk pada Rencana Teknis apabila ada, Petunjuk Teknis, dan/atau SNI)" }
-];
-
-export const AIR_BERSIH_OPTIONS = [
-  { level: "Tidak Rusak", label: "Sistem penyediaan air dalam kondisi baik" },
-  { level: "Rusak Sangat Ringan", label: "Kebocoran pipa terbatas ditempat yang terlihat atau mudah dicapai, keran-keran kecil rusak, sehingga biaya perbaikan kurang dari 10% biaya instalasi baru" },
-  { level: "Rusak Ringan", label: "Bagian-bagian kecil pemipaan bocor, motor pompa terbakar, keran-keran kecil rusak, sehingga biaya perbaikan antara 10-25% dari biaya instalasi baru" },
-  { level: "Rusak Sedang", label: "Pompa, motor, pipa, dan keran rusak apabila diganti atau diperbaiki memerlukan biaya antara 25-50% dari biaya instalasi baru" },
-  { level: "Rusak Berat", label: "Sebagian besar pompa, sebagian besar motor terbakar, pipa utama bocor namun ditempat terbuka, beberapa keran tidak berfungsi, sehingga biaya perbaikan 50-65% dari biaya instalasi baru" },
-  { level: "Rusak Sangat Berat", label: "Pompa -pompa rusak total, motor terbakar, di banyak tempat terbuka dan tutup pipa-pipa bocor keran-keran tidak berfungsi, sehingga perbaikan instalasi perlu menyeluruh, dengan perkiraan biaya lebih dari 65% dari biaya instalasi baru" },
-  { level: "Komponen Tidak Sesuai", label: "Material, dimensi, dan konstruksi sistem penyediaan air diindikasi tidak sesuai dengan persyaratan teknis (merujuk pada Rencana Teknis apabila ada, Petunjuk Teknis, dan/atau SNI)" }
-];
+import { PONDASI_OPTIONS, LISTRIK_OPTIONS, AIR_BERSIH_OPTIONS } from './assessmentConstants';
 
 export default function DamageAnalysisStep({
   components,
@@ -82,10 +54,14 @@ export default function DamageAnalysisStep({
   const isTahap2Complete = components.every(comp => {
     if (comp.safetyImpact) return true;
     if (!comp.damageDetails || comp.damageDetails.length === 0) return false;
-    const hasVolume = comp.damageDetails.some(d => d.percentage > 0);
-    if (!hasVolume) return false;
-    const missingPhotos = comp.damageDetails.some(d => d.percentage > 0 && (!d.photos || d.photos.length === 0));
+    
+    // minimal 1 kriteria kerusakan
+    if (comp.damageDetails.length === 0) return false;
+    
+    // kriteria yang diisi wajib melampirkan dokumentasi
+    const missingPhotos = comp.damageDetails.some(d => !d.photos || d.photos.length === 0);
     if (missingPhotos) return false;
+    
     return true;
   });
 
@@ -474,22 +450,32 @@ export default function DamageAnalysisStep({
             })}
           </div>
 
-          <div className="flex justify-between items-center p-6 border-t border-white/30 bg-white/20 backdrop-blur-sm">
-            <button onClick={() => setStep(2)} className="inline-flex items-center px-4 py-2.5 text-sm font-bold rounded-xl text-slate-600 bg-white/50 backdrop-blur-sm border border-white/50 shadow-sm hover:bg-white/80 transition-all hover:scale-105 active:scale-95">
-              Kembali
-            </button>
-            <button 
-              onClick={() => setStep(4)} 
-              disabled={!isTahap2Complete}
-              className={cn(
-                "inline-flex items-center px-6 py-2.5 text-sm font-bold rounded-xl shadow-md transition-all",
-                isTahap2Complete
-                  ? "text-pu-blue bg-pu-yellow hover:bg-yellow-400 hover:scale-105 active:scale-95"
-                  : "text-slate-400 bg-slate-200 cursor-not-allowed"
+          <div className="flex justify-between items-center p-6 border-t border-white/30 bg-white/20 backdrop-blur-sm flex-wrap gap-4">
+            <div className="flex-1">
+              {!isTahap2Complete && (
+                <div className="flex items-center gap-2 text-rose-600 bg-rose-50/80 backdrop-blur-sm border border-rose-150 px-4 py-2.5 rounded-xl text-xs font-semibold max-w-lg">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>Setiap komponen wajib diisi minimal 1 kriteria kerusakan beserta foto dokumentasinya.</span>
+                </div>
               )}
-            >
-              {isPermohonanFlow ? "Lanjut ke Surat Permohonan" : "Lihat Ringkasan"}
-            </button>
+            </div>
+            <div className="flex justify-end gap-3 flex-shrink-0">
+              <button onClick={() => setStep(2)} className="inline-flex items-center px-4 py-2.5 text-sm font-bold rounded-xl text-slate-600 bg-white/50 backdrop-blur-sm border border-white/50 shadow-sm hover:bg-white/80 transition-all hover:scale-105 active:scale-95">
+                Kembali
+              </button>
+              <button 
+                onClick={() => setStep(4)} 
+                disabled={!isTahap2Complete}
+                className={cn(
+                  "inline-flex items-center px-6 py-2.5 text-sm font-bold rounded-xl shadow-md transition-all",
+                  isTahap2Complete
+                    ? "text-pu-blue bg-pu-yellow hover:bg-yellow-400 hover:scale-105 active:scale-95"
+                    : "text-slate-400 bg-slate-200 cursor-not-allowed"
+                )}
+              >
+                {isPermohonanFlow ? "Lanjut ke Surat Permohonan" : "Lihat Ringkasan"}
+              </button>
+            </div>
           </div>
         </motion.div>
   );

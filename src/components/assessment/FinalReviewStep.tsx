@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Printer, Save } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { PONDASI_OPTIONS, LISTRIK_OPTIONS, AIR_BERSIH_OPTIONS } from './DamageAnalysisStep';
+import { PONDASI_OPTIONS, LISTRIK_OPTIONS, AIR_BERSIH_OPTIONS } from './assessmentConstants';
 interface FinalReviewStepProps {
   calculateFinalResult: () => { category: string; totalDamagePercentage: number; [key: string]: any };
   schoolName: string;

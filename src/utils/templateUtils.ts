@@ -82,35 +82,38 @@ export const PLACEHOLDERS_LAMPIRAN_XLSX: PlaceholderInfo[] = [
 // DEFAULT TEMPLATE HTML
 // ========================
 
-export const DEFAULT_TEMPLATE_SURAT_PERMOHONAN = `SURAT PERMOHONAN PENILAIAN KERUSAKAN BANGUNAN GEDUNG
+export const DEFAULT_TEMPLATE_SURAT_PERMOHONAN = `{{namaInstansiAtas}}
+{{namaInstansiBawah}}
+{{namaSekolah}}
+{{alamatPemohon}}
 
-Nomor Surat: {{nomorSurat}}
-Perihal: Permohonan Penilaian Kerusakan Fisik Bangunan Gedung
-Tanggal: {{tanggal}}
+Garut, {{tanggal}}
+Nomor    : {{nomorSurat}}
+Sifat    : Biasa
+Lampiran : 1 Berkas
+Hal      : Permohonan Penilaian Kerusakan Bangunan Gedung {{namaSekolah}}
 
-Kepada Yth.
-Kepala Dinas Pekerjaan Umum dan Penataan Ruang
-Kabupaten Garut
-di Tempat
+Yth. Kepala Dinas Pekerjaan Umum dan Penataan Ruang Kabupaten Garut
+di
+   Garut
 
-Dengan hormat,
+Dalam rangka menjamin keselamatan, keamanan, kenyamanan, dan keberlanjutan fungsi bangunan gedung pada {{namaInstansiBawah}}, bersama ini kami mengajukan permohonan Analisis dan Perhitungan Kerusakan Bangunan Gedung terhadap bangunan yang berada pada lokasi berikut:
 
-Bersama ini kami sampaikan permohonan penilaian kondisi fisik bangunan gedung dengan data sebagai berikut:
+1. Identitas Bangunan Gedung:
+Nama Bangunan   : {{namaBangunan}}
+NPSN            : {{npsn}}
+Luas            : {{luasBangunan}} m2
+Jumlah Lantai   : {{jumlahLantai}}
+Alamat Bangunan : {{alamatBangunan}}
+Koordinat       : {{koordinatGps}}
 
-Nama Sekolah/Instansi : {{namaSekolah}}
-Nama Bangunan         : {{namaBangunan}}
-NPSN/NUP              : {{npsn}}
-Luas Bangunan         : {{luasBangunan}} m²
-Jumlah Lantai         : {{jumlahLantai}} Lantai
-Alamat                : {{alamatBangunan}}
-Koordinat GPS         : {{koordinatGps}}
+Sehubungan dengan data penilaian mandiri yang dilampirkan, diperlukan guna mengetahui tingkat kerusakan bangunan secara kuantitatif dan kualitatif sesuai ketentuan teknis yang berlaku. 
+Demikian permohonan ini kami sampaikan. Besar harapan kami agar dapat dilakukan pemeriksaan lapangan, analisis teknis, dan perhitungan tingkat kerusakan bangunan gedung dimaksud sebagai dasar pengambilan kebijakan penanganan serta penyusunan kebutuhan anggaran rehabilitasi bangunan.
 
-Sehubungan dengan kondisi bangunan yang memerlukan evaluasi teknis, kami mohon kiranya Bapak/Ibu berkenan untuk menugaskan Tim Teknis guna melakukan survei dan analisis lapangan.
+Atas perhatian dan kerja sama yang baik, kami ucapkan terima kasih.
 
-Demikian permohonan ini kami sampaikan. Atas perhatian dan kerjasama Bapak/Ibu, kami ucapkan terima kasih.
+{{jabatanPengirim}},
 
-Hormat Kami,
-{{jabatanPengirim}}
 
 
 {{namaPengirim}}
@@ -206,7 +209,7 @@ export function getDefaultTemplates(): DocumentTemplate[] {
       kategori: "surat",
       kontenHtml: DEFAULT_TEMPLATE_SURAT_PERMOHONAN,
       placeholders: PLACEHOLDERS_SURAT_PERMOHONAN,
-      driveLink: "https://docs.google.com/document/d/contoh_link_surat_permohonan/edit",
+      driveLink: "https://docs.google.com/document/d/1J62N0OlTw8Dhm8uflyujMX1uSgesVow3/edit",
     },
     {
       id: "surat_hasil_perhitungan",

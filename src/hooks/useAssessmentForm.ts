@@ -819,7 +819,28 @@ Koordinat GPS: ${coordinates ? `Latitude: ${coordinates.lat}, Longitude: ${coord
       try {
         if (!documentLink) {
           const docTitle = `Surat Permohonan Penilaian Kerusakan - ${schoolName}`;
-          const docContent = `SURAT PERMOHONAN PENILAIAN KERUSAKAN BANGUNAN KEDINASAN
+          let docContent = "";
+          
+          if (suratPermohonanTemplate && suratPermohonanTemplate.includes("{{")) {
+            docContent = replaceTemplatePlaceholders(suratPermohonanTemplate, {
+              namaInstansiAtas: letterConfig?.pengelola?.namaInstansiAtas || "PEMERINTAH KABUPATEN GARUT",
+              namaInstansiBawah: letterConfig?.pengelola?.namaInstansiBawah || schoolName || "UPTD SATUAN PENDIDIKAN",
+              alamatPemohon: letterConfig?.pengelola?.alamat || address || "Jl. Raya Pembangunan No. 123",
+              nomorSurat: letterReferenceNo,
+              tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+              namaSekolah: schoolName,
+              namaBangunan: buildingName,
+              npsn: npsn,
+              luasBangunan: String(buildingArea),
+              jumlahLantai: String(floorCount),
+              alamatBangunan: address,
+              koordinatGps: coordinates ? `${coordinates.lat}, ${coordinates.lng}` : "-",
+              namaPengirim: letterConfig?.pengelola?.namaKepala || "Nama Pengirim",
+              jabatanPengirim: letterConfig?.pengelola?.jabatan || "Jabatan",
+              nipPengirim: letterConfig?.pengelola?.nipKepala || "-"
+            });
+          } else {
+            docContent = `SURAT PERMOHONAN PENILAIAN KERUSAKAN BANGUNAN KEDINASAN
             
 Nomor Surat: ${letterReferenceNo}
 Perihal: Permohonan Penilaian Kerusakan Fisik Bangunan Gedung
@@ -837,6 +858,8 @@ Dengan hormat, bersama ini kami sampaikan dokumen permohonan resmi penilaian kon
 
 Hormat Kami,
 Pengelola Bangunan / Pemohon`;
+          }
+          
           let docContentWithParams = docContent;
           const stdKeys = ["schoolName", "buildingName", "npsn", "address", "buildingArea", "floorCount"];
           formParams.forEach(p => {
