@@ -140,6 +140,49 @@ export default function BuildingInfoStep({
             <MapPin className="mr-2 h-4 w-4" /> Ambil Lokasi
           </button>
         </div>
+        
+        {/* GAMBAR DENAH BANGUNAN */}
+        <div className="mt-4">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 mt-4">Gambar Denah Bangunan</label>
+          <div className="relative group rounded-xl overflow-hidden border border-slate-300 bg-slate-100 shadow-sm flex flex-col items-center justify-center min-h-[160px]">
+            {dynamicValues?.floorPlanImage ? (
+              <>
+                <img src={dynamicValues.floorPlanImage} alt="Denah Bangunan" className="w-full h-auto max-h-[400px] object-contain cursor-pointer bg-white" onClick={() => setSmartPreviewPhoto({ url: dynamicValues.floorPlanImage, componentName: 'Denah Bangunan' })} />
+                <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2">
+                  <button 
+                    type="button"
+                    onClick={() => handleFieldChange("floorPlanImage", null)} 
+                    className="bg-rose-500 hover:bg-rose-600 text-white p-2 rounded-xl transition-all hover:scale-110 shadow cursor-pointer"
+                    title="Hapus"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <label className={cn("flex-1 flex flex-col items-center justify-center text-slate-500 w-full h-full p-6 hover:bg-white/40 hover:text-slate-800 hover:border-pu-blue transition-all cursor-pointer bg-white/20 backdrop-blur-sm", uploadingPhoto && "opacity-50 cursor-not-allowed")}>
+                <Camera className="h-6 w-6 mb-2 opacity-50" />
+                <span className="text-xs font-semibold">Unggah Denah Bangunan</span>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  className="hidden" 
+                  disabled={uploadingPhoto}
+                  onChange={async (e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      const file = e.target.files[0];
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        handleFieldChange("floorPlanImage", reader.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }} 
+                />
+              </label>
+            )}
+          </div>
+        </div>
 
         <div>
           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 mt-4">Foto Kondisi Bangunan (Wajib 4 Sisi)</label>

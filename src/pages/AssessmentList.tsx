@@ -19,6 +19,7 @@ import {
   CheckCircle2, User, Loader2, ArrowRight, ExternalLink, X, HelpCircle, Edit, Trash2,
   Search, Filter, ArrowUpDown, SlidersHorizontal, RefreshCw
 } from "lucide-react";
+import { STATUS_TABS, STATUS_OPTIONS, getStatusBadgeClasses, formatStatusText } from "../lib/statusUtils";
 
 export default function AssessmentList() {
   const location = useLocation();
@@ -86,13 +87,7 @@ export default function AssessmentList() {
     }
   };
 
-  const tabs = [
-    { id: 'Semua', label: 'Semua' },
-    { id: 'Menunggu_Validasi', label: 'Menunggu Validasi' },
-    { id: 'Survei_Lapangan', label: 'Survei Lapangan' },
-    { id: 'Selesai_Dianalisis', label: 'Selesai Dianalisis' },
-    { id: 'Arsip_Digital', label: 'Arsip Digital' },
-  ];
+  const tabs = STATUS_TABS;
 
   const activeUserId = localStorage.getItem("activeUserId");
 
@@ -643,12 +638,9 @@ export default function AssessmentList() {
           return (
             <span className={cn(
               "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-              (assessment.status || "Menunggu_Validasi") === "Menunggu_Validasi" ? "bg-amber-50 text-amber-800 border-amber-200" :
-              assessment.status === "Survei_Lapangan" ? "bg-blue-50 text-blue-800 border-blue-200" :
-              assessment.status === "Selesai_Dianalisis" ? "bg-purple-50 text-purple-800 border-purple-200" :
-              "bg-emerald-50 text-emerald-800 border-emerald-200"
+              getStatusBadgeClasses(assessment.status)
             )}>
-              {(assessment.status || "Menunggu_Validasi").replace("_", " ")}
+              {formatStatusText(assessment.status)}
             </span>
           );
         }
@@ -672,10 +664,9 @@ export default function AssessmentList() {
             }}
             className="text-xs border border-slate-200/50 rounded-md focus:ring-pu-blue focus:border-pu-blue shadow-sm bg-white/70 backdrop-blur-sm"
           >
-            <option value="Menunggu_Validasi">Menunggu Validasi</option>
-            <option value="Survei_Lapangan">Survei Lapangan</option>
-            <option value="Selesai_Dianalisis">Selesai Dianalisis</option>
-            <option value="Arsip_Digital">Arsip Digital</option>
+            {STATUS_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
           </select>
         );
       }

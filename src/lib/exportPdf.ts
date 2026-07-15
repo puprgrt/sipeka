@@ -11,6 +11,23 @@ import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
 export const exportAssessmentToPdf = async (assessment: Assessment, history: any[] = []) => {
+  const getBase64Image = async (url: string) => {
+    try {
+      if (url.startsWith('data:image')) return url;
+      const response = await fetch(url);
+      const blob = await response.blob();
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      console.error("Gagal memuat image", e);
+      return null;
+    }
+  };
+
   let componentsConfig: any[] = [];
   try {
     const res = await fetch("/api/components");
@@ -62,8 +79,35 @@ export const exportAssessmentToPdf = async (assessment: Assessment, history: any
     }
   });
 
+  // Gambar Denah Bangunan
+  let currentY = (doc as any).lastAutoTable.finalY + 10;
+  
+  if (assessment.customFields?.floorPlanImage) {
+    if (currentY > 200) {
+      doc.addPage();
+      currentY = 20;
+    }
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("Gambar Denah Bangunan", 14, currentY);
+    
+    try {
+      const floorPlanB64 = await getBase64Image(assessment.customFields.floorPlanImage);
+      if (floorPlanB64) {
+        // Asumsi format PNG/JPEG, jspdf bisa auto-detect dari base64 data uri
+        doc.addImage(floorPlanB64, 14, currentY + 5, 180, 100);
+        currentY += 115;
+      }
+    } catch(e) {
+      console.error("Gagal menambahkan denah bangunan ke PDF", e);
+    }
+  }
+
   // Hasil Analisis
-  const currentY = (doc as any).lastAutoTable.finalY + 10;
+  if (currentY > 250) {
+    doc.addPage();
+    currentY = 20;
+  }
   doc.setFontSize(12);
   doc.setFont("helvetica", "bold");
   doc.text("Hasil Analisis Kerusakan", 14, currentY);
@@ -213,16 +257,29 @@ export const exportAssessmentToPdf = async (assessment: Assessment, history: any
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.text(`Dicetak pada: ${dateStr}`, 14, finalY);
-  
+
+  const tteStr = (assessment as any).tteSignatures;
+  const tte = tteStr ? (typeof tteStr === 'string' ? JSON.parse(tteStr) : tteStr) : {};
+  const timTeknisTte = tte['Tim_Teknis'];
+  const koordinatorTte = tte['Koordinator'];
+
   doc.text("Disusun Oleh,", 20, finalY);
   doc.text("Tim Teknis Lapangan", 20, finalY + 5);
-  doc.line(20, finalY + 25, 70, finalY + 25);
-  doc.text("NIP. / Tanda Tangan", 20, finalY + 30);
+  if (timTeknisTte && timTeknisTte.qrCodeUrl) {
+    const b64 = await getBase64Image(timTeknisTte.qrCodeUrl);
+    if (b64) doc.addImage(b64, 'PNG', 30, finalY + 8, 18, 18);
+  }
+  doc.line(20, finalY + 28, 70, finalY + 28);
+  doc.text(timTeknisTte ? timTeknisTte.name : "NIP. / Tanda Tangan", 20, finalY + 33);
 
   doc.text("Disetujui Oleh,", 140, finalY);
   doc.text("Koordinator / Pejabat Berwenang", 140, finalY + 5);
-  doc.line(140, finalY + 25, 190, finalY + 25);
-  doc.text("NIP.", 140, finalY + 30);
+  if (koordinatorTte && koordinatorTte.qrCodeUrl) {
+    const b64 = await getBase64Image(koordinatorTte.qrCodeUrl);
+    if (b64) doc.addImage(b64, 'PNG', 150, finalY + 8, 18, 18);
+  }
+  doc.line(140, finalY + 28, 190, finalY + 28);
+  doc.text(koordinatorTte ? koordinatorTte.name : "NIP.", 140, finalY + 33);
 
   doc.save(`Laporan_Penilaian_${assessment.id.substring(0, 8)}.pdf`);
 };

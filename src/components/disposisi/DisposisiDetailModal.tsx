@@ -2,11 +2,14 @@ import React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   X, MapPin, Calendar, CheckCircle2, Clock, 
-  User, FileText, Loader2, Search, Download
+  User, FileText, Loader2, Search, Download,
+  Building, Table, RefreshCw, Lock, ArrowRight
 } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { cn } from "../../lib/utils";
+import { getStatusBadgeClasses, formatStatusText } from "../../lib/statusUtils";
+import { COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI } from "../../types";
 
 // Replace with a dummy function for replaceTemplatePlaceholders since it's probably defined in the file
 function replaceTemplatePlaceholders(template, variables) {
@@ -22,11 +25,7 @@ export default function DisposisiDetailModal({
   selectedAssessment,
   setSelectedAssessment,
   activeRole,
-  updateStatus,
   handleScheduleSurvei,
-  handleGenerateAnalysisFormat,
-  handleGenerateSuratJawaban,
-  setPreviewUrl,
   loadingLogs,
   dispositionLogs,
   setSmartPreviewPhoto,
@@ -57,6 +56,21 @@ export default function DisposisiDetailModal({
   handleSaveDisposisi,
   exportAssessmentToPdf,
   appConfig,
+  suratHasilTemplate,
+  suratHasilDriveLink,
+  lampiranExcelDriveLink,
+  showRecallForm,
+  setShowRecallForm,
+  recallNote,
+  setRecallNote,
+  recallTargetStatus,
+  setRecallTargetStatus,
+  recallsList,
+  handleConfirmRecall,
+  assessments,
+  setAssessments,
+  setDispStatus,
+  timTeknisUsers
 }: any) {
   if (!selectedAssessment) return null;
 
@@ -125,13 +139,9 @@ export default function DisposisiDetailModal({
                       </span>
                       <span className={cn(
                         "px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider border",
-                        selectedAssessment.status === "Menunggu_Validasi" || !selectedAssessment.status ? "bg-amber-50 text-amber-800 border-amber-200" :
-                        selectedAssessment.status === "Verifikasi_Berkas" ? "bg-indigo-50 text-indigo-800 border-indigo-200" :
-                        selectedAssessment.status === "Survei_Lapangan" ? "bg-blue-50 text-blue-800 border-blue-200" :
-                        selectedAssessment.status === "Selesai_Dianalisis" ? "bg-purple-50 text-purple-800 border-purple-200" :
-                        "bg-emerald-50 text-emerald-800 border-emerald-200"
+                        getStatusBadgeClasses(selectedAssessment.status)
                       )}>
-                        {(selectedAssessment.status || "Menunggu_Validasi").replace("_", " ")}
+                        {formatStatusText(selectedAssessment.status)}
                       </span>
                     </div>
   
@@ -461,6 +471,32 @@ export default function DisposisiDetailModal({
                       </div>
                     </div>
   
+                    {/* Denah Bangunan */}
+                    {selectedAssessment.customFields?.floorPlanImage && (
+                      <div className="pt-4 border-t border-slate-100">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2.5">
+                          Gambar Denah Bangunan
+                        </p>
+                        <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-50 relative group cursor-pointer max-h-64 flex justify-center items-center">
+                          <img 
+                            src={selectedAssessment.customFields.floorPlanImage} 
+                            alt="Denah Bangunan" 
+                            className="max-h-64 object-contain"
+                            onClick={() => {
+                                // Assume preview photo component exists or just open in new tab
+                                const w = window.open();
+                                if (w) {
+                                  w.document.write(`<img src="${selectedAssessment.customFields.floorPlanImage}" style="max-width: 100%; height: auto;" />`);
+                                }
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-slate-900/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-center justify-center">
+                            <span className="bg-slate-900/60 text-white text-xs px-3 py-1.5 rounded-lg font-medium backdrop-blur-sm">Klik untuk memperbesar</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Render Custom/Dynamic Parameters if any */}
                     {selectedAssessment.customFields && Object.keys(selectedAssessment.customFields).length > 0 && (
                       <div className="pt-4 border-t border-slate-100">
@@ -470,7 +506,7 @@ export default function DisposisiDetailModal({
                         <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded-xl border border-slate-200/55">
                           {Object.entries(selectedAssessment.customFields)
                             .filter(([key, value]) => {
-                              if (["id", "date", "schoolName", "buildingName", "npsn", "buildingArea", "floorCount", "address", "city", "province", "components", "photos", "finalResult", "status", "userId", "userName", "customFields", "verification", "safetyChecks", "documentLink", "idBangunan"].includes(key) || key.toLowerCase().includes('foto')) return false;
+                              if (["id", "date", "schoolName", "buildingName", "npsn", "buildingArea", "floorCount", "address", "city", "province", "components", "photos", "finalResult", "status", "userId", "userName", "customFields", "verification", "safetyChecks", "documentLink", "idBangunan", "floorPlanImage"].includes(key) || key.toLowerCase().includes('foto')) return false;
                               if (typeof value === "object" && value !== null) return false;
                               return true;
                             })

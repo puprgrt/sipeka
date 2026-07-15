@@ -77,13 +77,26 @@ export default function VerificationList() {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const tabs = [
+  const baseTabs = [
     { id: 'Semua', label: 'Semua' },
-    { id: 'Menunggu_Validasi', label: 'Menunggu Validasi' },
+    { id: 'Menunggu_Validasi', label: 'Menunggu Validasi (Tim Teknis)' },
+    { id: 'Menunggu_TTE_Koordinator', label: 'TTE Koordinator' },
+    { id: 'Menunggu_TTE_Kabid', label: 'TTE Kabid' },
+    { id: 'Menunggu_Validasi_Kadis', label: 'Validasi Kadis' },
     { id: 'Survei_Lapangan', label: 'Survei Lapangan' },
     { id: 'Selesai_Dianalisis', label: 'Selesai Dianalisis' },
     { id: 'Arsip_Digital', label: 'Arsip Digital' },
   ];
+  
+  // Filter tabs based on role for better UX
+  const tabs = baseTabs.filter(t => {
+    if (t.id === 'Semua') return true;
+    if (activeRole === 'Tim_Teknis') return ['Menunggu_Validasi', 'Survei_Lapangan', 'Selesai_Dianalisis'].includes(t.id);
+    if (activeRole === 'Koordinator') return ['Menunggu_TTE_Koordinator', 'Selesai_Dianalisis'].includes(t.id);
+    if (activeRole === 'Kabid') return ['Menunggu_TTE_Kabid', 'Selesai_Dianalisis'].includes(t.id);
+    if (activeRole === 'Kadis') return ['Menunggu_Validasi_Kadis', 'Arsip_Digital'].includes(t.id);
+    return true; // Administrator sees all
+  });
 
   const filteredAssessments = activeTab === 'Semua' 
     ? assessments 
@@ -115,26 +128,39 @@ export default function VerificationList() {
       const res = await fetch(`/api/assessments/${selectedAssessment.id}/verification`, {
         method: "PUT",
         headers: getAuditHeaders(),
-        body: JSON.stringify({ verification: localVerification })
+        body: JSON.stringify({ verification: localVerification, isTTE: true })
       });
       if (res.ok) {
+        const data = await res.json();
         // Update both assessments list and the selected assessment state
         setAssessments(prev => prev.map(a => {
           if (a.id === selectedAssessment.id) {
-            return { ...a, verification: localVerification };
+            return { 
+              ...a, 
+              verification: localVerification,
+              status: data.statusTerakhir || a.status,
+              tteSignatures: data.tteSignatures || a.tteSignatures 
+            };
           }
           return a;
         }));
-        setSelectedAssessment(prev => prev ? { ...prev, verification: localVerification } : null);
-        alert("Catatan verifikasi komponen berhasil disimpan!");
+        setSelectedAssessment(prev => prev ? { 
+          ...prev, 
+          verification: localVerification,
+          status: data.statusTerakhir || prev.status,
+          tteSignatures: data.tteSignatures || prev.tteSignatures
+        } : null);
+        alert("Catatan verifikasi komponen dan TTE Otomatis berhasil disimpan!");
+        setShowDetail(false);
       } else {
-        alert("Gagal menyimpan verifikasi.");
+        alert("Gagal menyimpan catatan verifikasi.");
       }
     } catch (error) {
       console.error(error);
-      alert("Terjadi kesalahan sistem.");
+      alert("Terjadi kesalahan.");
+    } finally {
+      setSavingVerification(false);
     }
-    setSavingVerification(false);
   };
 
   useEffect(() => {

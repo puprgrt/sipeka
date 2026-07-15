@@ -13,7 +13,7 @@ import {
 
 export const kategoriKomponenEnum = pgEnum('kategori_komponen', ['Struktur', 'Arsitektur', 'Utilitas']);
 export const roleEnum = pgEnum('role', ['Administrator', 'Pengelola_Bangunan', 'Operator', 'Tim_Teknis', 'Koordinator', 'Kabid', 'Kadis']);
-export const statusPermohonanEnum = pgEnum('status_permohonan', ['Menunggu_Validasi', 'Survei_Lapangan', 'Selesai_Dianalisis', 'Arsip_Digital']);
+export const statusPermohonanEnum = pgEnum('status_permohonan', ['Menunggu_Validasi', 'Menunggu_TTE_Koordinator', 'Menunggu_TTE_Kabid', 'Menunggu_Validasi_Kadis', 'Survei_Lapangan', 'Selesai_Dianalisis', 'Arsip_Digital']);
 export const kesimpulanAkhirEnum = pgEnum('kesimpulan_akhir', ['Tidak Rusak', 'Rusak Ringan', 'Rusak Sedang', 'Rusak Berat']);
 export const statusTindakanEnum = pgEnum('status_tindakan', ['Disposisi', 'Setuju_Tanpa_Survei', 'Jadwalkan_Survei', 'Terbitkan_Hasil']);
 
@@ -66,6 +66,7 @@ export const profilBangunan = pgTable('profil_bangunan', {
   npsnNup: text('npsn_nup').notNull(),
   namaMassaBangunan: text('nama_massa_bangunan').notNull(),
   koordinatGps: text('koordinat_gps'),
+  urlDenahBangunan: text('url_denah_bangunan'),
   luasBangunanM2: decimal('luas_bangunan_m2', { precision: 10, scale: 2 }).notNull(),
   jumlahLantai: integer('jumlah_lantai').notNull(),
   customFields: text('custom_fields'),
@@ -81,6 +82,7 @@ export const permohonanPenilaian = pgTable('permohonan_penilaian', {
   kesimpulanAkhir: kesimpulanAkhirEnum('kesimpulan_akhir'),
   urlDokumenHasilPdf: text('url_dokumen_hasil_pdf'),
   disposisiData: text('disposisi_data'),
+  tteSignatures: text('tte_signatures'),
 });
 
 export const penilaianTahap1Keselamatan = pgTable('penilaian_tahap1_keselamatan', {

@@ -19,6 +19,7 @@ import Login from "./pages/Login";
 import FileManager from "./pages/FileManager";
 import AiDashboard from "./pages/AiDashboard";
 import NotFoundPage from "./pages/NotFoundPage";
+import { DocumentValidation } from "./pages/DocumentValidation";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export default function App() {
@@ -27,6 +28,7 @@ export default function App() {
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/validasi/:id" element={<DocumentValidation />} />
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="ai" element={<AiDashboard />} />

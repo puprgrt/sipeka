@@ -334,6 +334,28 @@ export default function VerificationDetailModal({
                                 </div>
                               ))}
       
+                              {/* TTE Status Section */}
+                              {selectedAssessment.tteSignatures && (
+                                <div className="pt-4 border-t border-slate-200 mt-2">
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2.5">
+                                    Riwayat Tanda Tangan Elektronik (TTE)
+                                  </p>
+                                  <div className="space-y-2">
+                                    {Object.entries(typeof selectedAssessment.tteSignatures === 'string' ? JSON.parse(selectedAssessment.tteSignatures) : selectedAssessment.tteSignatures).map(([role, data]: [string, any]) => (
+                                      <div key={role} className="flex items-center gap-2 bg-emerald-50/50 border border-emerald-100 p-2 rounded-lg">
+                                        <div className="w-8 h-8 rounded-md bg-white border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
+                                          <img src={data.qrCodeUrl} alt="QR TTE" className="w-full h-full object-cover" />
+                                        </div>
+                                        <div>
+                                          <p className="text-xs font-bold text-slate-700">{data.name}</p>
+                                          <p className="text-[9px] text-slate-500 uppercase">{role.replace(/_/g, ' ')} • {new Date(data.timestamp).toLocaleString('id-ID')}</p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
                               {/* Button Simpan Verifikasi */}
                               <div className="pt-2">
                                 <button
@@ -350,7 +372,7 @@ export default function VerificationDetailModal({
                                   ) : (
                                     <>
                                       <CheckCircle2 className="w-3.5 h-3.5" />
-                                      Simpan Catatan Verifikasi Komponen
+                                      Simpan Verifikasi & TTE Otomatis
                                     </>
                                   )}
                                 </button>

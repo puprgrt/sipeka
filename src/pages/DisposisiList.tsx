@@ -21,6 +21,7 @@ import {
   RefreshCw, Lock, Table
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { STATUS_TABS, STATUS_OPTIONS, getStatusBadgeClasses, formatStatusText } from "../lib/statusUtils";
 
 export default function DisposisiList() {
   const location = useLocation();
@@ -84,14 +85,7 @@ export default function DisposisiList() {
     };
   }, []);
 
-  const tabs = [
-    { id: 'Semua', label: 'Semua' },
-    { id: 'Menunggu_Validasi', label: 'Menunggu Validasi' },
-    { id: 'Verifikasi_Berkas', label: 'Verifikasi Berkas' },
-    { id: 'Survei_Lapangan', label: 'Survei Lapangan' },
-    { id: 'Selesai_Dianalisis', label: 'Selesai Dianalisis' },
-    { id: 'Arsip_Digital', label: 'Arsip Digital' },
-  ];
+  const tabs = STATUS_TABS;
 
   const filteredAssessments = activeTab === 'Semua' 
     ? assessments 
@@ -458,12 +452,9 @@ export default function DisposisiList() {
         return (
           <span className={cn(
             "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
-            (assessment.status || "Menunggu_Validasi") === "Menunggu_Validasi" ? "bg-amber-50 text-amber-800 border-amber-200" :
-            assessment.status === "Survei_Lapangan" ? "bg-blue-50 text-blue-800 border-blue-200" :
-            assessment.status === "Selesai_Dianalisis" ? "bg-purple-50 text-purple-800 border-purple-200" :
-            "bg-emerald-50 text-emerald-800 border-emerald-200"
+            getStatusBadgeClasses(assessment.status)
           )}>
-            {(assessment.status || "Menunggu_Validasi").replace("_", " ")}
+            {formatStatusText(assessment.status)}
           </span>
         );
       }
@@ -539,11 +530,7 @@ export default function DisposisiList() {
         selectedAssessment={selectedAssessment}
         setSelectedAssessment={setSelectedAssessment}
         activeRole={activeRole}
-        updateStatus={updateStatus}
         handleScheduleSurvei={handleScheduleSurvei}
-        handleGenerateAnalysisFormat={handleGenerateAnalysisFormat}
-        handleGenerateSuratJawaban={handleGenerateSuratJawaban}
-        setPreviewUrl={setPreviewUrl}
         loadingLogs={loadingLogs}
         dispositionLogs={dispositionLogs}
         setSmartPreviewPhoto={setSmartPreviewPhoto}
@@ -574,6 +561,21 @@ export default function DisposisiList() {
         handleSaveDisposisi={handleSaveDisposisi}
         exportAssessmentToPdf={exportAssessmentToPdf}
         appConfig={appConfig}
+        suratHasilTemplate={suratHasilTemplate}
+        suratHasilDriveLink={suratHasilDriveLink}
+        lampiranExcelDriveLink={lampiranExcelDriveLink}
+        showRecallForm={showRecallForm}
+        setShowRecallForm={setShowRecallForm}
+        recallNote={recallNote}
+        setRecallNote={setRecallNote}
+        recallTargetStatus={recallTargetStatus}
+        setRecallTargetStatus={setRecallTargetStatus}
+        recallsList={recallsList}
+        handleConfirmRecall={handleConfirmRecall}
+        assessments={assessments}
+        setAssessments={setAssessments}
+        setDispStatus={setDispStatus}
+        timTeknisUsers={timTeknisUsers}
       />
 
       {/* Lightbox Modal */}

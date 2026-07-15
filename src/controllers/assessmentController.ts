@@ -116,7 +116,7 @@ export const get_assessments = async (req: express.Request, res: express.Respons
         verification: parsedCustomFields.verification || {},
         disposisiData: p.disposisiData,
         documentLink: parsedCustomFields.documentLink || null,
-        customFields: { ...parsedCustomFields, idBangunan: b?.idBangunan }
+        customFields: { ...parsedCustomFields, idBangunan: b?.idBangunan, floorPlanImage: b?.urlDenahBangunan || parsedCustomFields.floorPlanImage }
       };
     });
     res.json(assessments);
@@ -248,6 +248,7 @@ export const post_assessments = async (req: express.Request, res: express.Respon
           npsnNup: payload.npsn,
           namaMassaBangunan: payload.buildingName,
           koordinatGps: payload.coordinates ? `${payload.coordinates.lat},${payload.coordinates.lng}` : existingB.koordinatGps,
+          urlDenahBangunan: customFieldsObj.floorPlanImage || existingB.urlDenahBangunan,
           luasBangunanM2: payload.buildingArea.toString(),
           jumlahLantai: payload.floorCount || 1,
           customFields: JSON.stringify({
@@ -275,6 +276,7 @@ export const post_assessments = async (req: express.Request, res: express.Respon
           npsnNup: payload.npsn,
           namaMassaBangunan: payload.buildingName,
           koordinatGps: payload.coordinates ? `${payload.coordinates.lat},${payload.coordinates.lng}` : matchedB.koordinatGps,
+          urlDenahBangunan: customFieldsObj.floorPlanImage || matchedB.urlDenahBangunan,
           luasBangunanM2: payload.buildingArea.toString(),
           jumlahLantai: payload.floorCount || 1,
           customFields: JSON.stringify({
@@ -292,6 +294,7 @@ export const post_assessments = async (req: express.Request, res: express.Respon
           npsnNup: payload.npsn,
           namaMassaBangunan: payload.buildingName,
           koordinatGps: payload.coordinates ? `${payload.coordinates.lat},${payload.coordinates.lng}` : null,
+          urlDenahBangunan: customFieldsObj.floorPlanImage || null,
           luasBangunanM2: payload.buildingArea.toString(),
           jumlahLantai: payload.floorCount || 1,
           customFields: JSON.stringify(customFieldsObj),
@@ -389,7 +392,7 @@ export const post_assessments = async (req: express.Request, res: express.Respon
     res.status(201).json(responseAssessment);
   } catch (error) {
     console.error("POST assessments error", error);
-    res.status(500).json({ error: "Failed to save assessment" });
+    res.status(500).json({ error: "Failed to save assessment", details: (error as any).message, stack: (error as any).stack });
   }
 };
 
@@ -492,7 +495,8 @@ export const get_assessments_by_id = async (req: express.Request, res: express.R
       verification: parsedCustomFields.verification || {},
       disposisiData: p.disposisiData,
       documentLink: parsedCustomFields.documentLink || null,
-      customFields: { ...parsedCustomFields, idBangunan: b?.idBangunan }
+      tteSignatures: p.tteSignatures,
+      customFields: { ...parsedCustomFields, idBangunan: b?.idBangunan, floorPlanImage: b?.urlDenahBangunan || parsedCustomFields.floorPlanImage }
     });
   } catch (error) {
     console.error("GET assessment detail error", error);
@@ -549,7 +553,10 @@ export const get_buildings_by_id_history = async (req: express.Request, res: exp
 export const put_assessments_by_id_verification = async (req: express.Request, res: express.Response) => {
   try {
     const id = req.params.id;
-    const { verification } = req.body;
+    const { verification, isTTE } = req.body;
+    
+    const role = (req.headers['x-user-role'] as string) || '';
+    const name = (req.headers['x-user-name'] as string) || '';
 
     const [p] = await db.select().from(schema.permohonanPenilaian).where(eq(schema.permohonanPenilaian.idPermohonan, id)).limit(1);
     if (!p) return res.status(404).json({ error: "Permohonan tidak ditemukan" });
@@ -570,16 +577,61 @@ export const put_assessments_by_id_verification = async (req: express.Request, r
       .set({ customFields: JSON.stringify(parsedCustomFields) })
       .where(eq(schema.profilBangunan.idBangunan, b.idBangunan));
 
+    let tteSignatures: any = {};
+    if (p.tteSignatures) {
+      try { tteSignatures = JSON.parse(p.tteSignatures); } catch (e) {}
+    }
+
+    let nextStatus = p.statusTerakhir;
+    let tteApplied = false;
+
+    if (isTTE && role) {
+      const appDomain = req.headers.host ? `http://${req.headers.host}` : 'http://localhost:5173';
+      const validationUrl = `${appDomain}/validasi/${id}`;
+      // QR Code links to the validation URL
+      const qrData = encodeURIComponent(validationUrl);
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrData}`;
+      
+      tteSignatures[role] = {
+        name,
+        role,
+        timestamp: new Date().toISOString(),
+        qrCodeUrl,
+        validationUrl
+      };
+      
+      tteApplied = true;
+
+      if (role === 'Tim_Teknis' && (nextStatus === 'Menunggu_Validasi' || nextStatus === 'Survei_Lapangan')) {
+        nextStatus = 'Menunggu_TTE_Koordinator';
+      } else if (role === 'Koordinator' && nextStatus === 'Menunggu_TTE_Koordinator') {
+        nextStatus = 'Menunggu_TTE_Kabid';
+      } else if (role === 'Kabid' && nextStatus === 'Menunggu_TTE_Kabid') {
+        nextStatus = 'Menunggu_Validasi_Kadis';
+      } else if (role === 'Kadis' && nextStatus === 'Menunggu_Validasi_Kadis') {
+        nextStatus = 'Arsip_Digital'; 
+      }
+
+      await db.update(schema.permohonanPenilaian)
+        .set({ 
+          statusTerakhir: nextStatus,
+          tteSignatures: JSON.stringify(tteSignatures) 
+        })
+        .where(eq(schema.permohonanPenilaian.idPermohonan, id));
+    }
+
     const isApproved = verification?.status === "Disetujui" || verification?.verified;
     const statusText = isApproved ? "Disetujui" : "Ditolak / Perlu Perbaikan";
+    const logAction = tteApplied ? "Verifikasi & TTE" : "Verifikasi";
+    
     await logAuditTrail(
       id,
       req,
-      "Verifikasi",
+      logAction,
       `Melakukan verifikasi berkas permohonan untuk "${b.namaSekolahInstansi}" (Bangunan: "${b.namaMassaBangunan}") dengan status: "${statusText}". Catatan verifikasi: "${verification?.notes || '-'}".`
     );
 
-    res.json({ success: true, verification });
+    res.json({ success: true, verification, tteSignatures, statusTerakhir: nextStatus });
   } catch (error) {
     console.error("PUT assessment verification error", error);
     res.status(500).json({ error: "Failed to update verification" });

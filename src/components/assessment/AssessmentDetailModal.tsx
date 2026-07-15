@@ -7,6 +7,7 @@ import {
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { cn } from "../../lib/utils";
+import { getStatusBadgeClasses, formatStatusText } from "../../lib/statusUtils";
 
 interface AssessmentDetailModalProps {
   selectedAssessment: any;
@@ -74,11 +75,9 @@ export default function AssessmentDetailModal({
               <div className="flex items-center gap-2 mb-1.5">
                 <span className={cn(
                   "px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-widest border",
-                  selectedAssessment.status === 'Selesai_Dianalisis' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                  selectedAssessment.status === 'Survei_Lapangan' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                  'bg-amber-50 text-amber-700 border-amber-200'
+                  getStatusBadgeClasses(selectedAssessment.status)
                 )}>
-                  {selectedAssessment.status ? selectedAssessment.status.replace("_", " ") : "Menunggu Validasi"}
+                  {formatStatusText(selectedAssessment.status)}
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">ID: {selectedAssessment.id}</span>
               </div>
@@ -137,6 +136,29 @@ export default function AssessmentDetailModal({
                   </div>
                 </div>
               </div>
+              
+              {/* Denah Bangunan */}
+              {selectedAssessment.customFields?.floorPlanImage && (
+                <div className="pt-2">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase mb-3 tracking-wider">Gambar Denah Bangunan</span>
+                  <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-50 relative group cursor-pointer max-h-64 flex justify-center items-center">
+                    <img 
+                      src={selectedAssessment.customFields.floorPlanImage} 
+                      alt="Denah Bangunan" 
+                      className="max-h-64 object-contain"
+                      onClick={() => {
+                          const w = window.open();
+                          if (w) {
+                            w.document.write(`<img src="${selectedAssessment.customFields.floorPlanImage}" style="max-width: 100%; height: auto;" />`);
+                          }
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-slate-900/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-center justify-center">
+                      <span className="bg-slate-900/60 text-white text-xs px-3 py-1.5 rounded-lg font-medium backdrop-blur-sm">Klik untuk memperbesar</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {selectedAssessment.components && selectedAssessment.components.length > 0 && (
                 <div className="pt-2">

@@ -95,24 +95,26 @@ Hal      : Permohonan Penilaian Kerusakan Bangunan Gedung {{namaSekolah}}
 
 Yth. Kepala Dinas Pekerjaan Umum dan Penataan Ruang Kabupaten Garut
 di
-   Garut
+     Garut
 
 Dalam rangka menjamin keselamatan, keamanan, kenyamanan, dan keberlanjutan fungsi bangunan gedung pada {{namaInstansiBawah}}, bersama ini kami mengajukan permohonan Analisis dan Perhitungan Kerusakan Bangunan Gedung terhadap bangunan yang berada pada lokasi berikut:
 
 1. Identitas Bangunan Gedung:
-Nama Bangunan   : {{namaBangunan}}
-NPSN            : {{npsn}}
-Luas            : {{luasBangunan}} m2
-Jumlah Lantai   : {{jumlahLantai}}
-Alamat Bangunan : {{alamatBangunan}}
-Koordinat       : {{koordinatGps}}
+   Nama Bangunan   : {{namaBangunan}}
+   NPSN            : {{npsn}}
+   Luas            : {{luasBangunan}} m2
+   Jumlah Lantai   : {{jumlahLantai}}
+   Alamat Bangunan : {{alamatBangunan}}
+   Koordinat       : {{koordinatGps}}
 
 Sehubungan dengan data penilaian mandiri yang dilampirkan, diperlukan guna mengetahui tingkat kerusakan bangunan secara kuantitatif dan kualitatif sesuai ketentuan teknis yang berlaku. 
 Demikian permohonan ini kami sampaikan. Besar harapan kami agar dapat dilakukan pemeriksaan lapangan, analisis teknis, dan perhitungan tingkat kerusakan bangunan gedung dimaksud sebagai dasar pengambilan kebijakan penanganan serta penyusunan kebutuhan anggaran rehabilitasi bangunan.
-
 Atas perhatian dan kerja sama yang baik, kami ucapkan terima kasih.
 
+
 {{jabatanPengirim}},
+
+
 
 
 
@@ -162,7 +164,9 @@ export const DEFAULT_TEMPLATE_SURAT_HASIL = `<html>
   <div class="signature">
     <p>Ditetapkan di Garut</p>
     <p>Tanggal: {{tanggal}}</p>
-    <br/><br/><br/>
+    <div style="margin: 10px 0;">
+      <img src="{{qrKadis}}" alt="QR TTE" width="80" height="80" onerror="this.style.display='none'" />
+    </div>
     <p><b><u>{{namaKadis}}</u></b></p>
     <p>NIP. {{nipKadis}}</p>
   </div>
