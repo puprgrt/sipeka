@@ -10,7 +10,11 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import SmartPreviewModal from "../components/file-manager/SmartPreviewModal";
-
+import { useDriveFiles } from "../hooks/useDriveFiles";
+import FileManagerSidebar from "../components/file-manager/FileManagerSidebar";
+import FileManagerToolbar from "../components/file-manager/FileManagerToolbar";
+import FileManagerGridView from "../components/file-manager/FileManagerGridView";
+import FileManagerListView from "../components/file-manager/FileManagerListView";
 
 interface FileComment {
   id: string;
@@ -55,31 +59,10 @@ export default function FileManager() {
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState("");
-  const [files, setFiles] = useState<FileItem[]>([]);
-  const [loadingFiles, setLoadingFiles] = useState(true);
-
-  useEffect(() => {
-    const fetchFiles = async () => {
-      try {
-        const saved = localStorage.getItem("sipeka_files");
-        if (saved) {
-          setFiles(JSON.parse(saved));
-          setLoadingFiles(false);
-        } else {
-          const res = await fetch("/api/files");
-          if (res.ok) {
-            const data = await res.json();
-            setFiles(data);
-          }
-          setLoadingFiles(false);
-        }
-      } catch (error) {
-        console.error("Failed to fetch files", error);
-        setLoadingFiles(false);
-      }
-    };
-    fetchFiles();
-  }, []);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'images' | 'documents' | 'spreadsheets' | 'folders'>('all');
+  
+  // Custom Hook for Drive logic
+  const { files, setFiles, loadingFiles, fetchFiles } = useDriveFiles(currentFolder);
 
   // Preview States
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
@@ -298,12 +281,19 @@ export default function FileManager() {
 
   const getFilteredFiles = () => {
     return files.filter(f => {
-      // 1. Check folder
+      // 1. Check folder (only apply folder filter if activeFilter is all or folders, or if we want to stay inside current folder regardless)
+      // Actually, if a user clicks "Images", maybe they want all images in current folder. Let's keep it within current folder for now.
       if (f.folderId !== currentFolder && !searchQuery) return false;
       // 2. Check role access
       if (!f.accessRole.includes(activeRole) && activeRole !== "Administrator") return false;
       // 3. Search query
       if (searchQuery && !f.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      // 4. Active filter
+      if (activeFilter === 'images' && f.type !== 'image') return false;
+      if (activeFilter === 'documents' && f.type !== 'pdf' && f.type !== 'word') return false;
+      if (activeFilter === 'spreadsheets' && f.type !== 'excel') return false;
+      if (activeFilter === 'folders' && f.type !== 'folder') return false;
+      
       return true;
     });
   };
@@ -594,258 +584,89 @@ export default function FileManager() {
   };
 
   return (
-    <div className="h-[calc(100vh-80px)] flex flex-col gap-5 overflow-hidden relative">
+    <div className="h-[calc(100vh-80px)] flex gap-4 overflow-hidden relative bg-slate-50/50 p-2">
       
-      {/* LEFT CONTAINER: File Directory list */}
-      <div className="flex flex-col space-y-4 h-full transition-all duration-300 w-full shrink-0">
+      {/* SIDEBAR: Modern Workspace Navigation */}
+      <FileManagerSidebar 
+        activeRole={activeRole}
+        activeFilter={activeFilter}
+        setActiveFilter={setActiveFilter}
+        onUploadClick={() => fileInputRef.current?.click()}
+      />
+      
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        onChange={handleFileUpload}
+        accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
+      />
+      
+      {/* MAIN CONTAINER */}
+      <div className="flex-1 flex flex-col min-w-0 space-y-4">
         
-        {/* Header Dashboard Area */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/60 backdrop-blur-lg p-5 rounded-2xl border border-white/50 shadow-sm">
-          <div>
-            <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              <HardDrive className="w-5 h-5 text-pu-blue" />
-              Smart Manajemen File
-            </h1>
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1 flex items-center gap-1.5">
-              Role Akses: <span className="bg-blue-50 text-pu-blue border border-blue-100 px-2 py-0.5 rounded-md font-mono text-[9px]">{activeRole.replace("_", " ")}</span>
-            </p>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="Cari berkas atau dokumen..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-white/50 border border-slate-200 rounded-xl text-xs focus:ring-pu-blue focus:border-pu-blue w-full sm:w-56"
-              />
-            </div>
-            
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              onChange={handleFileUpload}
-              accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
-            />
-            
-            <button 
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 bg-pu-blue hover:bg-blue-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm hover:scale-[1.02]"
-            >
-              <UploadCloud className="w-4 h-4" />
-              <span className="hidden sm:inline">Unggah Berkas</span>
-            </button>
-
-            <button 
-              onClick={() => setShowCreateFolderModal(true)}
-              className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border border-slate-200/60"
-            >
-              <Plus className="w-4 h-4 text-slate-500" />
-              <span className="hidden sm:inline">Folder Baru</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Toolbar & Breadcrumbs */}
-        <div className="flex items-center justify-between bg-white/40 backdrop-blur-sm p-3 rounded-xl border border-white/30">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-            <button 
-              onClick={() => {
-                setCurrentFolder(null);
-                setSelectedFile(null);
-              }}
-              className="hover:text-pu-blue transition-colors flex items-center gap-1 bg-white/60 px-2.5 py-1 rounded-lg border border-slate-200/40 shadow-xs"
-            >
-              <HardDrive className="w-3.5 h-3.5 text-slate-400" /> Root Directory
-            </button>
-            {folderPath && (
-              <>
-                <span className="text-slate-400 font-normal">/</span>
-                <span className="text-pu-blue bg-blue-50/50 px-2.5 py-1 rounded-lg border border-blue-100/50 flex items-center gap-1">
-                  <Folder className="w-3 h-3 text-amber-400 fill-amber-400/20" />
-                  {folderPath.name}
-                </span>
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-2 bg-white/50 p-1 rounded-lg border border-slate-200/50">
-            <button 
-              onClick={() => setViewMode('grid')}
-              className={cn("p-1.5 rounded-md transition-all", viewMode === 'grid' ? "bg-white shadow-xs text-pu-blue font-bold" : "text-slate-400 hover:text-slate-600")}
-              title="Grid View"
-            >
-              <Grid className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => setViewMode('list')}
-              className={cn("p-1.5 rounded-md transition-all", viewMode === 'list' ? "bg-white shadow-xs text-pu-blue font-bold" : "text-slate-400 hover:text-slate-600")}
-              title="List View"
-            >
-              <ListIcon className="w-4 h-4" />
-            </button>
-          </div>
+        <FileManagerToolbar
+          currentFolder={currentFolder}
+          setCurrentFolder={setCurrentFolder}
+          folderPath={folderPath}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          loadingFiles={loadingFiles}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          onRefresh={fetchFiles}
+          setSelectedFile={setSelectedFile}
+        />
+        
+        {/* ADD NEW FOLDER BUTTON (Moved from old Header) */}
+        <div className="flex justify-end mt-[-10px]">
+          <button 
+            onClick={() => setShowCreateFolderModal(true)}
+            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border border-slate-200/60 shadow-sm"
+          >
+            <Plus className="w-4 h-4 text-slate-500" />
+            <span className="hidden sm:inline">Folder Baru</span>
+          </button>
         </div>
 
         {/* File Grid/List Area */}
-        <div className="flex-1 bg-white/50 backdrop-blur-md rounded-2xl border border-white/60 overflow-y-auto p-5 custom-scrollbar">
-          {currentFiles.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400 py-12">
-              <div className="p-4 bg-slate-100 rounded-full mb-3 shadow-inner">
-                <Folder className="w-10 h-10 text-slate-300" />
-              </div>
-              <p className="text-xs font-semibold text-slate-500">Folder ini kosong atau Anda tidak memiliki akses.</p>
-              <p className="text-[10px] text-slate-400 mt-1">Gunakan tombol Unggah atau Buat Folder Baru untuk mengisi konten.</p>
+        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar relative">
+          {loadingFiles ? (
+            <div className="h-full flex flex-col items-center justify-center text-slate-400">
+              <RefreshCw className="w-10 h-10 animate-spin text-pu-blue/40 mb-3" />
+              <p className="text-xs font-semibold animate-pulse text-slate-500">Menyinkronkan dengan Google Drive...</p>
             </div>
           ) : (
             viewMode === 'grid' ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                <AnimatePresence>
-                  {currentFiles.map(file => {
-                    const isSelected = selectedFile?.id === file.id;
-                    return (
-                      <motion.div
-                        key={file.id}
-                        layout
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        onClick={() => file.type === 'folder' ? (setCurrentFolder(file.id), setSelectedFile(null)) : handleSelectFile(file)}
-                        className={cn(
-                          "group relative flex flex-col items-center justify-center p-4 rounded-2xl cursor-pointer transition-all duration-200 border text-center select-none",
-                          isSelected 
-                            ? "bg-blue-50/70 border-blue-200 shadow-md translate-y-[-2px]" 
-                            : "bg-white/70 hover:bg-white border-slate-200/50 hover:shadow-md hover:translate-y-[-2px]"
-                        )}
-                      >
-                        <div className="mb-3.5 relative">
-                          {getFileIcon(file.type, "w-11 h-11")}
-                          {file.type !== 'folder' && (
-                            <span className="absolute bottom-[-2px] right-[-2px] bg-white border border-slate-200 rounded-md p-0.5 shadow-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Eye className="w-2.5 h-2.5 text-slate-400" />
-                            </span>
-                          )}
-                        </div>
-                        <h3 className="text-xs font-bold text-slate-700 line-clamp-2 w-full break-all px-1">
-                          {file.name}
-                        </h3>
-                        <p className="text-[9px] text-slate-400 mt-1 font-mono">
-                          {file.type === 'folder' ? 'Folder' : formatSize(file.size)}
-                        </p>
-
-                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 select-none">
-                          {file.type !== 'folder' && (
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedFile(file);
-                                setShowSmartModal(true);
-                                setAiAnalysisResult(null);
-                                setAiChatHistory([]);
-                                setIsDigitallySigned(false);
-                              }}
-                              className="p-1 bg-white hover:bg-blue-50 text-blue-600 rounded-md shadow-xs border border-slate-200/40"
-                              title="Smart Preview (Modal Besar)"
-                            >
-                              <Sparkles className="w-3 h-3" />
-                            </button>
-                          )}
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteFile(file.id);
-                            }}
-                            className="p-1 bg-white hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-md shadow-xs border border-slate-200/40"
-                            title="Hapus berkas"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </div>
+              <FileManagerGridView
+                currentFiles={getFilteredFiles()}
+                selectedFile={selectedFile}
+                setCurrentFolder={setCurrentFolder}
+                setSelectedFile={setSelectedFile}
+                handleSelectFile={handleSelectFile}
+                handleDeleteFile={handleDeleteFile}
+                setShowSmartModal={setShowSmartModal}
+                setAiAnalysisResult={setAiAnalysisResult}
+                setAiChatHistory={setAiChatHistory}
+                setIsDigitallySigned={setIsDigitallySigned}
+                getFileIcon={getFileIcon}
+                formatSize={formatSize}
+              />
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                      <th className="pb-3 px-4 font-bold">Nama Berkas</th>
-                      <th className="pb-3 px-4 font-bold">Ukuran</th>
-                      <th className="pb-3 px-4 font-bold">Modifikasi</th>
-                      <th className="pb-3 px-4 font-bold">Pemilik</th>
-                      <th className="pb-3 px-4 font-bold text-right">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <AnimatePresence>
-                      {currentFiles.map(file => {
-                        const isSelected = selectedFile?.id === file.id;
-                        return (
-                          <motion.tr
-                            key={file.id}
-                            layout
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => file.type === 'folder' ? (setCurrentFolder(file.id), setSelectedFile(null)) : handleSelectFile(file)}
-                            className={cn(
-                              "border-b border-slate-100 hover:bg-white/80 transition-colors cursor-pointer group",
-                              isSelected ? "bg-blue-50/50" : ""
-                            )}
-                          >
-                            <td className="py-3 px-4 flex items-center gap-3">
-                              {getFileIcon(file.type, "w-4.5 h-4.5")}
-                              <span className="text-xs font-bold text-slate-700">{file.name}</span>
-                            </td>
-                            <td className="py-3 px-4 text-[11px] text-slate-500 font-mono">
-                              {file.type === 'folder' ? '--' : formatSize(file.size)}
-                            </td>
-                            <td className="py-3 px-4 text-[11px] text-slate-500">
-                              {new Date(file.updatedAt).toLocaleDateString('id-ID')}
-                            </td>
-                            <td className="py-3 px-4 text-[11px] text-slate-500 font-medium">
-                              {file.author}
-                            </td>
-                            <td className="py-3 px-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-                              <div className="flex items-center justify-end gap-1 select-none">
-                                {file.type !== 'folder' && (
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedFile(file);
-                                      setShowSmartModal(true);
-                                      setAiAnalysisResult(null);
-                                      setAiChatHistory([]);
-                                      setIsDigitallySigned(false);
-                                    }}
-                                    className="p-1.5 text-blue-600 hover:text-blue-800 rounded-md hover:bg-blue-50"
-                                    title="Smart Preview (Modal Besar)"
-                                  >
-                                    <Sparkles className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteFile(file.id);
-                                  }}
-                                  className="p-1.5 text-slate-400 hover:text-red-600 rounded-md hover:bg-slate-100"
-                                  title="Hapus berkas"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </motion.tr>
-                        );
-                      })}
-                    </AnimatePresence>
-                  </tbody>
-                </table>
-              </div>
+              <FileManagerListView
+                currentFiles={getFilteredFiles()}
+                selectedFile={selectedFile}
+                setCurrentFolder={setCurrentFolder}
+                setSelectedFile={setSelectedFile}
+                handleSelectFile={handleSelectFile}
+                handleDeleteFile={handleDeleteFile}
+                setShowSmartModal={setShowSmartModal}
+                setAiAnalysisResult={setAiAnalysisResult}
+                setAiChatHistory={setAiChatHistory}
+                setIsDigitallySigned={setIsDigitallySigned}
+                getFileIcon={getFileIcon}
+                formatSize={formatSize}
+              />
             )
           )}
         </div>

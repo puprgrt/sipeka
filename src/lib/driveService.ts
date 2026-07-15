@@ -97,3 +97,40 @@ export async function makeFilePublic(fileId: string): Promise<void> {
     console.error("Failed to make file public", await res.text());
   }
 }
+
+/**
+ * Lists files and folders from Google Drive for real-time file management.
+ * @param folderId (Optional) ID of the folder to list files from. If null, lists root files.
+ * @returns Array of Google Drive file objects
+ */
+export async function listDriveFiles(folderId?: string | null): Promise<any[]> {
+  const token = await getAccessToken();
+  if (!token) throw new Error("Not authenticated");
+
+  // Base query: not trashed
+  let q = "trashed=false";
+  
+  // If folderId is provided, get its children.
+  // Otherwise, you might want to fetch files owned by the user, or specific SIPEKA root folder.
+  if (folderId) {
+    q += ` and '${folderId}' in parents`;
+  } else {
+    // Just an example to get root level or all files. Usually you'd want a specific root folder for the app.
+    // Let's just fetch all folders if we are in root to avoid fetching thousands of unrelated files.
+    q += ` and mimeType='application/vnd.google-apps.folder'`;
+  }
+
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,size,modifiedTime,owners,webViewLink,webContentLink,hasThumbnail,thumbnailLink)&orderBy=folder,modifiedTime desc`, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!res.ok) {
+    console.error("Failed to list files from Drive", await res.text());
+    throw new Error('Failed to list files from Google Drive');
+  }
+
+  const data = await res.json();
+  return data.files || [];
+}
