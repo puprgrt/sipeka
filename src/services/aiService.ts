@@ -1,110 +1,100 @@
 import { readAiSettings } from "../utils/configHelper";
 import { GoogleGenAI, Type, ThinkingLevel } from "@google/genai";
+import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 
-let aiClient: GoogleGenAI | null = null;
-let currentApiKey: string | null = null;
+let googleClient: GoogleGenAI | null = null;
+let openaiClient: OpenAI | null = null;
+let anthropicClient: Anthropic | null = null;
+
+let currentGoogleKey: string | null = null;
+let currentOpenaiKey: string | null = null;
+let currentAnthropicKey: string | null = null;
 
 export async function getAI() {
   const aiSettings = await readAiSettings();
-  const apiKey = aiSettings?.apiKey || process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not set in settings or environment variable");
+  const provider = aiSettings.provider || "google";
+
+  if (provider === "google") {
+    const apiKey = aiSettings.apiKey || process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("GEMINI_API_KEY is not set in settings or environment variable");
+    if (!googleClient || currentGoogleKey !== apiKey) {
+      googleClient = new GoogleGenAI({ apiKey: apiKey, httpOptions: { headers: { 'User-Agent': 'aistudio-build' } } });
+      currentGoogleKey = apiKey;
+    }
+    return { client: googleClient, aiSettings, provider };
+  } else if (provider === "openai") {
+    const apiKey = aiSettings.openaiApiKey || process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error("OPENAI_API_KEY is not set in settings");
+    if (!openaiClient || currentOpenaiKey !== apiKey) {
+      openaiClient = new OpenAI({ apiKey: apiKey });
+      currentOpenaiKey = apiKey;
+    }
+    return { client: openaiClient, aiSettings, provider };
+  } else if (provider === "anthropic") {
+    const apiKey = aiSettings.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set in settings");
+    if (!anthropicClient || currentAnthropicKey !== apiKey) {
+      anthropicClient = new Anthropic({ apiKey: apiKey });
+      currentAnthropicKey = apiKey;
+    }
+    return { client: anthropicClient, aiSettings, provider };
+  } else if (provider === "ollama") {
+    // Ollama just uses fetch, no persistent client needed
+    return { client: null, aiSettings, provider };
   }
+
+  throw new Error(`Unsupported AI provider: ${provider}`);
+}
+
+async function runOllama(endpoint: string, model: string, system: string, user: string, imagesBase64?: string[], expectJson: boolean = false) {
+  const body: any = {
+    model: model || "llava",
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user }
+    ],
+    stream: false
+  };
   
-  if (!aiClient || currentApiKey !== apiKey) {
-    aiClient = new GoogleGenAI({
-      apiKey: apiKey,
-      httpOptions: {
-        headers: { 'User-Agent': 'aistudio-build' }
-      }
-    });
-    currentApiKey = apiKey;
+  if (expectJson) {
+    body.format = "json";
   }
-  return { aiClient, aiSettings };
+
+  if (imagesBase64 && imagesBase64.length > 0) {
+    body.messages[1].images = imagesBase64;
+  }
+
+  const url = endpoint.endsWith('/') ? `${endpoint}api/chat` : `${endpoint}/api/chat`;
+  
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Ollama Error: ${errText}`);
+  }
+
+  const data = await res.json();
+  return data.message.content;
 }
 
 export async function analyzeDamageLogic(imageBase64: string, componentName: string) {
-  const { aiClient, aiSettings } = await getAI();
+  const { client, aiSettings, provider } = await getAI();
   const mimeType = imageBase64.substring(5, imageBase64.indexOf(";"));
   const data = imageBase64.substring(imageBase64.indexOf(",") + 1);
 
-  const prompt = (aiSettings.visionPrompt || `You are a civil engineering expert analyzing a building component for damage.
-Component: ${componentName}
+  const prompt = (aiSettings.visionPrompt || `You are a civil engineering expert analyzing a building component for damage.\n\nPlease analyze the provided image of the component.\nDetermine the damage level classification based on these categories:\n- "Rusak Sangat Ringan"\n- "Rusak Ringan"\n- "Rusak Sedang"\n- "Rusak Berat"\n- "Rusak Sangat Berat"\n- "Tidak Rusak"\n\nAlso estimate the percentage of the volume/area of the component that is damaged (0 to 100).\nFinally, provide a brief reasoning for your assessment.`) + `\n\nComponent: ${componentName}`;
+  const model = aiSettings.model || "gemini-3.5-flash";
 
-Please analyze the provided image of the component.
-Determine the damage level classification based on these categories:
-- "Rusak Sangat Ringan"
-- "Rusak Ringan"
-- "Rusak Sedang"
-- "Rusak Berat"
-- "Rusak Sangat Berat"
-- "Tidak Rusak"
+  let responseText = "";
 
-Also estimate the percentage of the volume/area of the component that is damaged (0 to 100).
-Finally, provide a brief reasoning for your assessment.`) + `
-
-Component: ${componentName}`;
-
-  const response = await aiClient.models.generateContent({
-    model: aiSettings.model || "gemini-3.1-pro-preview",
-    contents: {
-      parts: [
-        { text: prompt },
-        { inlineData: { data, mimeType } }
-      ]
-    },
-    config: {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          level: { type: Type.STRING, description: "The damage level classification." },
-          percentage: { type: Type.NUMBER, description: "The estimated percentage of damage (0-100)." },
-          reasoning: { type: Type.STRING, description: "Brief reasoning for the assessment." }
-        },
-        required: ["level", "percentage", "reasoning"]
-      }
-    }
-  });
-
-  return JSON.parse(response.text?.trim() || "{}");
-}
-
-export async function analyzeDocumentLogic(fileName: string, fileType: string, fileContent: string, imageBase64: string) {
-  const { aiClient, aiSettings } = await getAI();
-  let response;
-
-  if (fileType === 'image' && imageBase64) {
-    const mimeType = imageBase64.substring(5, imageBase64.indexOf(";"));
-    const data = imageBase64.substring(imageBase64.indexOf(",") + 1);
-
-    const prompt = (aiSettings.documentPrompt || `You are an expert PUPR Cipta Karya building structural inspector and civil engineer.
-Please perform a highly detailed AI Crack & Defect Analysis on the provided image of a building element: "${fileName}".
-Analyze the image for building structure defects such as concrete cracks, water leakage stains, exposed reinforcement bar, column deformities, corrosion, or material wear.
-If you find any crack or defect, describe it technically and estimate the damage criteria according to PUPR standards (Rusak Ringan, Rusak Sedang, Rusak Berat).
-
-Return a JSON response matching the following schema:
-{
-  "summary": "Analisis visual teknis yang mendalam terhadap kondisi dan integritas komponen bangunan.",
-  "findings": [
-    {
-      "element": "Nama komponen spesifik (misal: Balok Beton Bertulang, Kolom Praktis, Rangka Baja Atap)",
-      "defect": "Tipe cacat teknis (misal: Retak Geser, Spalling, Korosi Tulangan Utama, Lendutan)",
-      "severity": "Rusak Ringan / Rusak Sedang / Rusak Berat (sesuai standar PUPR)",
-      "remediation": "Saran penanganan teknis spesifik (misal: Injeksi epoxy resin, Grouting non-shrink, FRP Retrofitting)",
-      "box": { "x": 10, "y": 20, "w": 30, "h": 40 }
-    }
-  ],
-  "recommendations": ["Rekomendasi metode perbaikan struktural", "Estimasi Kriteria Kerusakan: Rusak Ringan/Sedang/Berat", "Estimasi Persentase Kerusakan Komponen (contoh: Estimasi 30%)"],
-  "complianceStatus": "Sesuai Standar SNI / Perlu Audit Struktur / Tidak Laik Fungsi",
-  "confidenceScore": 85
-}`) + `
-
-FileName: ${fileName}`;
-
-    response = await aiClient.models.generateContent({
-      model: aiSettings.model || "gemini-3.5-flash",
+  if (provider === "google") {
+    const response = await (client as GoogleGenAI).models.generateContent({
+      model: model,
       contents: {
         parts: [
           { text: prompt },
@@ -116,39 +106,98 @@ FileName: ${fileName}`;
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            summary: { type: Type.STRING },
-            findings: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  element: { type: Type.STRING },
-                  defect: { type: Type.STRING },
-                  severity: { type: Type.STRING },
-                  remediation: { type: Type.STRING },
-                  box: {
-                    type: Type.OBJECT,
-                    properties: {
-                      x: { type: Type.NUMBER },
-                      y: { type: Type.NUMBER },
-                      w: { type: Type.NUMBER },
-                      h: { type: Type.NUMBER }
-                    },
-                    required: ["x", "y", "w", "h"]
-                  }
-                },
-                required: ["element", "defect", "severity", "remediation", "box"]
-              }
-            },
-            recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
-            complianceStatus: { type: Type.STRING },
-            confidenceScore: { type: Type.INTEGER }
+            level: { type: Type.STRING },
+            percentage: { type: Type.NUMBER },
+            reasoning: { type: Type.STRING }
           },
-          required: ["summary", "findings", "recommendations", "complianceStatus", "confidenceScore"]
+          required: ["level", "percentage", "reasoning"]
         }
       }
     });
+    responseText = response.text?.trim() || "{}";
+  } else if (provider === "openai") {
+    const response = await (client as OpenAI).chat.completions.create({
+      model: model,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt + "\\n\\nRespond in JSON format with keys: level (string), percentage (number), reasoning (string)." },
+            { type: "image_url", image_url: { url: `data:${mimeType};base64,${data}` } }
+          ]
+        }
+      ]
+    });
+    responseText = response.choices[0].message.content || "{}";
+  } else if (provider === "anthropic") {
+    const response = await (client as Anthropic).messages.create({
+      model: model,
+      max_tokens: 1024,
+      system: "Respond ONLY with valid JSON containing keys: level (string), percentage (number), reasoning (string).",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image", source: { type: "base64", media_type: mimeType as any, data: data } }
+          ]
+        }
+      ]
+    });
+    responseText = (response.content[0] as any).text || "{}";
+  } else if (provider === "ollama") {
+    const endpoint = aiSettings.ollamaEndpoint || "http://localhost:11434";
+    responseText = await runOllama(endpoint, model, "Respond ONLY with valid JSON.", prompt + "\\n\\nRespond in JSON format with keys: level (string), percentage (number), reasoning (string).", [data], true);
+  }
+
+  try {
+    return JSON.parse(responseText);
+  } catch (e) {
+    console.error("Failed to parse JSON", responseText);
+    return { level: "Error", percentage: 0, reasoning: "Gagal memproses respon AI (Non-JSON)" };
+  }
+}
+
+export async function analyzeDocumentLogic(fileName: string, fileType: string, fileContent: string, imageBase64: string) {
+  const { client, aiSettings, provider } = await getAI();
+  const model = aiSettings.model || "gemini-3.5-flash";
+  let responseText = "";
+  
+  if (fileType === 'image' && imageBase64) {
+    const mimeType = imageBase64.substring(5, imageBase64.indexOf(";"));
+    const data = imageBase64.substring(imageBase64.indexOf(",") + 1);
+
+    const prompt = (aiSettings.documentPrompt || `You are an expert PUPR Cipta Karya building structural inspector and civil engineer.\nPlease perform a highly detailed AI Crack & Defect Analysis on the provided image of a building element: "${fileName}".\nAnalyze the image for building structure defects such as concrete cracks, water leakage stains, exposed reinforcement bar, column deformities, corrosion, or material wear.\nIf you find any crack or defect, describe it technically and estimate the damage criteria according to PUPR standards (Rusak Ringan, Rusak Sedang, Rusak Berat).\n\nReturn a JSON response matching the following schema:\n{\n  "summary": "Analisis visual teknis yang mendalam terhadap kondisi dan integritas komponen bangunan.",\n  "findings": [\n    {\n      "element": "Nama komponen spesifik (misal: Balok Beton Bertulang, Kolom Praktis, Rangka Baja Atap)",\n      "defect": "Tipe cacat teknis (misal: Retak Geser, Spalling, Korosi Tulangan Utama, Lendutan)",\n      "severity": "Rusak Ringan / Rusak Sedang / Rusak Berat (sesuai standar PUPR)",\n      "remediation": "Saran penanganan teknis spesifik (misal: Injeksi epoxy resin, Grouting non-shrink, FRP Retrofitting)",\n      "box": { "x": 10, "y": 20, "w": 30, "h": 40 }\n    }\n  ],\n  "recommendations": ["Rekomendasi metode perbaikan struktural", "Estimasi Kriteria Kerusakan: Rusak Ringan/Sedang/Berat", "Estimasi Persentase Kerusakan Komponen (contoh: Estimasi 30%)"],\n  "complianceStatus": "Sesuai Standar SNI / Perlu Audit Struktur / Tidak Laik Fungsi",\n  "confidenceScore": 85\n}`) + `\n\nFileName: ${fileName}`;
+
+    if (provider === "google") {
+      const response = await (client as GoogleGenAI).models.generateContent({
+        model: model,
+        contents: { parts: [{ text: prompt }, { inlineData: { data, mimeType } }] },
+        config: { responseMimeType: "application/json" }
+      });
+      responseText = response.text?.trim() || "{}";
+    } else if (provider === "openai") {
+      const response = await (client as OpenAI).chat.completions.create({
+        model: model,
+        response_format: { type: "json_object" },
+        messages: [{ role: "user", content: [{ type: "text", text: prompt }, { type: "image_url", image_url: { url: `data:${mimeType};base64,${data}` } }] }]
+      });
+      responseText = response.choices[0].message.content || "{}";
+    } else if (provider === "anthropic") {
+      const response = await (client as Anthropic).messages.create({
+        model: model,
+        max_tokens: 1024,
+        system: "Respond ONLY with valid JSON.",
+        messages: [{ role: "user", content: [{ type: "text", text: prompt }, { type: "image", source: { type: "base64", media_type: mimeType as any, data: data } }] }]
+      });
+      responseText = (response.content[0] as any).text || "{}";
+    } else if (provider === "ollama") {
+      const endpoint = aiSettings.ollamaEndpoint || "http://localhost:11434";
+      responseText = await runOllama(endpoint, model, "Respond ONLY with valid JSON.", prompt, [data], true);
+    }
   } else {
+    // Text based document analysis
     const prompt = `You are an expert civil engineer and PUPR Cipta Karya auditor inspecting building documents.
 FileName: "${fileName}"
 FileType: "${fileType}"
@@ -173,37 +222,38 @@ Return a JSON response matching the following schema:
   "confidenceScore": 90
 }`;
 
-    response = await aiClient.models.generateContent({
-      model: aiSettings.model || "gemini-3.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            summary: { type: Type.STRING },
-            findings: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  element: { type: Type.STRING },
-                  defect: { type: Type.STRING },
-                  severity: { type: Type.STRING },
-                  remediation: { type: Type.STRING }
-                },
-                required: ["element", "defect", "severity", "remediation"]
-              }
-            },
-            recommendations: { type: Type.ARRAY, items: { type: Type.STRING } },
-            complianceStatus: { type: Type.STRING },
-            confidenceScore: { type: Type.INTEGER }
-          },
-          required: ["summary", "findings", "recommendations", "complianceStatus", "confidenceScore"]
-        }
-      }
-    });
+    if (provider === "google") {
+      const response = await (client as GoogleGenAI).models.generateContent({
+        model: model,
+        contents: prompt,
+        config: { responseMimeType: "application/json" }
+      });
+      responseText = response.text?.trim() || "{}";
+    } else if (provider === "openai") {
+      const response = await (client as OpenAI).chat.completions.create({
+        model: model,
+        response_format: { type: "json_object" },
+        messages: [{ role: "user", content: prompt }]
+      });
+      responseText = response.choices[0].message.content || "{}";
+    } else if (provider === "anthropic") {
+      const response = await (client as Anthropic).messages.create({
+        model: model,
+        max_tokens: 1500,
+        system: "Respond ONLY with valid JSON.",
+        messages: [{ role: "user", content: prompt }]
+      });
+      responseText = (response.content[0] as any).text || "{}";
+    } else if (provider === "ollama") {
+      const endpoint = aiSettings.ollamaEndpoint || "http://localhost:11434";
+      responseText = await runOllama(endpoint, model, "Respond ONLY with valid JSON.", prompt, [], true);
+    }
   }
 
-  return JSON.parse(response.text?.trim() || "{}");
+  try {
+    return JSON.parse(responseText);
+  } catch (e) {
+    console.error("Failed to parse JSON", responseText);
+    return { summary: "Error processing document", findings: [], recommendations: [], complianceStatus: "Error", confidenceScore: 0 };
+  }
 }

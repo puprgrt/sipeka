@@ -111,6 +111,18 @@ export default function SmartPreviewModal(props: SmartPreviewModalProps) {
     commentText, setCommentText, handleAddComment
   } = props;
 
+  React.useEffect(() => {
+    // Ensure the file is public so iframe preview doesn't show "You need access"
+    if (selectedFile && selectedFile.type !== 'folder' && selectedFile.id) {
+      import('../../lib/driveService').then(({ makeFilePublic }) => {
+        makeFilePublic(selectedFile.id).catch((err) => {
+          console.error("Auto makeFilePublic failed:", err);
+        });
+      });
+    }
+  }, [selectedFile]);
+
+
   return (
     <>
       <div 
@@ -187,7 +199,7 @@ export default function SmartPreviewModal(props: SmartPreviewModalProps) {
             </button>
             <button 
               onClick={() => {
-                alert(`Mengunduh berkas: ${selectedFile.name}`);
+                if (selectedFile.previewUrl) window.open(selectedFile.previewUrl, '_blank'); else alert('Link tidak tersedia');
               }}
               className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
               title="Unduh berkas"
@@ -241,24 +253,30 @@ export default function SmartPreviewModal(props: SmartPreviewModalProps) {
               />
             )}
 
-            {selectedFile.type === 'excel' && (
+            {(selectedFile.type === 'word' || selectedFile.type === 'excel' || selectedFile.type === 'other') && selectedFile.previewUrl ? (
+              <div className="w-full h-full p-1 bg-white rounded-xl border border-slate-200">
+                <iframe 
+                  src={selectedFile.previewUrl.replace(/\/view.*$/, '/preview')}
+                  className="w-full h-full rounded-lg"
+                  title="Google Drive Preview"
+                />
+              </div>
+            ) : selectedFile.type === 'excel' && selectedFile.excelData ? (
               <ExcelPreview
                 selectedFile={selectedFile}
                 selectedSheet={selectedSheet}
                 setSelectedSheet={setSelectedSheet}
                 handleExcelCellChange={handleExcelCellChange}
               />
-            )}
-
-            {selectedFile.type === 'other' && (
+            ) : selectedFile.type === 'other' || selectedFile.type === 'word' || selectedFile.type === 'excel' ? (
               <div className="p-10 text-center text-slate-500 space-y-3 bg-white/70 border border-slate-200 rounded-2xl max-w-sm">
                 <File className="w-10 h-10 text-slate-300 mx-auto" />
-                <p className="text-xs font-bold text-slate-700">Format Pratinjau Terbatas</p>
+                <p className="text-xs font-bold text-slate-700">Pratinjau Tidak Tersedia</p>
                 <p className="text-[10px] text-slate-400">
-                  Berkas "{selectedFile.name}" terdaftar dalam format eksternal. Anda tetap dapat mengunduh berkas secara penuh untuk dibuka di perangkat Anda.
+                  Berkas "{selectedFile.name}" tidak memiliki link pratinjau yang valid.
                 </p>
               </div>
-            )}
+            ) : null}
           </div>
 
           {/* RIGHT CONTAINER: Verification Panel */}

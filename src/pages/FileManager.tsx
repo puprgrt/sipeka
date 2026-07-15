@@ -57,12 +57,13 @@ interface FileItem {
 export default function FileManager() {
   const [activeRole, setActiveRole] = useState(() => localStorage.getItem("activeRole") || "Administrator");
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
+  const [currentFolderName, setCurrentFolderName] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<'all' | 'images' | 'documents' | 'spreadsheets' | 'folders'>('all');
   
   // Custom Hook for Drive logic
-  const { files, setFiles, loadingFiles, fetchFiles } = useDriveFiles(currentFolder);
+  const { files, setFiles, loadingFiles, fetchFiles, createFolder, uploadFile, deleteFile } = useDriveFiles(currentFolder);
 
   // Preview States
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
@@ -321,6 +322,7 @@ export default function FileManager() {
 
   const handleSelectFile = (file: FileItem) => {
     setSelectedFile(file);
+    setShowSmartModal(true);
     setPreviewScale(1);
     setPreviewPage(1);
     setPreviewRotation(0);
@@ -335,133 +337,60 @@ export default function FileManager() {
     setSelectedSheet(0);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
     const file = fileList[0];
 
-    let type: FileItem['type'] = 'other';
-    if (file.type.includes('pdf')) type = 'pdf';
-    else if (file.type.includes('image')) type = 'image';
-    else if (file.name.endsWith('.doc') || file.name.endsWith('.docx') || file.name.endsWith('.txt')) type = 'word';
-    else if (file.name.endsWith('.xls') || file.name.endsWith('.xlsx') || file.name.endsWith('.csv')) type = 'excel';
+    try {
+      const activeUserName = localStorage.getItem("activeUserName") || activeRole.replace("_", " ");
+      const uploadedFile = await uploadFile(file, activeUserName);
 
-    const objectUrl = URL.createObjectURL(file);
+      if (uploadedFile.type === 'word' || uploadedFile.type === 'excel') {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const textContent = (event.target?.result as string) || "";
+          let wordContent = "";
+          let excelData = undefined;
 
-    if (type === 'word' || type === 'excel') {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const textContent = (event.target?.result as string) || "";
-        
-        let wordContent = "";
-        let excelData = undefined;
-
-        if (type === 'word') {
-          wordContent = textContent || `DOKUMEN HASIL UNGGAHAN\nNama File: ${file.name}\n\nTidak ada teks yang dapat dibaca secara langsung.`;
-        } else if (type === 'excel') {
-          // Attempt parsing CSV or tab-separated lines
-          const rows: string[][] = [];
-          const lines = textContent.split(/\r?\n/);
-          const lineLimit = Math.min(lines.length, 15);
+          if (uploadedFile.type === 'word') {
+            wordContent = textContent || `DOKUMEN HASIL UNGGAHAN\nNama File: ${file.name}\n\nTidak ada teks yang dapat dibaca secara langsung.`;
+          } else if (uploadedFile.type === 'excel') {
+            const rows = [];
+            const lines = textContent.split(/\r?\n/);
+            const lineLimit = Math.min(lines.length, 15);
+            for (let i = 0; i < lineLimit; i++) {
+              if (!lines[i].trim()) continue;
+              const cols = lines[i].split(/,|\t|;/).map(c => c.replace(/^["']|["']$/g, '').trim());
+              rows.push(cols);
+            }
+            if (rows.length > 1) {
+              excelData = { sheets: [{ name: "Hasil Impor", rows: rows }] };
+            }
+          }
           
-          for (let i = 0; i < lineLimit; i++) {
-            if (!lines[i].trim()) continue;
-            const cols = lines[i].split(/,|\t|;/).map(c => c.replace(/^["']|["']$/g, '').trim());
-            rows.push(cols);
-          }
-
-          if (rows.length > 1) {
-            excelData = {
-              sheets: [
-                {
-                  name: "Hasil Impor Real-time",
-                  rows: rows
-                }
-              ]
-            };
-          } else {
-            excelData = {
-              sheets: [
-                {
-                  name: "Lembar 1",
-                  rows: [
-                    ["No", "Deskripsi Pekerjaan", "Volume", "Satuan", "Harga Satuan (Rp)", "Total (Rp)"],
-                    ["1", "Rehabilitasi Elemen Utama", "1", "paket", "15000000", "15000000"],
-                    ["2", "Pekerjaan Finishing Dinding", "50", "m2", "75000", "3750000"],
-                    ["", "Total Biaya", "", "", "", "18750000"]
-                  ]
-                }
-              ]
-            };
-          }
-        }
-
-        const newFile: FileItem = {
-          id: "file-" + Date.now(),
-          name: file.name,
-          type: type,
-          size: file.size,
-          updatedAt: new Date().toISOString(),
-          author: localStorage.getItem("activeUserName") || activeRole.replace("_", " "),
-          folderId: currentFolder,
-          accessRole: ["Administrator", "Kadis", "Kabid", "Koordinator", "Tim_Teknis", "Operator", "Pengelola_Bangunan"],
-          previewUrl: objectUrl,
-          description: `Berkas real yang diunggah langsung oleh pengguna pada ${new Date().toLocaleDateString('id-ID')}.`,
-          comments: [],
-          activities: [
-            { action: "Berkas asli diunggah ke sistem", time: new Date().toISOString(), user: localStorage.getItem("activeUserName") || activeRole.replace("_", " ") }
-          ],
-          content: wordContent,
-          excelData: excelData
+          setFiles(prev => prev.map(f => f.id === uploadedFile.id ? { ...f, content: wordContent, excelData } : f));
         };
-
-        setFiles(prev => [newFile, ...prev]);
-        handleSelectFile(newFile);
-      };
-
-      reader.readAsText(file);
-    } else {
-      const newFile: FileItem = {
-        id: "file-" + Date.now(),
-        name: file.name,
-        type: type,
-        size: file.size,
-        updatedAt: new Date().toISOString(),
-        author: localStorage.getItem("activeUserName") || activeRole.replace("_", " "),
-        folderId: currentFolder,
-        accessRole: ["Administrator", "Kadis", "Kabid", "Koordinator", "Tim_Teknis", "Operator", "Pengelola_Bangunan"],
-        previewUrl: objectUrl,
-        description: `Berkas real yang diunggah langsung oleh pengguna pada ${new Date().toLocaleDateString('id-ID')}.`,
-        comments: [],
-        activities: [
-          { action: "Berkas berhasil diunggah ke sistem", time: new Date().toISOString(), user: localStorage.getItem("activeUserName") || activeRole.replace("_", " ") }
-        ]
-      };
-
-      setFiles(prev => [newFile, ...prev]);
-      handleSelectFile(newFile);
+        reader.readAsText(file);
+      }
+    } catch (err) {
+      console.error("Failed to upload file", err);
+      alert("Gagal mengunggah file ke Google Drive.");
     }
   };
 
-  const handleCreateFolder = () => {
+  const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
 
-    const newFolder: FileItem = {
-      id: "folder-" + Date.now(),
-      name: newFolderName,
-      type: 'folder',
-      updatedAt: new Date().toISOString(),
-      author: localStorage.getItem("activeUserName") || activeRole.replace("_", " "),
-      folderId: currentFolder,
-      accessRole: ["Administrator", "Kadis", "Kabid", "Koordinator", "Tim_Teknis", "Operator", "Pengelola_Bangunan"],
-      activities: [
-        { action: "Folder baru diciptakan", time: new Date().toISOString(), user: localStorage.getItem("activeUserName") || activeRole.replace("_", " ") }
-      ]
-    };
-
-    setFiles(prev => [...prev, newFolder]);
-    setNewFolderName("");
-    setShowCreateFolderModal(false);
+    try {
+      const activeUserName = localStorage.getItem("activeUserName") || activeRole.replace("_", " ");
+      await createFolder(newFolderName, activeUserName);
+      setNewFolderName("");
+      setShowCreateFolderModal(false);
+    } catch (err) {
+      console.error("Failed to create folder", err);
+      alert("Gagal membuat folder di Google Drive.");
+    }
   };
 
   const handleDeleteFile = (id: string) => {
@@ -608,7 +537,8 @@ export default function FileManager() {
         <FileManagerToolbar
           currentFolder={currentFolder}
           setCurrentFolder={setCurrentFolder}
-          folderPath={folderPath}
+          folderName={currentFolderName}
+            setCurrentFolderName={setCurrentFolderName}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           loadingFiles={loadingFiles}

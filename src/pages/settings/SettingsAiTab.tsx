@@ -9,6 +9,10 @@ interface SettingsAiTabProps {
 
 export default function SettingsAiTab({ onToast }: SettingsAiTabProps) {
   const [aiConfig, setAiConfig] = useState<AiConfig>({
+    provider: "google",
+    openaiApiKey: "",
+    anthropicApiKey: "",
+    ollamaEndpoint: "http://localhost:11434",
     apiKey: "",
     model: "gemini-3.5-flash",
     autoAnalyze: true,
@@ -85,27 +89,110 @@ export default function SettingsAiTab({ onToast }: SettingsAiTabProps) {
           </h3>
           
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">API Key Gemini</label>
-            <input 
-              type="password" 
-              value={aiConfig.apiKey}
-              onChange={(e) => setAiConfig({...aiConfig, apiKey: e.target.value})}
-              placeholder="Biarkan kosong untuk menggunakan .env (Server)"
-              className="w-full text-sm p-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none"
-            />
-            <p className="text-[10px] text-slate-500 mt-1">Kredensial dari Google AI Studio. Sangat rahasia.</p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Model Visual Default</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Provider AI</label>
             <select 
-              value={aiConfig.model}
-              onChange={(e) => setAiConfig({...aiConfig, model: e.target.value})}
+              value={aiConfig.provider || "google"}
+              onChange={(e) => setAiConfig({...aiConfig, provider: e.target.value as any})}
               className="w-full text-sm p-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none"
             >
-              <option value="gemini-3.5-flash">Gemini 3.5 Flash (Sangat Cepat)</option>
-              <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Akurat &amp; Detail)</option>
+              <option value="google">Google Gemini</option>
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic Claude</option>
+              <option value="ollama">Ollama (Lokal)</option>
             </select>
+          </div>
+
+          {aiConfig.provider === 'google' && (
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">API Key Gemini</label>
+              <input 
+                type="password" 
+                value={aiConfig.apiKey}
+                onChange={(e) => setAiConfig({...aiConfig, apiKey: e.target.value})}
+                placeholder="Biarkan kosong untuk menggunakan .env (Server)"
+                className="w-full text-sm p-3 rounded-xl border border-slate-200 focus:border-indigo-500 transition-all outline-none"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">Kredensial dari Google AI Studio.</p>
+            </div>
+          )}
+
+          {aiConfig.provider === 'openai' && (
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">API Key OpenAI</label>
+              <input 
+                type="password" 
+                value={aiConfig.openaiApiKey || ""}
+                onChange={(e) => setAiConfig({...aiConfig, openaiApiKey: e.target.value})}
+                placeholder="sk-..."
+                className="w-full text-sm p-3 rounded-xl border border-slate-200 focus:border-indigo-500 transition-all outline-none"
+              />
+            </div>
+          )}
+
+          {aiConfig.provider === 'anthropic' && (
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">API Key Anthropic</label>
+              <input 
+                type="password" 
+                value={aiConfig.anthropicApiKey || ""}
+                onChange={(e) => setAiConfig({...aiConfig, anthropicApiKey: e.target.value})}
+                placeholder="sk-ant-..."
+                className="w-full text-sm p-3 rounded-xl border border-slate-200 focus:border-indigo-500 transition-all outline-none"
+              />
+            </div>
+          )}
+
+          {aiConfig.provider === 'ollama' && (
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Ollama Endpoint URL</label>
+              <input 
+                type="text" 
+                value={aiConfig.ollamaEndpoint || "http://localhost:11434"}
+                onChange={(e) => setAiConfig({...aiConfig, ollamaEndpoint: e.target.value})}
+                placeholder="http://localhost:11434"
+                className="w-full text-sm p-3 rounded-xl border border-slate-200 focus:border-indigo-500 transition-all outline-none"
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Model AI Utama</label>
+            {aiConfig.provider === 'google' ? (
+              <select 
+                value={aiConfig.model}
+                onChange={(e) => setAiConfig({...aiConfig, model: e.target.value})}
+                className="w-full text-sm p-3 rounded-xl border border-slate-200 focus:border-indigo-500 transition-all outline-none"
+              >
+                <option value="gemini-3.5-flash">Gemini 3.5 Flash (Sangat Cepat)</option>
+                <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro (Akurat & Detail)</option>
+              </select>
+            ) : aiConfig.provider === 'openai' ? (
+              <select 
+                value={aiConfig.model}
+                onChange={(e) => setAiConfig({...aiConfig, model: e.target.value})}
+                className="w-full text-sm p-3 rounded-xl border border-slate-200 focus:border-indigo-500 transition-all outline-none"
+              >
+                <option value="gpt-4o">GPT-4o (Visual & Teks)</option>
+                <option value="gpt-4o-mini">GPT-4o Mini (Cepat)</option>
+              </select>
+            ) : aiConfig.provider === 'anthropic' ? (
+              <select 
+                value={aiConfig.model}
+                onChange={(e) => setAiConfig({...aiConfig, model: e.target.value})}
+                className="w-full text-sm p-3 rounded-xl border border-slate-200 focus:border-indigo-500 transition-all outline-none"
+              >
+                <option value="claude-3-5-sonnet-20240620">Claude 3.5 Sonnet</option>
+                <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+              </select>
+            ) : (
+              <input 
+                type="text" 
+                value={aiConfig.model}
+                onChange={(e) => setAiConfig({...aiConfig, model: e.target.value})}
+                placeholder="Ketik nama model (contoh: llava, llama3)"
+                className="w-full text-sm p-3 rounded-xl border border-slate-200 focus:border-indigo-500 transition-all outline-none"
+              />
+            )}
           </div>
 
           <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">

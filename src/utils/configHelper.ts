@@ -33,6 +33,10 @@ export async function setDbConfig(key: string, value: any) {
 
 export async function readLetterParamsFile() {
   let defaultVal: any = {
+      provider: "google",
+      openaiApiKey: "",
+      anthropicApiKey: "",
+      ollamaEndpoint: "http://localhost:11434",
     sistem: {
       logoKiri: "",
       logoKanan: "",

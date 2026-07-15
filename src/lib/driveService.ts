@@ -165,3 +165,122 @@ export async function listDriveFiles(folderId?: string | null): Promise<any[]> {
   const data = await res.json();
   return data.files || [];
 }
+
+/**
+ * Uploads a file to Google Drive under a specific parent folder ID.
+ * @param file The file to upload
+ * @param parentFolderId Optional ID of the parent folder.
+ * @returns The Drive File metadata object
+ */
+export async function uploadFileToDrive(file: File, parentFolderId?: string | null): Promise<any> {
+  const token = await getAccessToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const appRootId = await getOrCreateAppRootFolder(token);
+  const parentId = parentFolderId || appRootId;
+
+  const metadata = {
+    name: file.name,
+    parents: [parentId]
+  };
+
+  // Step 1: Create file metadata
+  const metaRes = await fetch('https://www.googleapis.com/drive/v3/files?fields=id', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(metadata)
+  });
+
+  if (!metaRes.ok) {
+    const text = await metaRes.text();
+    console.error("Drive metadata upload error", text);
+    throw new Error('Failed to create file metadata in Google Drive');
+  }
+
+  const metaData = await metaRes.json();
+  const fileId = metaData.id;
+
+  // Step 2: Upload file content
+  const uploadRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media&fields=id,name,mimeType,size,modifiedTime,owners,webViewLink,webContentLink`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': file.type || 'application/octet-stream'
+    },
+    body: file
+  });
+
+  if (!uploadRes.ok) {
+    const text = await uploadRes.text();
+    console.error("Drive content upload error", text);
+    throw new Error('Failed to upload file content to Google Drive');
+  }
+
+  const data = await uploadRes.json();
+  
+  // Make the uploaded file publicly viewable
+  await makeFilePublic(data.id).catch(console.error);
+  
+  return data;
+}
+
+/**
+ * Creates a new folder in Google Drive.
+ * @param folderName Name of the new folder
+ * @param parentFolderId Optional ID of the parent folder. If not provided, created in the app root folder.
+ * @returns The Drive File ID of the created folder
+ */
+export async function createDriveFolder(folderName: string, parentFolderId?: string | null): Promise<string> {
+  const token = await getAccessToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const appRootId = await getOrCreateAppRootFolder(token);
+  const parentId = parentFolderId || appRootId;
+
+  const folderRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [parentId]
+    })
+  });
+
+  if (!folderRes.ok) {
+    console.error("Failed to create folder in Drive", await folderRes.text());
+    throw new Error('Failed to create folder');
+  }
+
+  const folderData = await folderRes.json();
+  return folderData.id;
+}
+
+
+/**
+ * Deletes a file or folder from Google Drive.
+ * @param fileId ID of the file to delete
+ */
+export async function deleteFileFromDrive(fileId: string): Promise<void> {
+  const token = await getAccessToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("Drive delete error", text);
+    throw new Error('Failed to delete file from Google Drive');
+  }
+}

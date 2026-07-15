@@ -96,7 +96,11 @@ export interface ProfileParamConfig {
 }
 
 export interface AiConfig {
-  apiKey: string;
+  provider: 'google' | 'openai' | 'anthropic' | 'ollama';
+  apiKey: string; // Used for Google or generic
+  openaiApiKey?: string;
+  anthropicApiKey?: string;
+  ollamaEndpoint?: string;
   model: string;
   autoAnalyze: boolean;
   confidenceThreshold: number;

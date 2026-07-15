@@ -6,7 +6,8 @@ import { FileItem } from '../../pages/FileManager';
 interface FileManagerToolbarProps {
   currentFolder: string | null;
   setCurrentFolder: React.Dispatch<React.SetStateAction<string | null>>;
-  folderPath?: FileItem;
+  folderName?: string | null;
+  setCurrentFolderName?: (name: string | null) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   loadingFiles: boolean;
@@ -19,7 +20,8 @@ interface FileManagerToolbarProps {
 export default function FileManagerToolbar({
   currentFolder,
   setCurrentFolder,
-  folderPath,
+  folderName,
+    setCurrentFolderName,
   searchQuery,
   setSearchQuery,
   loadingFiles,
@@ -38,7 +40,7 @@ export default function FileManagerToolbar({
           </div>
           <div>
             <h1 className="text-lg font-bold text-slate-800">
-              {currentFolder ? (folderPath?.name || "Folder Tersimpan") : "Root Directory"}
+              {currentFolder ? (folderName || "Folder") : "Root Directory"}
             </h1>
             <p className="text-[11px] text-slate-500 font-medium">Sistem Informasi SIPEKA</p>
           </div>
@@ -63,18 +65,19 @@ export default function FileManagerToolbar({
           <button 
             onClick={() => {
               setCurrentFolder(null);
-              setSelectedFile(null);
+                setCurrentFolderName?.(null);
+                setSelectedFile(null);
             }}
             className="hover:text-pu-blue transition-colors flex items-center gap-1.5 bg-white/80 px-3 py-1.5 rounded-lg border border-slate-200/50 shadow-xs hover:shadow-sm"
           >
             <HardDrive className="w-3.5 h-3.5 text-slate-400" /> Root Directory
           </button>
-          {folderPath && (
+          {folderName && (
             <>
               <span className="text-slate-300 font-normal">/</span>
               <span className="text-pu-blue bg-pu-blue/10 px-3 py-1.5 rounded-lg border border-pu-blue/20 flex items-center gap-1.5 shadow-inner">
                 <Folder className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
-                {folderPath.name}
+                {folderName}
               </span>
             </>
           )}
