@@ -84,6 +84,9 @@ export function SortableRow({ comp, editingId, editForm, setEditForm, handleSave
               className="w-full text-xs p-2 rounded border border-slate-200 bg-white/70 w-20"
             />
           </td>
+          <td className="px-4 py-3 text-center">
+            <span className="text-[10px] text-slate-400 italic">Simpan dulu</span>
+          </td>
           <td className="px-4 py-3 text-right">
             <button onClick={handleSave} className="text-green-600 hover:bg-green-100 p-1.5 rounded mr-1"><Save className="h-4 w-4" /></button>
             <button onClick={() => setEditingId(null)} className="text-slate-500 hover:bg-slate-100 p-1.5 rounded"><X className="h-4 w-4" /></button>
@@ -109,10 +112,12 @@ export function SortableRow({ comp, editingId, editForm, setEditForm, handleSave
           <td className="px-6 py-4 text-xs font-mono text-slate-600">
             {comp.bobotFormC}%
           </td>
-          <td className="px-6 py-4 whitespace-nowrap text-right flex justify-end">
-            <button onClick={() => handleInfoEdit(comp)} title="Atur Panduan Cara Menghitung Volume" className="text-slate-400 hover:text-green-600 hover:bg-green-50 p-1.5 rounded transition-colors mr-1">
-              <Info className="h-4 w-4" />
+          <td className="px-6 py-4 text-center">
+            <button onClick={() => handleInfoEdit(comp)} className="inline-flex items-center text-[10px] font-bold text-pu-blue bg-blue-50 hover:bg-pu-blue hover:text-white px-2 py-1 rounded shadow-sm transition-colors border border-blue-200">
+              {comp.tooltipText ? <span className="text-green-600 flex items-center mr-1"><svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg> Edit Panduan</span> : <><Info className="h-3 w-3 mr-1" /> Atur Panduan</>}
             </button>
+          </td>
+          <td className="px-6 py-4 whitespace-nowrap text-right flex justify-end">
             <button onClick={() => handleEdit(comp)} title="Edit Komponen" className="text-slate-400 hover:text-pu-blue hover:bg-blue-50 p-1.5 rounded transition-colors mr-1">
               <Edit2 className="h-4 w-4" />
             </button>

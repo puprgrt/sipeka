@@ -51,7 +51,9 @@ export default function DamageAnalysisStep({
   DAMAGE_MULTIPLIERS,
   setComponents
 }: DamageAnalysisStepProps) {
-  const isTahap2Complete = components.every(comp => {
+  const activeComponents = components.filter(comp => (componentWeights[comp.name] || 0) > 0);
+
+  const isTahap2Complete = activeComponents.every(comp => {
     if (comp.safetyImpact) return true;
     if (!comp.damageDetails || comp.damageDetails.length === 0) return false;
     
@@ -79,7 +81,8 @@ export default function DamageAnalysisStep({
             </div>
             
             <div className="p-6 space-y-6">
-              {components.map((comp, compIndex) => {
+              {activeComponents.map((comp) => {
+                const compIndex = components.findIndex(c => c.name === comp.name);
                 const weight = componentWeights[comp.name] || 0;
 
                 const currentDetails = comp.damageDetails || [];
@@ -105,8 +108,14 @@ export default function DamageAnalysisStep({
                           >
                             <div className="p-1">
                               <p className="text-xs font-medium">{compConfig.tooltipText}</p>
-                              {compConfig.tooltipImage && (
-                                <img src={compConfig.tooltipImage} alt="Panduan" className="mt-2 w-full h-auto rounded border border-slate-200" />
+                              {compConfig.tooltipImage && compConfig.tooltipImage.trim() !== '' && (
+                                <div className="mt-2 flex flex-col gap-2">
+                                  {compConfig.tooltipImage.split(',').map((url, idx) => {
+                                    const trimmedUrl = url.trim();
+                                    if (!trimmedUrl) return null;
+                                    return <img key={idx} src={trimmedUrl} alt={`Panduan ${idx+1}`} className="w-full h-auto rounded border border-slate-200" />;
+                                  })}
+                                </div>
                               )}
                             </div>
                           </Tooltip>
@@ -438,8 +447,14 @@ export default function DamageAnalysisStep({
                         <div>
                           <p className="text-[10px] font-bold text-blue-800 uppercase tracking-widest">Panduan Menghitung Volume</p>
                           <p className="text-xs text-slate-700 mt-1 whitespace-pre-wrap">{compConfig?.tooltipText || "Tidak ada panduan khusus untuk komponen ini."}</p>
-                          {compConfig?.tooltipImage && (
-                            <img src={compConfig.tooltipImage} alt="Panduan visual" className="mt-3 w-full max-w-sm rounded-lg border border-blue-200/50 shadow-sm object-cover" />
+                          {compConfig?.tooltipImage && compConfig.tooltipImage.trim() !== '' && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {compConfig.tooltipImage.split(',').map((url, idx) => {
+                                const trimmedUrl = url.trim();
+                                if (!trimmedUrl) return null;
+                                return <img key={idx} src={trimmedUrl} alt={`Panduan visual ${idx+1}`} className="w-full max-w-[200px] rounded-lg border border-blue-200/50 shadow-sm object-cover" />;
+                              })}
+                            </div>
                           )}
                         </div>
                       </div>

@@ -114,6 +114,7 @@ export default function SettingsComponentTab({ onToast }: SettingsComponentTabPr
                   <th className="px-6 py-4">Bobot Form A</th>
                   <th className="px-6 py-4">Bobot Form B</th>
                   <th className="px-6 py-4">Bobot Form C</th>
+                  <th className="px-6 py-4 text-center">Panduan Volume</th>
                   <th className="px-6 py-4 text-right">Aksi</th>
                 </tr>
               </thead>
@@ -133,6 +134,9 @@ export default function SettingsComponentTab({ onToast }: SettingsComponentTabPr
                     <td className="px-4 py-3"><input type="number" step="0.01" value={editForm.bobotFormA || ''} onChange={(e) => setEditForm({...editForm, bobotFormA: e.target.value})} className="w-full text-xs p-2 rounded border border-slate-200 bg-white/70 w-20" /></td>
                     <td className="px-4 py-3"><input type="number" step="0.01" value={editForm.bobotFormB || ''} onChange={(e) => setEditForm({...editForm, bobotFormB: e.target.value})} className="w-full text-xs p-2 rounded border border-slate-200 bg-white/70 w-20" /></td>
                     <td className="px-4 py-3"><input type="number" step="0.01" value={editForm.bobotFormC || ''} onChange={(e) => setEditForm({...editForm, bobotFormC: e.target.value})} className="w-full text-xs p-2 rounded border border-slate-200 bg-white/70 w-20" /></td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="text-[10px] text-slate-400 italic">Simpan dulu</span>
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <button onClick={handleSave} className="text-green-600 hover:bg-green-100 p-1.5 rounded mr-1"><Save className="h-4 w-4" /></button>
                       <button onClick={() => setIsAdding(false)} className="text-slate-500 hover:bg-slate-100 p-1.5 rounded"><X className="h-4 w-4" /></button>
@@ -185,11 +189,16 @@ export default function SettingsComponentTab({ onToast }: SettingsComponentTabPr
                   <textarea value={infoEditForm.tooltipText || ''} onChange={e => setInfoEditForm({...infoEditForm, tooltipText: e.target.value})} rows={4} placeholder="Masukkan penjelasan singkat mengenai komponen ini untuk pengguna awam..." className="w-full rounded-xl border border-slate-200/50 shadow-inner focus:border-pu-blue focus:ring-pu-blue text-sm p-3 text-slate-800 bg-white/50 backdrop-blur-sm transition-colors" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">URL Gambar Panduan Visualisasi</label>
-                  <input type="text" value={infoEditForm.tooltipImage || ''} onChange={e => setInfoEditForm({...infoEditForm, tooltipImage: e.target.value})} placeholder="https://example.com/image.jpg" className="w-full rounded-xl border border-slate-200/50 shadow-inner focus:border-pu-blue focus:ring-pu-blue text-sm p-3 text-slate-800 bg-white/50 backdrop-blur-sm transition-colors" />
-                  {infoEditForm.tooltipImage && (
-                    <div className="mt-3 rounded-lg overflow-hidden border border-slate-200 h-32 bg-slate-50 flex items-center justify-center">
-                      <img src={infoEditForm.tooltipImage} alt="Preview" className="h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.innerHTML = '<span class="text-xs text-slate-400">Gambar tidak valid</span>'; }} />
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">URL Gambar Panduan (Pisahkan dengan koma jika lebih dari satu)</label>
+                  <input type="text" value={infoEditForm.tooltipImage || ''} onChange={e => setInfoEditForm({...infoEditForm, tooltipImage: e.target.value})} placeholder="https://url1.jpg, https://url2.jpg" className="w-full rounded-xl border border-slate-200/50 shadow-inner focus:border-pu-blue focus:ring-pu-blue text-sm p-3 text-slate-800 bg-white/50 backdrop-blur-sm transition-colors" />
+                  {infoEditForm.tooltipImage && infoEditForm.tooltipImage.trim() !== '' && (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {infoEditForm.tooltipImage.split(',').map(u => u.trim()).filter(Boolean).map((url, i) => (
+                        <div key={i} className="rounded-lg overflow-hidden border border-slate-200 h-32 bg-slate-50 flex items-center justify-center relative group">
+                          <img src={url} alt={`Preview ${i+1}`} className="h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.innerHTML = '<span class="text-[10px] text-slate-400">Gambar tidak valid</span>'; }} />
+                          <div className="absolute top-1 left-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur-sm">Foto {i+1}</div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
