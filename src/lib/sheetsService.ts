@@ -1,4 +1,5 @@
 import { getAccessToken } from './firebaseAuth';
+import { makeFilePublic } from './driveService';
 
 export async function appendToSheet(spreadsheetId: string, range: string, values: any[][]) {
   const token = await getAccessToken();
@@ -46,5 +47,10 @@ export async function createSpreadsheet(title: string) {
   }
 
   const data = await res.json();
-  return data.spreadsheetId;
+  const spreadsheetId = data.spreadsheetId;
+  
+  // Make the spreadsheet publicly viewable
+  await makeFilePublic(spreadsheetId).catch(console.error);
+  
+  return spreadsheetId;
 }

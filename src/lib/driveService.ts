@@ -66,6 +66,34 @@ export async function uploadToDrive(file: File, folderName?: string): Promise<st
   const data = await res.json();
   const fileId = data.id;
   
+  // Make the uploaded file publicly viewable
+  await makeFilePublic(fileId).catch(console.error);
+  
   // Return a direct view link that can be used in an <img> src
   return `https://drive.google.com/uc?export=view&id=${fileId}`;
+}
+
+/**
+ * Updates the permissions of a Google Drive file to make it publicly viewable by anyone with the link.
+ * @param fileId The ID of the Google Drive file
+ */
+export async function makeFilePublic(fileId: string): Promise<void> {
+  const token = await getAccessToken();
+  if (!token) throw new Error("Not authenticated");
+
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      role: 'reader',
+      type: 'anyone'
+    })
+  });
+
+  if (!res.ok) {
+    console.error("Failed to make file public", await res.text());
+  }
 }

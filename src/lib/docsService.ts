@@ -1,4 +1,5 @@
 import { getAccessToken } from './firebaseAuth';
+import { makeFilePublic } from './driveService';
 
 export async function createDocument(title: string, content: string): Promise<string> {
   const token = await getAccessToken();
@@ -41,6 +42,9 @@ export async function createDocument(title: string, content: string): Promise<st
       })
     });
   }
+
+  // Make the document publicly viewable
+  await makeFilePublic(docId).catch(console.error);
 
   return `https://docs.google.com/document/d/${docId}/edit`;
 }
