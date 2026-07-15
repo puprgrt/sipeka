@@ -1,5 +1,36 @@
 import { getAccessToken } from './firebaseAuth';
 
+const APP_ROOT_FOLDER_NAME = 'SIPEKA_File_Manager';
+
+/**
+ * Gets or creates the root folder for the SIPEKA application in Google Drive.
+ */
+export async function getOrCreateAppRootFolder(token: string): Promise<string> {
+  const q = `mimeType='application/vnd.google-apps.folder' and name='${APP_ROOT_FOLDER_NAME}' and trashed=false`;
+  const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const searchData = await searchRes.json();
+  if (searchData.files && searchData.files.length > 0) {
+    return searchData.files[0].id;
+  }
+  
+  // Create folder if it doesn't exist
+  const folderRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      name: APP_ROOT_FOLDER_NAME,
+      mimeType: 'application/vnd.google-apps.folder'
+    })
+  });
+  const folderData = await folderRes.json();
+  return folderData.id;
+}
+
 /**
  * Uploads a file (e.g. PDF or image) to Google Drive.
  * @param file The file object to upload
@@ -10,11 +41,12 @@ export async function uploadToDrive(file: File, folderName?: string): Promise<st
   const token = await getAccessToken();
   if (!token) throw new Error("Not authenticated");
 
-  let folderId: string | undefined;
+  const appRootId = await getOrCreateAppRootFolder(token);
+  let folderId: string = appRootId;
 
   if (folderName) {
-    // Check if folder exists
-    const q = `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and trashed=false`;
+    // Check if folder exists inside the app root folder
+    const q = `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and '${appRootId}' in parents and trashed=false`;
     const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -22,7 +54,7 @@ export async function uploadToDrive(file: File, folderName?: string): Promise<st
     if (searchData.files && searchData.files.length > 0) {
       folderId = searchData.files[0].id;
     } else {
-      // Create folder
+      // Create folder inside app root
       const folderRes = await fetch('https://www.googleapis.com/drive/v3/files', {
         method: 'POST',
         headers: {
@@ -31,7 +63,8 @@ export async function uploadToDrive(file: File, folderName?: string): Promise<st
         },
         body: JSON.stringify({
           name: folderName,
-          mimeType: 'application/vnd.google-apps.folder'
+          mimeType: 'application/vnd.google-apps.folder',
+          parents: [appRootId]
         })
       });
       const folderData = await folderRes.json();
@@ -42,7 +75,7 @@ export async function uploadToDrive(file: File, folderName?: string): Promise<st
   // Upload file
   const metadata = {
     name: file.name,
-    parents: folderId ? [folderId] : []
+    parents: [folderId]
   };
 
   const form = new FormData();
@@ -110,14 +143,12 @@ export async function listDriveFiles(folderId?: string | null): Promise<any[]> {
   // Base query: not trashed
   let q = "trashed=false";
   
-  // If folderId is provided, get its children.
-  // Otherwise, you might want to fetch files owned by the user, or specific SIPEKA root folder.
   if (folderId) {
     q += ` and '${folderId}' in parents`;
   } else {
-    // Just an example to get root level or all files. Usually you'd want a specific root folder for the app.
-    // Let's just fetch all folders if we are in root to avoid fetching thousands of unrelated files.
-    q += ` and mimeType='application/vnd.google-apps.folder'`;
+    // Fetch only from SIPEKA root folder
+    const appRootId = await getOrCreateAppRootFolder(token);
+    q += ` and '${appRootId}' in parents`;
   }
 
   const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,size,modifiedTime,owners,webViewLink,webContentLink,hasThumbnail,thumbnailLink)&orderBy=folder,modifiedTime desc`, {
