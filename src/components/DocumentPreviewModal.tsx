@@ -12,8 +12,13 @@ interface Props {
 export default function DocumentPreviewModal({ isOpen, onClose, documentUrl, title = "Preview Dokumen" }: Props) {
   if (!documentUrl) return null;
 
-  // Convert Google Docs export link to preview link for embedding
-  const previewUrl = documentUrl.replace("/export?format=pdf", "/preview");
+  // Convert Google Docs link to preview link for embedding
+  let previewUrl = documentUrl;
+  if (documentUrl.includes('/edit')) {
+    previewUrl = documentUrl.replace(/\/edit.*$/, '/preview');
+  } else if (documentUrl.includes('/export')) {
+    previewUrl = documentUrl.replace(/\/export.*$/, '/preview');
+  }
 
   return (
     <AnimatePresence>
