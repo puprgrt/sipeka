@@ -72,9 +72,9 @@ export default function PdfPreview({
 
       {/* PDF body page simulation */}
       <div className="flex-1 p-4 overflow-auto flex justify-center bg-slate-700 custom-scrollbar relative">
-        {selectedFile.previewUrl && !selectedFile.id.startsWith("file") ? (
+        {selectedFile.previewUrl && !selectedFile.id.startsWith("file") && !selectedFile.id.startsWith("mock") ? (
           <iframe 
-            src={selectedFile.previewUrl} 
+            src={selectedFile.previewUrl.replace(/\/view.*$/, "/preview")} 
             className="w-full h-full border-0 rounded"
             style={{ transform: `scale(${previewScale})`, transformOrigin: "top center" }}
             title={selectedFile.name}
