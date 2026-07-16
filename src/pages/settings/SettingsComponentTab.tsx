@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Edit2, Trash2, Plus, Save, X, Info } from "lucide-react";
+import { Edit2, Trash2, Plus, Save, X, Info, UploadCloud } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
@@ -40,6 +40,35 @@ export default function SettingsComponentTab({ onToast }: SettingsComponentTabPr
 
   const handleEdit = (comp: ComponentConfig) => { setEditingId(comp.idKomponen); setEditForm(comp); setIsAdding(false); };
   const handleInfoEdit = (comp: ComponentConfig) => { setInfoEditingId(comp.idKomponen); setInfoEditForm(comp); };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    let currentImages = infoEditForm.tooltipImage ? infoEditForm.tooltipImage.split(',').map(s => s.trim()).filter(Boolean) : [];
+    let validFiles = Array.from(files).filter(f => f.size <= 2 * 1024 * 1024);
+    
+    if (validFiles.length < files.length) {
+       alert("Beberapa file diabaikan karena ukurannya melebihi 2MB.");
+    }
+    
+    if (validFiles.length === 0) return;
+    
+    Promise.all(validFiles.map(file => {
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+    })).then(base64Strings => {
+      setInfoEditForm(prev => ({
+        ...prev,
+        tooltipImage: [...currentImages, ...base64Strings].join(', ')
+      }));
+    });
+    
+    e.target.value = '';
+  };
 
   const handleInfoSave = async () => {
     try {
@@ -190,13 +219,27 @@ export default function SettingsComponentTab({ onToast }: SettingsComponentTabPr
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">URL Gambar Panduan (Pisahkan dengan koma jika lebih dari satu)</label>
-                  <input type="text" value={infoEditForm.tooltipImage || ''} onChange={e => setInfoEditForm({...infoEditForm, tooltipImage: e.target.value})} placeholder="https://url1.jpg, https://url2.jpg" className="w-full rounded-xl border border-slate-200/50 shadow-inner focus:border-pu-blue focus:ring-pu-blue text-sm p-3 text-slate-800 bg-white/50 backdrop-blur-sm transition-colors" />
+                  <div className="flex gap-2">
+                    <input type="text" value={infoEditForm.tooltipImage || ''} onChange={e => setInfoEditForm({...infoEditForm, tooltipImage: e.target.value})} placeholder="https://url1.jpg, https://url2.jpg" className="flex-1 rounded-xl border border-slate-200/50 shadow-inner focus:border-pu-blue focus:ring-pu-blue text-sm p-3 text-slate-800 bg-white/50 backdrop-blur-sm transition-colors" />
+                    <label className="flex items-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl cursor-pointer transition-colors border border-slate-200 shadow-sm whitespace-nowrap">
+                      <UploadCloud className="w-4 h-4" />
+                      <span className="text-xs font-bold">Unggah</span>
+                      <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
+                    </label>
+                  </div>
                   {infoEditForm.tooltipImage && infoEditForm.tooltipImage.trim() !== '' && (
                     <div className="mt-3 grid grid-cols-2 gap-2">
                       {infoEditForm.tooltipImage.split(',').map(u => u.trim()).filter(Boolean).map((url, i) => (
                         <div key={i} className="rounded-lg overflow-hidden border border-slate-200 h-32 bg-slate-50 flex items-center justify-center relative group">
                           <img src={url} alt={`Preview ${i+1}`} className="h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.innerHTML = '<span class="text-[10px] text-slate-400">Gambar tidak valid</span>'; }} />
                           <div className="absolute top-1 left-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur-sm">Foto {i+1}</div>
+                          <button onClick={() => {
+                            const newUrls = infoEditForm.tooltipImage!.split(',').map(u => u.trim()).filter(Boolean);
+                            newUrls.splice(i, 1);
+                            setInfoEditForm({...infoEditForm, tooltipImage: newUrls.join(', ')});
+                          }} className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-600 text-white p-1 rounded backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
                         </div>
                       ))}
                     </div>

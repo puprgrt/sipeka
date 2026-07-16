@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Edit2, Trash2, Plus, X, Camera, HelpCircle } from "lucide-react";
+import { Edit2, Trash2, Plus, X, Camera, HelpCircle, UploadCloud } from "lucide-react";
 import { cn } from "../../lib/utils";
 import type { ComponentConfig, KatalogConfig, ClassificationConfig } from "./settingsTypes";
 
@@ -37,6 +37,35 @@ export default function SettingsKatalogTab({ onToast }: SettingsKatalogTabProps)
   };
 
   const handleEditKatalog = (kat: KatalogConfig) => { setEditingKatalogId(kat.idKatalog); setKatalogForm(kat); setIsAddingKatalog(false); };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    let currentImages = katalogForm.urlFotoContoh ? katalogForm.urlFotoContoh.split(',').map(s => s.trim()).filter(Boolean) : [];
+    let validFiles = Array.from(files).filter(f => f.size <= 2 * 1024 * 1024);
+    
+    if (validFiles.length < files.length) {
+       alert("Beberapa file diabaikan karena ukurannya melebihi 2MB.");
+    }
+    
+    if (validFiles.length === 0) return;
+    
+    Promise.all(validFiles.map(file => {
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+    })).then(base64Strings => {
+      setKatalogForm(prev => ({
+        ...prev,
+        urlFotoContoh: [...currentImages, ...base64Strings].join(', ')
+      }));
+    });
+    
+    e.target.value = '';
+  };
 
   const handleSaveKatalog = async () => {
     if (!katalogForm.idKomponen || !katalogForm.idKlasifikasi || !katalogForm.deskripsiPupr) { alert("Komponen, Tingkat Kerusakan, dan Deskripsi wajib diisi!"); return; }
@@ -122,7 +151,14 @@ export default function SettingsKatalogTab({ onToast }: SettingsKatalogTabProps)
               )}>
                 <div className="relative aspect-video bg-slate-100 flex items-center justify-center overflow-hidden">
                   {kat.urlFotoContoh ? (
-                    <img src={kat.urlFotoContoh} alt={kat.namaKomponen} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                    <>
+                      <img src={kat.urlFotoContoh.split(',')[0].trim()} alt={kat.namaKomponen} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                      {kat.urlFotoContoh.split(',').filter(Boolean).length > 1 && (
+                        <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-md rounded-md text-[10px] font-bold text-white shadow-sm">
+                          +{kat.urlFotoContoh.split(',').filter(Boolean).length - 1} Foto
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="text-slate-400 flex flex-col items-center justify-center p-4"><Camera className="w-8 h-8 mb-2 opacity-50" /><span className="text-xs">Belum ada gambar contoh</span></div>
                   )}
@@ -187,11 +223,30 @@ export default function SettingsKatalogTab({ onToast }: SettingsKatalogTabProps)
                   <textarea value={katalogForm.deskripsiPupr || ""} onChange={e => setKatalogForm({...katalogForm, deskripsiPupr: e.target.value})} rows={4} placeholder="Contoh: Retak rambut lebar < 1mm pada permukaan beton..." className="w-full rounded-xl border border-slate-200 shadow-inner focus:border-pu-blue focus:ring-pu-blue text-xs p-3 text-slate-800 bg-white font-medium" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">URL Gambar Contoh Lapangan</label>
-                  <input type="text" value={katalogForm.urlFotoContoh || ""} onChange={e => setKatalogForm({...katalogForm, urlFotoContoh: e.target.value})} placeholder="https://images.unsplash.com/photo-..." className="w-full rounded-xl border border-slate-200 shadow-inner focus:border-pu-blue focus:ring-pu-blue text-xs p-3 text-slate-800 bg-white font-medium" />
-                  {katalogForm.urlFotoContoh && (
-                    <div className="mt-3 rounded-xl overflow-hidden border border-slate-200 h-32 bg-slate-50 flex items-center justify-center">
-                      <img src={katalogForm.urlFotoContoh} alt="Preview" referrerPolicy="no-referrer" className="h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">URL Gambar Contoh Lapangan (Pisahkan dengan koma jika lebih dari satu)</label>
+                  <div className="flex gap-2">
+                    <input type="text" value={katalogForm.urlFotoContoh || ""} onChange={e => setKatalogForm({...katalogForm, urlFotoContoh: e.target.value})} placeholder="https://images.unsplash.com/photo-..." className="flex-1 rounded-xl border border-slate-200 shadow-inner focus:border-pu-blue focus:ring-pu-blue text-xs p-3 text-slate-800 bg-white font-medium" />
+                    <label className="flex items-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl cursor-pointer transition-colors border border-slate-200 shadow-sm whitespace-nowrap">
+                      <UploadCloud className="w-4 h-4" />
+                      <span className="text-xs font-bold">Unggah</span>
+                      <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
+                    </label>
+                  </div>
+                  {katalogForm.urlFotoContoh && katalogForm.urlFotoContoh.trim() !== '' && (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      {katalogForm.urlFotoContoh.split(',').map(u => u.trim()).filter(Boolean).map((url, i) => (
+                        <div key={i} className="rounded-xl overflow-hidden border border-slate-200 h-32 bg-slate-50 flex items-center justify-center relative group">
+                          <img src={url} alt={`Preview ${i+1}`} referrerPolicy="no-referrer" className="h-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement!.innerHTML = '<span class="text-[10px] text-slate-400">Gambar tidak valid</span>'; }} />
+                          <div className="absolute top-1 left-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded backdrop-blur-sm">Foto {i+1}</div>
+                          <button onClick={() => {
+                            const newUrls = katalogForm.urlFotoContoh!.split(',').map(u => u.trim()).filter(Boolean);
+                            newUrls.splice(i, 1);
+                            setKatalogForm({...katalogForm, urlFotoContoh: newUrls.join(', ')});
+                          }} className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-600 text-white p-1 rounded backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
