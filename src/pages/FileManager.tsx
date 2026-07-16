@@ -393,11 +393,16 @@ export default function FileManager() {
     }
   };
 
-  const handleDeleteFile = (id: string) => {
+  const handleDeleteFile = async (id: string) => {
     if (confirm("Apakah Anda yakin ingin menghapus berkas ini? Tindakan ini tidak dapat dibatalkan.")) {
-      setFiles(prev => prev.filter(f => f.id !== id));
-      if (selectedFile?.id === id) {
-        setSelectedFile(null);
+      try {
+        await deleteFile(id);
+        if (selectedFile?.id === id) {
+          setSelectedFile(null);
+        }
+      } catch (err) {
+        console.error("Failed to delete file", err);
+        alert("Gagal menghapus berkas.");
       }
     }
   };
