@@ -31,7 +31,9 @@ export default function Settings() {
       case "Tim_Teknis":
         return ["komponen", "katalog", "formulir"];
       case "Operator":
+        return ["surat", "dinas", "param_profil"];
       case "Pengelola_Bangunan":
+        return ["surat"];
       default:
         return ["surat", "dinas", "param_profil"];
     }

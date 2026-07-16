@@ -12,6 +12,9 @@ export default function SettingsLetterTab({ onToast }: SettingsLetterTabProps) {
   const [editingLetter, setEditingLetter] = useState(false);
   const [letterForm, setLetterForm] = useState<LetterConfig | null>(null);
 
+  const activeRole = localStorage.getItem("activeRole") || "Administrator";
+  const isPengelola = activeRole === "Pengelola_Bangunan";
+
   useEffect(() => { fetchLetterConfig(); }, []);
 
   const fetchLetterConfig = async () => {
@@ -133,9 +136,11 @@ export default function SettingsLetterTab({ onToast }: SettingsLetterTabProps) {
           </div>
         )}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 divide-x divide-slate-100">
-        <div className="pr-4">{renderConfigSection("Kop Surat Dinas (Hasil Pengesahan)", "sistem")}</div>
-        <div className="pl-4">{renderConfigSection("Kop Surat Pengelola (Permohonan)", "pengelola")}</div>
+      <div className={`grid grid-cols-1 ${!isPengelola ? 'md:grid-cols-2 gap-8 divide-x divide-slate-100' : ''}`}>
+        {!isPengelola && (
+          <div className="pr-4">{renderConfigSection("Kop Surat Dinas (Hasil Pengesahan)", "sistem")}</div>
+        )}
+        <div className={!isPengelola ? "pl-4" : ""}>{renderConfigSection("Kop Surat Pengelola (Permohonan)", "pengelola")}</div>
       </div>
     </div>
   );
