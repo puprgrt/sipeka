@@ -19,6 +19,7 @@ import Login from "./pages/Login";
 import FileManager from "./pages/FileManager";
 import AiDashboard from "./pages/AiDashboard";
 import NotFoundPage from "./pages/NotFoundPage";
+import IkmDashboard from "./pages/IkmDashboard";
 import { DocumentValidation } from "./pages/DocumentValidation";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="verifikasi" element={<VerificationList />} />
             <Route path="admin-verifikasi" element={<VerifikasiAdministrasi />} />
             <Route path="surat-reports" element={<SuratReports />} />
+            <Route path="ikm-dashboard" element={<IkmDashboard />} />
             <Route path="map" element={<MapView />} />
             <Route path="file-manager" element={<FileManager />} />
             <Route path="settings" element={<Settings />} />

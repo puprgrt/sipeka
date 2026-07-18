@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { exportAssessmentToPdf } from "../lib/exportPdf";
 import { Download } from "lucide-react";
 import { X, Building, CheckCircle2, AlertTriangle, FileText, Layers, Calendar, Loader2, Map as MapIcon, PlusCircle } from "lucide-react";
+import IkmSurveyModal from "./assessment/IkmSurveyModal";
 
 interface BuildingHistoryModalProps {
   selectedAssessment: Assessment | null;
@@ -17,6 +18,42 @@ interface BuildingHistoryModalProps {
 export default function BuildingHistoryModal({ selectedAssessment, setSelectedAssessment }: BuildingHistoryModalProps) {
   const [buildingHistory, setBuildingHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showIkmModal, setShowIkmModal] = useState(false);
+  const [ikmChecked, setIkmChecked] = useState<Record<string, boolean>>({});
+
+  const activeRole = localStorage.getItem("activeRole") || "Administrator";
+
+  const handleDownloadWithIkm = async () => {
+    if (!selectedAssessment) return;
+
+    // Only gate for Pengelola_Bangunan
+    if (activeRole !== "Pengelola_Bangunan") {
+      exportAssessmentToPdf(selectedAssessment, buildingHistory);
+      return;
+    }
+
+    // Check if already filled (use cached result)
+    if (ikmChecked[selectedAssessment.id]) {
+      exportAssessmentToPdf(selectedAssessment, buildingHistory);
+      return;
+    }
+
+    try {
+      const userId = localStorage.getItem("activeUserId");
+      const res = await fetch(`/api/assessments/${selectedAssessment.id}/ikm?userId=${userId}`);
+      const data = await res.json();
+
+      if (data.filled) {
+        setIkmChecked(prev => ({ ...prev, [selectedAssessment.id]: true }));
+        exportAssessmentToPdf(selectedAssessment, buildingHistory);
+      } else {
+        setShowIkmModal(true);
+      }
+    } catch (error) {
+      console.error("Check IKM error", error);
+      setShowIkmModal(true);
+    }
+  };
 
   useEffect(() => {
     if (selectedAssessment) {
@@ -54,7 +91,7 @@ export default function BuildingHistoryModal({ selectedAssessment, setSelectedAs
     }).format(val);
   };
 
-  return (
+  return (<>
     <AnimatePresence>
       {selectedAssessment && (
         <div className="fixed inset-0 z-[100] overflow-hidden flex justify-end">
@@ -85,7 +122,7 @@ export default function BuildingHistoryModal({ selectedAssessment, setSelectedAs
               </div>
               <div className="flex items-center gap-2">
     <button
-      onClick={() => exportAssessmentToPdf(selectedAssessment, buildingHistory)}
+      onClick={handleDownloadWithIkm}
       className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold uppercase tracking-widest rounded-lg flex items-center gap-1.5 transition-colors border border-indigo-200"
     >
       <Download className="w-3.5 h-3.5" /> Cetak PDF
@@ -318,5 +355,19 @@ export default function BuildingHistoryModal({ selectedAssessment, setSelectedAs
         </div>
       )}
     </AnimatePresence>
-  );
+
+    {/* IKM Survey Modal */}
+    {selectedAssessment && (
+      <IkmSurveyModal
+        isOpen={showIkmModal}
+        onClose={() => setShowIkmModal(false)}
+        assessmentId={selectedAssessment.id}
+        assessmentName={`${selectedAssessment.schoolName} — ${selectedAssessment.buildingName}`}
+        onSubmitSuccess={() => {
+          setIkmChecked(prev => ({ ...prev, [selectedAssessment.id]: true }));
+          exportAssessmentToPdf(selectedAssessment, buildingHistory);
+        }}
+      />
+    )}
+  </>);
 }

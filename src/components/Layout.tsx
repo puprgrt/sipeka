@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, FileCheck, FileText, PlusCircle, Map as MapIcon, LogOut, Menu, X, Settings as SettingsIcon, ClipboardList, UserCog, Brain, ChevronLeft, ChevronRight, RefreshCw, WifiOff, AlertTriangle, Database, Smartphone, FolderOpen } from "lucide-react";
+import { LayoutDashboard, FileCheck, FileText, PlusCircle, Map as MapIcon, LogOut, Menu, X, Settings as SettingsIcon, ClipboardList, UserCog, Brain, ChevronLeft, ChevronRight, RefreshCw, WifiOff, AlertTriangle, Database, Smartphone, FolderOpen, Star } from "lucide-react";
 import ConflictResolutionModal from "./layout/ConflictResolutionModal";
 import { cn } from "../lib/utils";
 import { useEffect, useState, useRef } from "react";
@@ -408,6 +408,11 @@ export default function Layout() {
       if (activeRole !== "Operator") {
         items.push({ name: "Dashboard AI", href: "/ai", icon: Brain });
       }
+    }
+
+    // Dashboard IKM (Indeks Kepuasan Masyarakat)
+    if (["Administrator", "Kadis", "Kabid", "Koordinator"].includes(activeRole)) {
+      items.push({ name: "Dashboard IKM", href: "/ikm-dashboard", icon: Star });
     }
     
     // Laporan Kerusakan

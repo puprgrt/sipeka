@@ -13,6 +13,14 @@ import {
   put_assessments_by_id_disposisi,
   put_assessments_by_id,
   delete_assessments_by_id,
+  get_assessment_ikm,
+  post_assessment_ikm,
+  get_ikm_stats,
+  get_ikm_responses,
+  get_ikm_questions,
+  create_ikm_question,
+  update_ikm_question,
+  delete_ikm_question,
 } from '../controllers/assessmentController';
 
 const router = express.Router();
@@ -28,7 +36,17 @@ router.get('/api/assessments/:id/logs', get_assessments_by_id_logs);
 router.put('/api/assessments/bulk-status', put_assessments_bulk_status);
 router.put('/api/assessments/:id/status', put_assessments_by_id_status);
 router.put('/api/assessments/:id/disposisi', put_assessments_by_id_disposisi);
+router.get('/api/assessments/:id/ikm', get_assessment_ikm);
+router.post('/api/assessments/:id/ikm', post_assessment_ikm);
 router.put('/api/assessments/:id', put_assessments_by_id);
 router.delete('/api/assessments/:id', delete_assessments_by_id);
+
+router.get('/api/ikm/stats', get_ikm_stats);
+router.get('/api/ikm/responses', get_ikm_responses);
+
+router.get('/api/settings/ikm-questions', get_ikm_questions);
+router.post('/api/settings/ikm-questions', create_ikm_question);
+router.put('/api/settings/ikm-questions/:id', update_ikm_question);
+router.delete('/api/settings/ikm-questions/:id', delete_ikm_question);
 
 export default router;

@@ -1,6 +1,6 @@
 import { useState, useEffect, Suspense, lazy } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Brain, Layers, Users, Shield, FileText, Printer, Settings as SettingsIcon, HelpCircle, Info, UserCog, Check } from "lucide-react";
+import { Brain, Layers, Users, Shield, FileText, Printer, Settings as SettingsIcon, HelpCircle, Info, UserCog, Check, ClipboardCheck } from "lucide-react";
 import { cn } from "../lib/utils";
 
 // Lazy loading all tab components for better performance
@@ -14,6 +14,7 @@ const SettingsDinasTab = lazy(() => import("./settings/SettingsDinasTab"));
 const SettingsLetterTab = lazy(() => import("./settings/SettingsLetterTab"));
 const SettingsTemplateTab = lazy(() => import("./settings/SettingsTemplateTab"));
 const SettingsAiTab = lazy(() => import("./settings/SettingsAiTab"));
+const SettingsIkmTab = lazy(() => import("./settings/SettingsIkmTab"));
 
 export default function Settings() {
   const [activeRole, setActiveRole] = useState<string>(() => {
@@ -23,7 +24,7 @@ export default function Settings() {
   const getAvailableTabsList = (role: string) => {
     switch (role) {
       case "Administrator":
-        return ["aplikasi", "komponen", "katalog", "users", "formulir", "param_profil", "dinas", "surat", "template", "ai"];
+        return ["aplikasi", "komponen", "katalog", "users", "formulir", "param_profil", "dinas", "surat", "template", "ai", "ikm"];
       case "Kadis":
       case "Kabid":
         return ["aplikasi", "dinas", "surat", "users"];
@@ -71,6 +72,7 @@ export default function Settings() {
     { id: "surat", label: "Kop Surat", icon: Printer },
     { id: "template", label: "Pusat Template", icon: FileText },
     { id: "ai", label: "Pengaturan AI", icon: Brain },
+    { id: "ikm", label: "Pertanyaan IKM", icon: ClipboardCheck },
   ];
 
   return (
@@ -111,6 +113,7 @@ export default function Settings() {
         {activeTab === "surat" && <SettingsLetterTab onToast={showToast} />}
         {activeTab === "template" && <SettingsTemplateTab onToast={showToast} />}
         {activeTab === "ai" && <SettingsAiTab onToast={showToast} />}
+        {activeTab === "ikm" && <SettingsIkmTab onToast={showToast} />}
       </Suspense>
 
       {/* Global Save Toast Notification */}

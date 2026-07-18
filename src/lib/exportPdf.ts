@@ -283,3 +283,134 @@ export const exportAssessmentToPdf = async (assessment: Assessment, history: any
 
   doc.save(`Laporan_Penilaian_${assessment.id.substring(0, 8)}.pdf`);
 };
+
+export const exportIkmReportToPdf = async (stats: any, responses: any[]) => {
+  let questionsConfig: any[] = [];
+  try {
+    const res = await fetch("/api/settings/ikm-questions");
+    questionsConfig = await res.json();
+  } catch (error) {
+    console.error("Failed to fetch IKM questions config for PDF export", error);
+  }
+
+  const doc = new jsPDF();
+  
+  // Header
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text("Laporan Komprehensif Indeks Kepuasan Masyarakat (IKM)", 105, 20, { align: "center" });
+  
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.text("Dinas Pekerjaan Umum dan Penataan Ruang", 105, 26, { align: "center" });
+  
+  doc.setLineWidth(0.5);
+  doc.line(14, 32, 196, 32);
+  
+  // Ringkasan
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("1. Ringkasan Eksekutif", 14, 42);
+  
+  const IKM_UNSUR_LABELS: Record<string, string> = {};
+  if (questionsConfig.length > 0) {
+    questionsConfig.forEach(q => {
+      IKM_UNSUR_LABELS[q.key] = q.label;
+    });
+  } else {
+    // Fallback
+    Object.assign(IKM_UNSUR_LABELS, {
+      u1: "Persyaratan", u2: "Prosedur", u3: "Waktu", u4: "Biaya/Tarif",
+      u5: "Spesifikasi Produk", u6: "Kompetensi", u7: "Perilaku", u8: "Pengaduan", u9: "Sarana/Prasarana"
+    });
+  }
+
+  let mutuPelayanan = "Tidak Baik";
+  if (stats?.averageIKM >= 88.31) mutuPelayanan = "Sangat Baik (A)";
+  else if (stats?.averageIKM >= 76.61) mutuPelayanan = "Baik (B)";
+  else if (stats?.averageIKM >= 65.00) mutuPelayanan = "Kurang Baik (C)";
+  else mutuPelayanan = "Tidak Baik (D)";
+
+  const summaryData = [
+    ["Total Responden", `${stats?.totalResponses || 0} Pengelola Bangunan`],
+    ["Nilai IKM Rata-Rata", `${stats?.averageIKM || 0} / 100`],
+    ["Mutu Pelayanan", mutuPelayanan]
+  ];
+
+  autoTable(doc, {
+    startY: 46,
+    body: summaryData,
+    theme: 'grid',
+    styles: { fontSize: 10, cellPadding: 3 },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } }
+  });
+
+  // Nilai Per Unsur
+  let currentY = (doc as any).lastAutoTable.finalY + 10;
+  doc.setFont("helvetica", "bold");
+  doc.text("2. Nilai Rata-Rata per Unsur Pelayanan", 14, currentY);
+  
+  const unsurData = stats?.averages ? Object.entries(stats.averages).map(([key, val]) => [
+    key.toUpperCase(), IKM_UNSUR_LABELS[key] || key, val
+  ]) : [];
+
+  autoTable(doc, {
+    startY: currentY + 4,
+    head: [["Kode", "Unsur Pelayanan", "Skor (Skala 1-4)"]],
+    body: unsurData,
+    theme: 'striped',
+    styles: { fontSize: 9, cellPadding: 2 },
+    headStyles: { fillColor: [79, 70, 229] }
+  });
+
+  // Testimoni
+  currentY = (doc as any).lastAutoTable.finalY + 10;
+  if (currentY > 230) {
+    doc.addPage();
+    currentY = 20;
+  }
+  
+  doc.setFont("helvetica", "bold");
+  doc.text("3. Testimoni dan Masukan Responden", 14, currentY);
+
+  const testimoniData = responses.slice(0, 50).map((r, i) => [
+    i + 1,
+    `${r.buildingName}\n(${r.schoolName})`,
+    format(new Date(r.date), "dd MMM yyyy", { locale: idLocale }),
+    r.nilaiIkm,
+    r.testimoni || "-"
+  ]);
+
+  autoTable(doc, {
+    startY: currentY + 4,
+    head: [["No", "Lokasi/Bangunan", "Tanggal", "IKM", "Testimoni"]],
+    body: testimoniData,
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 2 },
+    columnStyles: {
+      0: { cellWidth: 10 },
+      1: { cellWidth: 45 },
+      2: { cellWidth: 25 },
+      3: { cellWidth: 15 },
+      4: { cellWidth: 'auto' }
+    },
+    headStyles: { fillColor: [79, 70, 229] }
+  });
+
+  // Footer & Signature
+  currentY = (doc as any).lastAutoTable.finalY + 20;
+  if (currentY > 250) {
+    doc.addPage();
+    currentY = 20;
+  }
+  const dateStr = format(new Date(), "dd MMMM yyyy", { locale: idLocale });
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Dicetak pada: ${dateStr}`, 14, currentY);
+
+  doc.text("Mengetahui,", 140, currentY);
+  doc.text("Administrator SIPEKA", 140, currentY + 5);
+  doc.line(140, currentY + 28, 190, currentY + 28);
+
+  doc.save(`Laporan_Komprehensif_IKM.pdf`);
+};

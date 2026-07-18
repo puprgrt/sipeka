@@ -201,4 +201,37 @@ export const auditTrailsRelations = relations(auditTrails, ({ one }) => ({
   permohonan: one(permohonanPenilaian, { fields: [auditTrails.idPermohonan], references: [permohonanPenilaian.idPermohonan] }),
 }));
 
+// 5. INDEKS KEPUASAN MASYARAKAT (IKM) & TESTIMONI
+export const ikmQuestions = pgTable('ikm_questions', {
+  id: serial('id').primaryKey(),
+  key: text('key').notNull().unique(), // e.g. "u1", "u2", "u10"
+  label: text('label').notNull(),
+  description: text('description').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  orderIndex: integer('order_index').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+export const ikmResponses = pgTable('ikm_responses', {
+  idIkm: serial('id_ikm').primaryKey(),
+  idPermohonan: uuid('id_permohonan').references(() => permohonanPenilaian.idPermohonan).notNull(),
+  idUser: integer('id_user').references(() => users.idUser).notNull(),
+  u1: integer('u1').default(0).notNull(), // Persyaratan Pelayanan (1-4)
+  u2: integer('u2').default(0).notNull(), // Sistem, Mekanisme, dan Prosedur (1-4)
+  u3: integer('u3').default(0).notNull(), // Waktu Penyelesaian (1-4)
+  u4: integer('u4').default(0).notNull(), // Biaya/Tarif (1-4)
+  u5: integer('u5').default(0).notNull(), // Produk Spesifikasi Jenis Pelayanan (1-4)
+  u6: integer('u6').default(0).notNull(), // Kompetensi Pelaksana (1-4)
+  u7: integer('u7').default(0).notNull(), // Perilaku Pelaksana (1-4)
+  u8: integer('u8').default(0).notNull(), // Penanganan Pengaduan, Saran dan Masukan (1-4)
+  u9: integer('u9').default(0).notNull(), // Sarana dan Prasarana (1-4)
+  answers: jsonb('answers'), // Dynamic answers mapping { "u1": 4, "u10": 3 }
+  nilaiIkm: decimal('nilai_ikm', { precision: 5, scale: 2 }),
+  testimoni: text('testimoni').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const ikmResponsesRelations = relations(ikmResponses, ({ one }) => ({
+  permohonan: one(permohonanPenilaian, { fields: [ikmResponses.idPermohonan], references: [permohonanPenilaian.idPermohonan] }),
+  user: one(users, { fields: [ikmResponses.idUser], references: [users.idUser] }),
+}));
 

@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import IkmSurveyModal from "../assessment/IkmSurveyModal";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   X, MapPin, Calendar, CheckCircle2, Clock, 
@@ -7,7 +8,8 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { cn } from "../../lib/utils";
+import { cn, getAuditHeaders } from "../../lib/utils";
+import * as XLSX from "xlsx";
 import { getStatusBadgeClasses, formatStatusText } from "../../lib/statusUtils";
 import { COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI } from "../../types";
 
@@ -72,6 +74,41 @@ export default function DisposisiDetailModal({
   setDispStatus,
   timTeknisUsers
 }: any) {
+  // IKM Survey state
+  const [showIkmModal, setShowIkmModal] = useState(false);
+  const [ikmChecked, setIkmChecked] = useState<Record<string, boolean>>({});
+
+  const handleDownloadWithIkm = async (assessment: any) => {
+    // Only gate for Pengelola_Bangunan
+    if (activeRole !== "Pengelola_Bangunan") {
+      exportAssessmentToPdf(assessment);
+      return;
+    }
+
+    // Check if already filled (use cached result)
+    if (ikmChecked[assessment.id]) {
+      exportAssessmentToPdf(assessment);
+      return;
+    }
+
+    try {
+      const userId = localStorage.getItem("activeUserId");
+      const res = await fetch(`/api/assessments/${assessment.id}/ikm?userId=${userId}`);
+      const data = await res.json();
+
+      if (data.filled) {
+        setIkmChecked(prev => ({ ...prev, [assessment.id]: true }));
+        exportAssessmentToPdf(assessment);
+      } else {
+        setShowIkmModal(true);
+      }
+    } catch (error) {
+      console.error("Check IKM error", error);
+      // Fallback: show modal
+      setShowIkmModal(true);
+    }
+  };
+
   if (!selectedAssessment) return null;
 
   const parsePhotos = (photoStr: string | string[]) => {
@@ -874,7 +911,7 @@ export default function DisposisiDetailModal({
                               Buat / Edit Disposisi
                             </button>
                             <button 
-                              onClick={() => exportAssessmentToPdf(selectedAssessment)}
+                              onClick={() => handleDownloadWithIkm(selectedAssessment)}
                               className="inline-flex items-center text-[10px] font-bold uppercase tracking-widest text-emerald-700 hover:text-white bg-emerald-50 hover:bg-emerald-600 px-3 py-1.5 rounded-lg transition-all border border-emerald-200/60 shadow-sm mr-2"
                             >
                               <Download className="w-3.5 h-3.5 mr-1.5" />
@@ -1175,6 +1212,18 @@ export default function DisposisiDetailModal({
               </motion.div>
             </div>
         </AnimatePresence>
+
+        {/* IKM Survey Modal */}
+        <IkmSurveyModal
+          isOpen={showIkmModal}
+          onClose={() => setShowIkmModal(false)}
+          assessmentId={selectedAssessment?.id || ""}
+          assessmentName={`${selectedAssessment?.schoolName || ""} — ${selectedAssessment?.buildingName || ""}`}
+          onSubmitSuccess={() => {
+            setIkmChecked(prev => ({ ...prev, [selectedAssessment.id]: true }));
+            exportAssessmentToPdf(selectedAssessment);
+          }}
+        />
       </>
   );
 }

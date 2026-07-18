@@ -1050,6 +1050,7 @@ export const delete_assessments_by_id = async (req: express.Request, res: expres
     await db.delete(schema.historyPenilaian).where(eq(schema.historyPenilaian.idPermohonan, id));
     await db.delete(schema.notifications).where(eq(schema.notifications.idPermohonan, id));
     await db.delete(schema.auditTrails).where(eq(schema.auditTrails.idPermohonan, id));
+    await db.delete(schema.ikmResponses).where(eq(schema.ikmResponses.idPermohonan, id));
     
     // Delete permohonan
     await db.delete(schema.permohonanPenilaian).where(eq(schema.permohonanPenilaian.idPermohonan, id));
@@ -1061,4 +1062,243 @@ export const delete_assessments_by_id = async (req: express.Request, res: expres
   }
 };
 
+// ===== IKM (Indeks Kepuasan Masyarakat) & Testimoni =====
 
+export const get_assessment_ikm = async (req: express.Request, res: express.Response) => {
+  try {
+    const idPermohonan = req.params.id;
+    const userId = req.query.userId ? Number(req.query.userId) : null;
+
+    if (!userId) {
+      return res.status(400).json({ error: "userId query parameter is required" });
+    }
+
+    const existing = await db.select().from(schema.ikmResponses)
+      .where(and(
+        eq(schema.ikmResponses.idPermohonan, idPermohonan),
+        eq(schema.ikmResponses.idUser, userId)
+      ));
+
+    if (existing.length > 0) {
+      return res.json({ filled: true, data: existing[0] });
+    }
+
+    return res.json({ filled: false });
+  } catch (error) {
+    console.error("GET IKM response error", error);
+    res.status(500).json({ error: "Failed to fetch IKM response" });
+  }
+};
+
+export const post_assessment_ikm = async (req: express.Request, res: express.Response) => {
+  try {
+    const idPermohonan = req.params.id;
+    const { userId, testimoni, answers, u1, u2, u3, u4, u5, u6, u7, u8, u9 } = req.body;
+
+    if (!userId || !testimoni) {
+      return res.status(400).json({ error: "userId and testimoni are required" });
+    }
+
+    // Support both legacy (u1-u9) and dynamic (answers object)
+    const finalAnswers = answers || {
+      u1, u2, u3, u4, u5, u6, u7, u8, u9
+    };
+
+    // Validate all scores are between 1-4
+    const scores = Object.values(finalAnswers).map(Number);
+    for (const score of scores) {
+      if (!score || score < 1 || score > 4) {
+        return res.status(400).json({ error: "Semua unsur harus diisi dengan nilai 1-4" });
+      }
+    }
+
+    // Check if already submitted
+    const existing = await db.select().from(schema.ikmResponses)
+      .where(and(
+        eq(schema.ikmResponses.idPermohonan, idPermohonan),
+        eq(schema.ikmResponses.idUser, Number(userId))
+      ));
+
+    if (existing.length > 0) {
+      return res.status(409).json({ error: "IKM sudah diisi untuk penilaian ini", data: existing[0] });
+    }
+
+    // Calculate IKM value (average of all unsur, converted to 0-100 scale)
+    const totalScore = scores.reduce((sum: number, s: number) => sum + s, 0);
+    const questionCount = scores.length || 9;
+    const nilaiIkm = ((totalScore / (questionCount * 4)) * 100).toFixed(2);
+
+    const [inserted] = await db.insert(schema.ikmResponses).values({
+      idPermohonan,
+      idUser: Number(userId),
+      u1: finalAnswers.u1 || 0,
+      u2: finalAnswers.u2 || 0,
+      u3: finalAnswers.u3 || 0,
+      u4: finalAnswers.u4 || 0,
+      u5: finalAnswers.u5 || 0,
+      u6: finalAnswers.u6 || 0,
+      u7: finalAnswers.u7 || 0,
+      u8: finalAnswers.u8 || 0,
+      u9: finalAnswers.u9 || 0,
+      answers: finalAnswers,
+      nilaiIkm,
+      testimoni,
+    }).returning();
+
+    res.json({ success: true, data: inserted });
+  } catch (error) {
+    console.error("POST IKM response error", error);
+    res.status(500).json({ error: "Failed to save IKM response" });
+  }
+};
+
+export const get_ikm_stats = async (req: express.Request, res: express.Response) => {
+  try {
+    const responses = await db.select().from(schema.ikmResponses);
+    
+    const totalResponses = responses.length;
+    if (totalResponses === 0) {
+      return res.json({
+        totalResponses: 0,
+        averageIKM: 0,
+        averages: { u1: 0, u2: 0, u3: 0, u4: 0, u5: 0, u6: 0, u7: 0, u8: 0, u9: 0 },
+        distribution: { "Sangat Baik": 0, "Baik": 0, "Kurang Baik": 0, "Tidak Baik": 0 }
+      });
+    }
+
+    let totalIKM = 0;
+    const sums: Record<string, number> = {};
+    const distribution = { "Sangat Baik": 0, "Baik": 0, "Kurang Baik": 0, "Tidak Baik": 0 };
+
+    responses.forEach(r => {
+      const nilai = Number(r.nilaiIkm) || 0;
+      totalIKM += nilai;
+      
+      const answers = typeof r.answers === 'string' ? JSON.parse(r.answers) : (r.answers || {
+        u1: r.u1, u2: r.u2, u3: r.u3, u4: r.u4, u5: r.u5, u6: r.u6, u7: r.u7, u8: r.u8, u9: r.u9
+      });
+
+      Object.entries(answers).forEach(([key, val]) => {
+        if (!sums[key]) sums[key] = 0;
+        sums[key] += Number(val);
+      });
+
+      if (nilai >= 88.31) distribution["Sangat Baik"]++;
+      else if (nilai >= 76.61) distribution["Baik"]++;
+      else if (nilai >= 65.00) distribution["Kurang Baik"]++;
+      else distribution["Tidak Baik"]++;
+    });
+
+    const averages: Record<string, number> = {};
+    Object.entries(sums).forEach(([key, val]) => {
+      averages[key] = Number((val / totalResponses).toFixed(2));
+    });
+
+    res.json({
+      totalResponses,
+      averageIKM: Number((totalIKM / totalResponses).toFixed(2)),
+      averages,
+      distribution
+    });
+  } catch (error) {
+    console.error("GET IKM stats error", error);
+    res.status(500).json({ error: "Failed to fetch IKM stats" });
+  }
+};
+
+export const get_ikm_responses = async (req: express.Request, res: express.Response) => {
+  try {
+    const responses = await db.select().from(schema.ikmResponses);
+    const permohonans = await db.select().from(schema.permohonanPenilaian);
+    const buildings = await db.select().from(schema.profilBangunan);
+    
+    // Join logic mapping in memory
+    const enriched = responses.map(r => {
+      const p = permohonans.find(p => p.idPermohonan === r.idPermohonan);
+      const b = p ? buildings.find(b => b.idBangunan === p.idBangunan) : null;
+      
+      return {
+        ...r,
+        buildingName: b ? b.namaMassaBangunan : "Unknown Building",
+        schoolName: b ? b.namaSekolahInstansi : "Unknown School",
+        date: p ? p.tanggalPengajuan : r.createdAt,
+      };
+    });
+    
+    // Sort by latest
+    enriched.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    res.json(enriched);
+  } catch (error) {
+    console.error("GET IKM responses error", error);
+    res.status(500).json({ error: "Failed to fetch IKM responses" });
+  }
+};
+
+export const get_ikm_questions = async (req: express.Request, res: express.Response) => {
+  try {
+    const questions = await db.select().from(schema.ikmQuestions).orderBy(schema.ikmQuestions.orderIndex);
+    
+    // Seed default if empty
+    if (questions.length === 0) {
+      const defaultQuestions = [
+        { key: "u1", label: "Persyaratan Pelayanan", description: "Kemudahan memenuhi persyaratan teknis dan administratif", orderIndex: 1 },
+        { key: "u2", label: "Sistem, Mekanisme, dan Prosedur", description: "Kemudahan tahapan pelayanan yang diberikan", orderIndex: 2 },
+        { key: "u3", label: "Waktu Penyelesaian", description: "Jangka waktu yang diperlukan untuk menyelesaikan seluruh proses", orderIndex: 3 },
+        { key: "u4", label: "Biaya/Tarif", description: "Ongkos yang dikenakan kepada penerima layanan", orderIndex: 4 },
+        { key: "u5", label: "Produk Spesifikasi Jenis Pelayanan", description: "Hasil pelayanan yang diberikan dan diterima sesuai ketentuan", orderIndex: 5 },
+        { key: "u6", label: "Kompetensi Pelaksana", description: "Kemampuan yang harus dimiliki oleh pelaksana", orderIndex: 6 },
+        { key: "u7", label: "Perilaku Pelaksana", description: "Sikap petugas dalam memberikan pelayanan", orderIndex: 7 },
+        { key: "u8", label: "Penanganan Pengaduan, Saran dan Masukan", description: "Tata cara pelaksanaan penanganan pengaduan", orderIndex: 8 },
+        { key: "u9", label: "Sarana dan Prasarana", description: "Ketersediaan dan kualitas sarana infrastruktur pelayanan", orderIndex: 9 },
+      ];
+      await db.insert(schema.ikmQuestions).values(defaultQuestions);
+      const newQuestions = await db.select().from(schema.ikmQuestions).orderBy(schema.ikmQuestions.orderIndex);
+      return res.json(newQuestions);
+    }
+    
+    res.json(questions);
+  } catch (error) {
+    console.error("GET ikm questions error", error);
+    res.status(500).json({ error: "Failed to fetch IKM questions" });
+  }
+};
+
+export const create_ikm_question = async (req: express.Request, res: express.Response) => {
+  try {
+    const { key, label, description, isActive, orderIndex } = req.body;
+    const [inserted] = await db.insert(schema.ikmQuestions).values({
+      key, label, description, isActive: isActive ?? true, orderIndex: orderIndex || 99
+    }).returning();
+    res.json(inserted);
+  } catch (error) {
+    console.error("Create ikm question error", error);
+    res.status(500).json({ error: "Failed to create IKM question" });
+  }
+};
+
+export const update_ikm_question = async (req: express.Request, res: express.Response) => {
+  try {
+    const { id } = req.params;
+    const { key, label, description, isActive, orderIndex } = req.body;
+    const [updated] = await db.update(schema.ikmQuestions)
+      .set({ key, label, description, isActive, orderIndex })
+      .where(eq(schema.ikmQuestions.id, Number(id)))
+      .returning();
+    res.json(updated);
+  } catch (error) {
+    console.error("Update ikm question error", error);
+    res.status(500).json({ error: "Failed to update IKM question" });
+  }
+};
+
+export const delete_ikm_question = async (req: express.Request, res: express.Response) => {
+  try {
+    const { id } = req.params;
+    await db.delete(schema.ikmQuestions).where(eq(schema.ikmQuestions.id, Number(id)));
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Delete ikm question error", error);
+    res.status(500).json({ error: "Failed to delete IKM question" });
+  }
+};
