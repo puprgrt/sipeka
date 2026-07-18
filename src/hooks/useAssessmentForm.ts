@@ -725,6 +725,20 @@ Koordinat GPS: ${coordinates ? `Latitude: ${coordinates.lat}, Longitude: ${coord
       const link = await createDocument(docTitle, docContent);
       setGeneratedDocLink(link);
       setIsLetterGenerated(true);
+
+      // Save to database via backup API
+      try {
+        const formData = new FormData();
+        formData.append("idUser", localStorage.getItem("activeUserId") || "1");
+        formData.append("namaFile", docTitle);
+        formData.append("tipeDokumen", "Surat_Permohonan");
+        formData.append("urlGdriveUser", link);
+
+        fetch("/api/drive/backup", { method: "POST", body: formData })
+          .catch(e => console.warn("Failed to register doc to system DB", e));
+      } catch (err) {
+        console.warn("Failed to register doc", err);
+      }
     } catch (err) {
       console.error("Gagal membuat dokumen Google Docs", err);
       // Fallback/Simulasi jika ada error agar tetap lancar

@@ -120,7 +120,11 @@ export default function SmartPreviewModal(props: SmartPreviewModalProps) {
         makeFilePublic(selectedFile.id).then(() => {
           setIsMakingPublic(false);
         }).catch((err) => {
-          console.error("Auto makeFilePublic failed:", err);
+          if (err?.message === "Not authenticated" || err?.message?.includes("authenticated")) {
+            console.warn("Skipping makeFilePublic due to unauthenticated state");
+          } else {
+            console.error("Auto makeFilePublic failed:", err);
+          }
           setIsMakingPublic(false); // Still show it and let user request access
         });
       });

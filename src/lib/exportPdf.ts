@@ -281,7 +281,24 @@ export const exportAssessmentToPdf = async (assessment: Assessment, history: any
   doc.line(140, finalY + 28, 190, finalY + 28);
   doc.text(koordinatorTte ? koordinatorTte.name : "NIP.", 140, finalY + 33);
 
-  doc.save(`Laporan_Penilaian_${assessment.id.substring(0, 8)}.pdf`);
+  const fileName = `Laporan_Penilaian_${assessment.id.substring(0, 8)}.pdf`;
+  
+  // Background backup to System Drive
+  try {
+    const pdfBlob = doc.output('blob');
+    const formData = new FormData();
+    formData.append("file", pdfBlob, fileName);
+    formData.append("idUser", localStorage.getItem("activeUserId") || "1");
+    formData.append("namaFile", fileName);
+    formData.append("tipeDokumen", "Laporan_Penilaian");
+    
+    fetch("/api/drive/backup", { method: "POST", body: formData })
+      .catch(e => console.warn("System backup failed", e));
+  } catch (e) {
+    console.warn("Failed to prepare backup", e);
+  }
+
+  doc.save(fileName);
 };
 
 export const exportIkmReportToPdf = async (stats: any, responses: any[], aiNarrative: string = "", radarImg: string = "", pieImg: string = "") => {
@@ -472,5 +489,22 @@ export const exportIkmReportToPdf = async (stats: any, responses: any[], aiNarra
   doc.text("Administrator SIPEKA", 140, currentY + 5);
   doc.line(140, currentY + 28, 190, currentY + 28);
 
-  doc.save(`Laporan_Komprehensif_IKM.pdf`);
+  const fileName = `Laporan_Komprehensif_IKM.pdf`;
+  
+  // Background backup to System Drive
+  try {
+    const pdfBlob = doc.output('blob');
+    const formData = new FormData();
+    formData.append("file", pdfBlob, fileName);
+    formData.append("idUser", localStorage.getItem("activeUserId") || "1");
+    formData.append("namaFile", fileName);
+    formData.append("tipeDokumen", "Lainnya");
+    
+    fetch("/api/drive/backup", { method: "POST", body: formData })
+      .catch(e => console.warn("System backup failed", e));
+  } catch (e) {
+    console.warn("Failed to prepare backup", e);
+  }
+
+  doc.save(fileName);
 };

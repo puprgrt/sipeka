@@ -9,34 +9,12 @@ export function useDriveFiles(currentFolder: string | null) {
   const fetchFiles = useCallback(async () => {
     setLoadingFiles(true);
     try {
-      // Fetch files from Google Drive
-      const driveFiles = await listDriveFiles(currentFolder);
-      
-      // Map Google Drive API response to local FileItem structure
-      const mappedFiles: FileItem[] = driveFiles.map((df: any) => {
-        let type: FileItem['type'] = 'other';
-        if (df.mimeType === 'application/vnd.google-apps.folder') type = 'folder';
-        else if (df.mimeType === 'application/pdf') type = 'pdf';
-        else if (df.mimeType?.startsWith('image/')) type = 'image';
-        else if (df.mimeType?.includes('word')) type = 'word';
-        else if (df.mimeType?.includes('spreadsheet') || df.mimeType?.includes('excel')) type = 'excel';
-
-        return {
-          id: df.id,
-          name: df.name,
-          type,
-          size: df.size ? parseInt(df.size) : undefined,
-          updatedAt: df.modifiedTime,
-          author: df.owners?.[0]?.displayName || "Google Drive User",
-          folderId: currentFolder,
-          accessRole: ["Administrator", "Pengelola_Bangunan", "Tim_Teknis"],
-          previewUrl: df.webViewLink || df.webContentLink,
-        };
-      });
-      
-      setFiles(mappedFiles);
-    } catch (error) {
-      console.error("Failed to fetch files from Google Drive", error);
+      const response = await fetch(`/api/files`);
+      if (!response.ok) throw new Error("Failed to fetch files from database");
+      const data = await response.json();
+      setFiles(data);
+    } catch (error: any) {
+      console.error("Failed to fetch files from API", error);
       setFiles([]);
     } finally {
       setLoadingFiles(false);
@@ -91,26 +69,54 @@ export function useDriveFiles(currentFolder: string | null) {
 
   const uploadFile = async (file: File, activeUserName: string) => {
     try {
-      const df = await uploadFileToDrive(file, currentFolder);
+      // 1. (Opsional) Tetap upload ke Google Drive pribadi User (jika terkoneksi/diinginkan)
+      let urlGdriveUser = "";
+      let driveFileId = "file-" + Date.now();
+      try {
+        const df = await uploadFileToDrive(file, currentFolder);
+        urlGdriveUser = df.webViewLink || df.webContentLink;
+        driveFileId = df.id;
+      } catch (err: any) {
+        console.warn("Skipping personal GDrive upload due to auth error", err);
+      }
+      
+      // 2. Upload ke sistem backup (akan masuk ke DB & Drive Admin)
+      const formData = new FormData();
+      formData.append("file", file);
+      // Hardcode idUser = 1 untuk sementara, karena kita belum menyimpan idUser di localStorage
+      formData.append("idUser", "1"); 
+      formData.append("namaFile", file.name);
+      if (urlGdriveUser) {
+        formData.append("urlGdriveUser", urlGdriveUser);
+      }
+      formData.append("tipeDokumen", "Unggahan_Bebas");
+
+      const response = await fetch("/api/drive/backup", {
+        method: "POST",
+        body: formData
+      });
+
+      if (!response.ok) throw new Error("Gagal mengunggah ke backup server");
+      const data = await response.json();
       
       let type: FileItem['type'] = 'other';
-      if (df.mimeType === 'application/pdf') type = 'pdf';
-      else if (df.mimeType?.startsWith('image/')) type = 'image';
-      else if (df.mimeType?.includes('word')) type = 'word';
-      else if (df.mimeType?.includes('spreadsheet') || df.mimeType?.includes('excel')) type = 'excel';
+      if (file.type === 'application/pdf') type = 'pdf';
+      else if (file.type?.startsWith('image/')) type = 'image';
+      else if (file.type?.includes('word')) type = 'word';
+      else if (file.type?.includes('spreadsheet') || file.type?.includes('excel')) type = 'excel';
 
       const newFile: FileItem = {
-        id: df.id,
-        name: df.name,
+        id: data.document?.idDokumen || driveFileId,
+        name: file.name,
         type,
-        size: df.size ? parseInt(df.size) : file.size,
-        updatedAt: df.modifiedTime || new Date().toISOString(),
+        size: file.size,
+        updatedAt: new Date().toISOString(),
         author: activeUserName,
         folderId: currentFolder,
         accessRole: ["Administrator", "Kadis", "Kabid", "Koordinator", "Tim_Teknis", "Operator", "Pengelola_Bangunan"],
-        previewUrl: df.webViewLink || df.webContentLink,
+        previewUrl: data.document?.urlGdriveSistem || urlGdriveUser || URL.createObjectURL(file),
         activities: [
-          { action: "Berkas diunggah", time: new Date().toISOString(), user: activeUserName }
+          { action: "Berkas diunggah & dicadangkan", time: new Date().toISOString(), user: activeUserName }
         ]
       };
 

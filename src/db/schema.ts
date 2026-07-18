@@ -17,6 +17,7 @@ export const roleEnum = pgEnum('role', ['Administrator', 'Pengelola_Bangunan', '
 export const statusPermohonanEnum = pgEnum('status_permohonan', ['Menunggu_Validasi', 'Menunggu_TTE_Koordinator', 'Menunggu_TTE_Kabid', 'Menunggu_Validasi_Kadis', 'Survei_Lapangan', 'Selesai_Dianalisis', 'Arsip_Digital']);
 export const kesimpulanAkhirEnum = pgEnum('kesimpulan_akhir', ['Tidak Rusak', 'Rusak Ringan', 'Rusak Sedang', 'Rusak Berat']);
 export const statusTindakanEnum = pgEnum('status_tindakan', ['Disposisi', 'Setuju_Tanpa_Survei', 'Jadwalkan_Survei', 'Terbitkan_Hasil']);
+export const tipeDokumenEnum = pgEnum('tipe_dokumen', ['Laporan_Penilaian', 'Surat_Permohonan', 'Unggahan_Bebas', 'Lainnya']);
 
 // 1. KELOMPOK DATA MASTER
 
@@ -234,5 +235,22 @@ export const ikmResponses = pgTable('ikm_responses', {
 export const ikmResponsesRelations = relations(ikmResponses, ({ one }) => ({
   permohonan: one(permohonanPenilaian, { fields: [ikmResponses.idPermohonan], references: [permohonanPenilaian.idPermohonan] }),
   user: one(users, { fields: [ikmResponses.idUser], references: [users.idUser] }),
+}));
+
+// 6. DOKUMEN DIGITAL & FILE MANAGER
+export const dokumenDigital = pgTable('dokumen_digital', {
+  idDokumen: uuid('id_dokumen').defaultRandom().primaryKey(),
+  idUser: integer('id_user').references(() => users.idUser).notNull(),
+  namaFile: text('nama_file').notNull(),
+  urlGdriveUser: text('url_gdrive_user'), // link drive pribadi user
+  urlGdriveSistem: text('url_gdrive_sistem'), // link backup drive sistem
+  tipeDokumen: tipeDokumenEnum('tipe_dokumen').default('Unggahan_Bebas').notNull(),
+  mimeType: text('mime_type'),
+  sizeBytes: integer('size_bytes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const dokumenDigitalRelations = relations(dokumenDigital, ({ one }) => ({
+  user: one(users, { fields: [dokumenDigital.idUser], references: [users.idUser] }),
 }));
 
