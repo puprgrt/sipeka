@@ -13,6 +13,9 @@ import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import { cn } from "../lib/utils";
 import { exportIkmReportToPdf } from "../lib/exportPdf";
+import { exportIkmReportToDocx } from "../lib/exportDocx";
+import { toPng } from "html-to-image";
+import { FileText } from "lucide-react";
 
 // Removed hardcoded IKM_UNSUR_LABELS, will be fetched dynamically
 interface IkmQuestion {
@@ -33,6 +36,7 @@ export default function IkmDashboard() {
   const [responses, setResponses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const [questionsConfig, setQuestionsConfig] = useState<IkmQuestion[]>([]);
 
@@ -66,6 +70,67 @@ export default function IkmDashboard() {
       </div>
     );
   }
+
+  const prepareReportData = async () => {
+    // 1. Capture Charts
+    const radarEl = document.getElementById("radar-chart-container");
+    const pieEl = document.getElementById("pie-chart-container");
+    
+    let radarImg = "";
+    let pieImg = "";
+    
+    if (radarEl) {
+      radarImg = await toPng(radarEl, { pixelRatio: 2, backgroundColor: "#ffffff" });
+    }
+    
+    if (pieEl) {
+      pieImg = await toPng(pieEl, { pixelRatio: 2, backgroundColor: "#ffffff" });
+    }
+
+    // 2. Fetch AI Narrative
+    let aiNarrative = "";
+    try {
+      const aiRes = await fetch("/api/gemini/analyze-ikm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stats, responses, questionsConfig })
+      });
+      if (aiRes.ok) {
+        const aiData = await aiRes.json();
+        aiNarrative = aiData.narrative;
+      }
+    } catch (err) {
+      console.error("Gagal mendapatkan narasi AI:", err);
+    }
+    
+    return { radarImg, pieImg, aiNarrative };
+  };
+
+  const handleDownloadPdf = async () => {
+    try {
+      setIsGeneratingPdf(true);
+      const { radarImg, pieImg, aiNarrative } = await prepareReportData();
+      await exportIkmReportToPdf(stats, responses, aiNarrative, radarImg, pieImg);
+    } catch (err) {
+      console.error("Failed to generate PDF:", err);
+      alert("Gagal mengunduh laporan PDF.");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleDownloadWord = async () => {
+    try {
+      setIsGeneratingPdf(true); // Share loading state for both buttons
+      const { radarImg, pieImg, aiNarrative } = await prepareReportData();
+      await exportIkmReportToDocx(stats, responses, aiNarrative, radarImg, pieImg);
+    } catch (err) {
+      console.error("Failed to generate DOCX:", err);
+      alert("Gagal mengunduh laporan Word.");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   // Format data for Radar Chart
   const radarData = stats?.averages ? Object.entries(stats.averages).map(([key, value]) => ({
@@ -108,15 +173,36 @@ export default function IkmDashboard() {
             </p>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => exportIkmReportToPdf(stats, responses)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-2xl shadow-sm flex items-center gap-2 text-sm font-bold transition-colors"
+              onClick={handleDownloadWord}
+              disabled={isGeneratingPdf}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-2xl shadow-sm flex items-center gap-2 text-sm font-bold transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+              title="Download Word (DOCX)"
             >
-              <Download className="w-5 h-5" />
-              <span className="hidden sm:inline">Download Laporan</span>
+              {isGeneratingPdf ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <FileText className="w-5 h-5" />
+              )}
+              <span className="hidden sm:inline">Word</span>
             </button>
-            <div className="bg-white px-5 py-3 rounded-2xl shadow-sm border border-slate-200/60 flex items-center gap-4">
+            
+            <button
+              onClick={handleDownloadPdf}
+              disabled={isGeneratingPdf}
+              className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-3 rounded-2xl shadow-sm flex items-center gap-2 text-sm font-bold transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+              title="Download PDF"
+            >
+              {isGeneratingPdf ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Download className="w-5 h-5" />
+              )}
+              <span className="hidden sm:inline">PDF</span>
+            </button>
+
+            <div className="bg-white px-5 py-3 rounded-2xl shadow-sm border border-slate-200/60 flex items-center gap-4 ml-2">
               <div className="text-right">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Responden</p>
                 <p className="text-2xl font-black text-slate-800">{stats?.totalResponses || 0}</p>
@@ -232,12 +318,13 @@ export default function IkmDashboard() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.3 }}
             className="bg-white rounded-3xl shadow-sm border border-slate-200/60 p-6"
+            id="radar-chart-container"
           >
             <h3 className="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2">
               <span className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
                 <Target className="w-4 h-4" />
               </span>
-              Pemetaan 9 Unsur Pelayanan (Skala 1-4)
+              Pemetaan Unsur Pelayanan (Skala 1-4)
             </h3>
             
             <div className="h-[350px] w-full">
@@ -262,6 +349,7 @@ export default function IkmDashboard() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.4 }}
             className="bg-white rounded-3xl shadow-sm border border-slate-200/60 p-6"
+            id="pie-chart-container"
           >
             <h3 className="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2">
               <span className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">

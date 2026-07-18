@@ -284,7 +284,7 @@ export const exportAssessmentToPdf = async (assessment: Assessment, history: any
   doc.save(`Laporan_Penilaian_${assessment.id.substring(0, 8)}.pdf`);
 };
 
-export const exportIkmReportToPdf = async (stats: any, responses: any[]) => {
+export const exportIkmReportToPdf = async (stats: any, responses: any[], aiNarrative: string = "", radarImg: string = "", pieImg: string = "") => {
   let questionsConfig: any[] = [];
   try {
     const res = await fetch("/api/settings/ikm-questions");
@@ -345,10 +345,70 @@ export const exportIkmReportToPdf = async (stats: any, responses: any[]) => {
     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } }
   });
 
-  // Nilai Per Unsur
   let currentY = (doc as any).lastAutoTable.finalY + 10;
+
+  // Visualisasi Statistik
+  if (radarImg || pieImg) {
+    if (currentY > 200) {
+      doc.addPage();
+      currentY = 20;
+    }
+    
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text("2. Visualisasi Statistik", 14, currentY);
+    
+    const imgWidth = 85;
+    const imgHeight = 70;
+    let currentX = 14;
+    
+    if (radarImg) {
+      doc.addImage(radarImg, 'PNG', currentX, currentY + 5, imgWidth, imgHeight);
+      currentX += imgWidth + 5;
+    }
+    if (pieImg) {
+      doc.addImage(pieImg, 'PNG', currentX, currentY + 5, imgWidth, imgHeight);
+    }
+    
+    currentY += imgHeight + 15;
+  }
+
+  // Analisis Komprehensif (AI Narrative)
+  if (aiNarrative) {
+    if (currentY > 220) {
+      doc.addPage();
+      currentY = 20;
+    }
+    
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text("3. Analisis dan Kesimpulan Komprehensif (AI-Generated)", 14, currentY);
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    
+    const splitText = doc.splitTextToSize(aiNarrative, 180);
+    currentY += 8;
+    
+    for (let i = 0; i < splitText.length; i++) {
+      if (currentY > 280) {
+        doc.addPage();
+        currentY = 20;
+      }
+      doc.text(splitText[i], 14, currentY);
+      currentY += 5;
+    }
+    
+    currentY += 5;
+  }
+
+  // Nilai Per Unsur
+  if (currentY > 240) {
+    doc.addPage();
+    currentY = 20;
+  }
   doc.setFont("helvetica", "bold");
-  doc.text("2. Nilai Rata-Rata per Unsur Pelayanan", 14, currentY);
+  doc.text("4. Nilai Rata-Rata per Unsur Pelayanan", 14, currentY);
   
   const unsurData = stats?.averages ? Object.entries(stats.averages).map(([key, val]) => [
     key.toUpperCase(), IKM_UNSUR_LABELS[key] || key, val
@@ -371,7 +431,7 @@ export const exportIkmReportToPdf = async (stats: any, responses: any[]) => {
   }
   
   doc.setFont("helvetica", "bold");
-  doc.text("3. Testimoni dan Masukan Responden", 14, currentY);
+  doc.text("5. Testimoni dan Masukan Responden", 14, currentY);
 
   const testimoniData = responses.slice(0, 50).map((r, i) => [
     i + 1,

@@ -257,3 +257,66 @@ Return a JSON response matching the following schema:
     return { summary: "Error processing document", findings: [], recommendations: [], complianceStatus: "Error", confidenceScore: 0 };
   }
 }
+
+export async function analyzeIkmLogic(stats: any, responses: any[], questionsConfig: any[]) {
+  const { client, aiSettings, provider } = await getAI();
+
+  const prompt = `Anda adalah seorang Auditor Utama dan Analis Kebijakan Publik Senior dari instansi pemerintah.
+Tugas Anda adalah menyusun dokumen "Analisis, Evaluasi, dan Rekomendasi Hasil Indeks Kepuasan Masyarakat (IKM)" berdasarkan data statistik berikut. Laporan ini akan ditujukan kepada Kepala Dinas.
+
+Statistik:
+- Total Responden: ${stats?.totalResponses || 0}
+- Nilai Rata-rata IKM: ${stats?.averageIKM || 0} / 100
+- Distribusi Mutu Pelayanan: ${JSON.stringify(stats?.distribution || {})}
+
+Data Nilai per Unsur Pelayanan (Skala 1-4):
+${Object.entries(stats?.averages || {}).map(([key, val]) => {
+  const q = questionsConfig.find(q => q.key === key);
+  return `- ${q ? q.label : key}: ${val}`;
+}).join('\n')}
+
+Testimoni/Keluhan Responden Terpilih:
+${responses.slice(0, 8).map(r => `"${r.testimoni}"`).join('\n')}
+
+Buatkan laporan komprehensif dengan struktur format kedinasan berikut (gunakan HANYA teks biasa dan huruf kapital untuk judul bagian, JANGAN gunakan simbol markdown seperti ** atau #):
+
+A. PENDAHULUAN
+(Tuliskan 1 paragraf pembuka yang formal mengenai hasil capaian IKM secara umum berdasarkan total responden dan nilai rata-rata)
+
+B. ANALISIS DAN EVALUASI PER UNSUR
+(Evaluasi secara spesifik unsur-unsur yang mendapatkan nilai tertinggi sebagai kekuatan, dan unsur-unsur dengan nilai terendah sebagai area kelemahan pelayanan. Jelaskan korelasi keluhan responden dengan unsur yang lemah tersebut)
+
+C. KESIMPULAN DAN REKOMENDASI TINDAK LANJUT
+(Tuliskan kesimpulan akhir dan berikan minimal 3 rekomendasi strategis dan taktis kepada pimpinan untuk perbaikan layanan di periode berikutnya)
+
+Pastikan gaya bahasa sangat profesional, analitis, dan khas laporan pemerintahan resmi. Pisahkan antar bagian dengan baris kosong (enter).`;
+
+  const model = aiSettings.model || "gemini-3.5-flash";
+  let responseText = "";
+
+  if (provider === "google") {
+    const response = await (client as GoogleGenAI).models.generateContent({
+      model: model,
+      contents: prompt
+    });
+    responseText = response.text?.trim() || "";
+  } else if (provider === "openai") {
+    const response = await (client as OpenAI).chat.completions.create({
+      model: model,
+      messages: [{ role: "user", content: prompt }]
+    });
+    responseText = response.choices[0].message.content || "";
+  } else if (provider === "anthropic") {
+    const response = await (client as Anthropic).messages.create({
+      model: model,
+      max_tokens: 1500,
+      messages: [{ role: "user", content: prompt }]
+    });
+    responseText = (response.content[0] as any).text || "";
+  } else if (provider === "ollama") {
+    const endpoint = aiSettings.ollamaEndpoint || "http://localhost:11434";
+    responseText = await runOllama(endpoint, model, "Berikan hanya narasi formal tanpa tag markdown.", prompt, []);
+  }
+
+  return responseText;
+}
