@@ -8,7 +8,8 @@ import {
   decimal, 
   boolean,
   pgEnum,
-  uuid
+  uuid,
+  jsonb
 } from 'drizzle-orm/pg-core';
 
 export const kategoriKomponenEnum = pgEnum('kategori_komponen', ['Struktur', 'Arsitektur', 'Utilitas']);
