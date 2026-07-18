@@ -82,44 +82,134 @@ export const PLACEHOLDERS_LAMPIRAN_XLSX: PlaceholderInfo[] = [
 // DEFAULT TEMPLATE HTML
 // ========================
 
-export const DEFAULT_TEMPLATE_SURAT_PERMOHONAN = `{{namaInstansiAtas}}
-{{namaInstansiBawah}}
-{{namaSekolah}}
-{{alamatPemohon}}
+export const DEFAULT_TEMPLATE_SURAT_PERMOHONAN = `<html>
+<head>
+  <title>Surat Permohonan Penilaian Kerusakan</title>
+  <style>
+    body { font-family: 'Arial', sans-serif; padding: 40px; line-height: 1.5; font-size: 14px; }
+    .kop { display: flex; align-items: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px; }
+    .kop-logo { width: 80px; height: auto; margin-right: 20px; }
+    .kop-text { flex: 1; text-align: center; }
+    .kop-text h1 { font-size: 16px; margin: 0; font-weight: bold; }
+    .kop-text h2 { font-size: 14px; margin: 0; font-weight: bold; }
+    .kop-text p { font-size: 12px; margin: 0; }
+    .date-right { text-align: right; margin-bottom: 20px; }
+    .meta-table { width: 100%; margin-bottom: 20px; border: none; }
+    .meta-table td { vertical-align: top; padding: 2px; }
+    .meta-table td:nth-child(1) { width: 80px; }
+    .meta-table td:nth-child(2) { width: 10px; }
+    .content { text-align: justify; }
+    .content-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+    .content-table td { border: 1px solid black; padding: 5px 8px; }
+    .content-table td:nth-child(1) { width: 40%; }
+    .content-table td:nth-child(2) { width: 5%; text-align: center; border-right: none; }
+    .content-table td:nth-child(3) { border-left: none; }
+    .signature { float: right; text-align: center; margin-top: 40px; width: 250px; }
+    .signature p { margin: 2px 0; }
+    .barcode { margin: 40px 0; color: #555; }
+    .clear { clear: both; }
+    @media print { body { padding: 20px; } }
+  </style>
+</head>
+<body>
+  <div class="kop">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Lambang_Kabupaten_Garut.png/400px-Lambang_Kabupaten_Garut.png" alt="Logo" class="kop-logo" />
+    <div class="kop-text">
+      <h1>{{namaInstansiAtas}}</h1>
+      <h1>{{namaInstansiBawah}}</h1>
+      <h2>{{namaSekolah}}</h2>
+      <p>{{alamatPemohon}}</p>
+    </div>
+  </div>
 
-Garut, {{tanggal}}
-Nomor    : {{nomorSurat}}
-Sifat    : Biasa
-Lampiran : 1 Berkas
-Hal      : Permohonan Penilaian Kerusakan Bangunan Gedung {{namaSekolah}}
+  <div class="date-right">
+    Garut, {{tanggal}}
+  </div>
 
-Yth. Kepala Dinas Pekerjaan Umum dan Penataan Ruang Kabupaten Garut
-di
-     Garut
+  <table class="meta-table">
+    <tr>
+      <td>Nomor</td><td>:</td><td>{{nomorSurat}}</td>
+    </tr>
+    <tr>
+      <td>Sifat</td><td>:</td><td>Biasa</td>
+    </tr>
+    <tr>
+      <td>Lampiran</td><td>:</td><td>1 Berkas</td>
+    </tr>
+    <tr>
+      <td>Hal</td><td>:</td>
+      <td>
+        Permohonan Penilaian<br/>
+        Kerusakan Bangunan Gedung<br/>
+        {{namaSekolah}}
+      </td>
+    </tr>
+  </table>
 
-Dalam rangka menjamin keselamatan, keamanan, kenyamanan, dan keberlanjutan fungsi bangunan gedung pada {{namaInstansiBawah}}, bersama ini kami mengajukan permohonan Analisis dan Perhitungan Kerusakan Bangunan Gedung terhadap bangunan yang berada pada lokasi berikut:
+  <div class="content">
+    <p>
+      Yth. Kepala Dinas Pekerjaan Umum dan<br/>
+      Penataan Ruang Kabupaten Garut<br/>
+      di<br/>
+      &nbsp;&nbsp;&nbsp;&nbsp;Garut
+    </p>
 
-1. Identitas Bangunan Gedung:
-   Nama Bangunan   : {{namaBangunan}}
-   NPSN            : {{npsn}}
-   Luas            : {{luasBangunan}} m2
-   Jumlah Lantai   : {{jumlahLantai}}
-   Alamat Bangunan : {{alamatBangunan}}
-   Koordinat       : {{koordinatGps}}
+    <p style="text-indent: 40px;">
+      Dalam rangka menjamin keselamatan, keamanan, kenyamanan, dan keberlanjutan fungsi bangunan gedung pada {{namaInstansiBawah}}, bersama ini kami mengajukan permohonan <b>Analisis dan Perhitungan Kerusakan Bangunan Gedung</b> terhadap bangunan yang berada pada lokasi berikut:
+    </p>
 
-Sehubungan dengan data penilaian mandiri yang dilampirkan, diperlukan guna mengetahui tingkat kerusakan bangunan secara kuantitatif dan kualitatif sesuai ketentuan teknis yang berlaku. 
-Demikian permohonan ini kami sampaikan. Besar harapan kami agar dapat dilakukan pemeriksaan lapangan, analisis teknis, dan perhitungan tingkat kerusakan bangunan gedung dimaksud sebagai dasar pengambilan kebijakan penanganan serta penyusunan kebutuhan anggaran rehabilitasi bangunan.
-Atas perhatian dan kerja sama yang baik, kami ucapkan terima kasih.
+    <p>1. Identitas Bangunan Gedung:</p>
+    
+    <table class="content-table">
+      <tr>
+        <td>Nama Bangunan</td><td style="border-right: none;">:</td><td style="border-left: none;">{{namaBangunan}}</td>
+      </tr>
+      <tr>
+        <td>NPSN</td><td style="border-right: none;">:</td><td style="border-left: none;">{{npsn}}</td>
+      </tr>
+      <tr>
+        <td>Luas</td><td style="border-right: none;">:</td><td style="border-left: none;">{{luasBangunan}} m&sup2;</td>
+      </tr>
+      <tr>
+        <td>Jumlah Lantai</td><td style="border-right: none;">:</td><td style="border-left: none;">{{jumlahLantai}}</td>
+      </tr>
+      <tr>
+        <td>Alamat Bangunan</td><td style="border-right: none;">:</td><td style="border-left: none;">{{alamatBangunan}}</td>
+      </tr>
+      <tr>
+        <td>Desa/Kelurahan</td><td style="border-right: none;">:</td><td style="border-left: none;"></td>
+      </tr>
+      <tr>
+        <td>Kecamatan</td><td style="border-right: none;">:</td><td style="border-left: none;"></td>
+      </tr>
+      <tr>
+        <td>Kabupaten/Kota</td><td style="border-right: none;">:</td><td style="border-left: none;">Garut</td>
+      </tr>
+      <tr>
+        <td>Koordinat</td><td style="border-right: none;">:</td><td style="border-left: none;">{{koordinatGps}}</td>
+      </tr>
+    </table>
 
+    <p style="text-indent: 40px;">
+      Sehubungan dengan data penilaian mandiri yang dilampirkan, diperlukan guna mengetahui tingkat kerusakan bangunan secara kuantitatif dan kualitatif sesuai ketentuan teknis yang berlaku.
+    </p>
+    <p style="text-indent: 40px;">
+      Demikian permohonan ini kami sampaikan. Besar harapan kami agar dapat dilakukan pemeriksaan lapangan, analisis teknis, dan perhitungan tingkat kerusakan bangunan gedung dimaksud sebagai dasar pengambilan kebijakan penanganan serta penyusunan kebutuhan anggaran rehabilitasi bangunan.
+    </p>
+    <p style="text-indent: 40px;">
+      Atas perhatian dan kerja sama yang baik, kami ucapkan terima kasih.
+    </p>
+  </div>
 
-{{jabatanPengirim}},
-
-
-
-
-
-{{namaPengirim}}
-NIP. {{nipPengirim}}`;
+  <div class="signature">
+    <p>{{jabatanPengirim}},</p>
+    <p class="barcode">BARCODE TTE</p>
+    <p><u>{{namaPengirim}}</u></p>
+    <p>NIP. {{nipPengirim}}</p>
+  </div>
+  <div class="clear"></div>
+</body>
+</html>`;
 
 export const DEFAULT_TEMPLATE_SURAT_HASIL = `<html>
 <head>
