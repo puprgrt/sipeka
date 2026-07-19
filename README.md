@@ -11,8 +11,9 @@
 ### ✨ Fitur Utama
 - **Multi-step Assessment**: Pengisian form sistematis (Informasi Bangunan, Uji Keselamatan, Analisis Kerusakan, Review, hingga Dokumen).
 - **AI Damage Annotator**: Analisis pintar foto kerusakan menggunakan integrasi Gemini Vision.
-- **Offline Draft / Auto-save**: Berbasis **Zustand Persist**, aplikasi akan menyimpan ketikan Anda secara *real-time* dan *offline* di browser. Tidak ada data yang hilang bila tab tertutup tak sengaja.
+- **Offline Draft / Auto-save**: Berbasis **Zustand Persist**, aplikasi akan menyimpan ketikan Anda secara *real-time* dan *offline* di browser.
 - **TanStack Table (Modern Data Grid)**: Menyajikan daftar Disposisi, Verifikasi, dan Riwayat Assessment dengan fitur pencarian dan paginasi yang gegas.
+- **System Drive Backup & Sentralisasi Dokumen**: Dilengkapi fitur "Double-Upload" (ke GDrive pengguna dan GDrive Sistem) serta pencatatan terpusat di tabel database untuk pengelolaan dokumen oleh Admin.
 - **Drizzle ORM & Supabase**: Database *type-safe* dan otentikasi berbasis Postgres.
 - **Full Clean Architecture**: Stabilitas *maintenance* karena pemisahan tegas antara UI, Store, API Service, dan Backend Router.
 
@@ -27,6 +28,7 @@
 | **Database** | PostgreSQL via Supabase, Drizzle ORM |
 | **Table**    | TanStack Table (React Table v8) |
 | **AI**       | Google Gemini (AI Studio) |
+| **Integrasi**| Google Drive API (googleapis), Google Docs API |
 
 ---
 
@@ -72,12 +74,15 @@ Pastikan Anda sudah menginstal:
    npm install
    ```
 
-3. **Konfigurasi Environment (*.env*)**
-   Salin `file` kredensial contoh dan isi dengan kunci proyek Anda (Supabase & Gemini):
+3. **Konfigurasi Environment (*.env*) & Service Account**
+   Salin file kredensial contoh dan isi dengan kunci proyek Anda (Supabase & Gemini):
    ```bash
    cp .env.example .env
    ```
-   > **Note:** Buka `.env` dan ganti nilai `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, dan `GEMINI_API_KEY` milik Anda. Jangan biarkan *secret key* Anda terdorong ke repositori (*push*) demi keamanan!
+   > **Note:** Buka `.env` dan ganti nilai `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, dan `GEMINI_API_KEY` milik Anda. Tambahkan `SYSTEM_DRIVE_FOLDER_ID` untuk mengatur folder Google Drive Backup Sistem Anda.
+   
+   **PENTING (Untuk Fitur Pencadangan/Backup Dokumen):**
+   Anda harus mengunduh file kredensial JSON *Service Account* dari Google Cloud Console dan menempatkannya di *root* direktori proyek dengan nama `service-account.json`. Jangan lupa jadikan Service Account tersebut sebagai Editor di folder Google Drive sistem Anda.
 
 4. **Jalankan *Development Server***
    Perintah ini akan menjalankan Vite (Frontend) dan esbuild (Backend) secara bersamaan:

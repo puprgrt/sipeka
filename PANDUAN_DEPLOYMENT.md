@@ -19,7 +19,12 @@ Sebelum melakukan *deploy*, pastikan hal-hal berikut sudah disiapkan:
    - `NODE_ENV` = `production`
    - `DATABASE_URL` = (Connection string dari database PostgreSQL online)
    - `GEMINI_API_KEY` = (API Key dari Google AI Studio)
+   - `SYSTEM_DRIVE_FOLDER_ID` = (ID Folder Google Drive untuk pencadangan)
    - `PORT` = (Biasanya platform hosting akan mengatur ini secara otomatis)
+
+3. **Kredensial Service Account (`service-account.json`)**:
+   Untuk mengaktifkan fitur pencadangan otomatis (Double-Upload) ke Google Drive sistem, Anda memerlukan file `service-account.json`. Jangan *push* file ini ke repositori, tetapi unggah langsung ke penyedia hosting melalui fitur "Secret Files" atau *Environment Variables*.
+
 
 ---
 
@@ -74,15 +79,17 @@ Render.com sangat mudah digunakan karena akan mengurus proses instalasi dan *bui
    - Key: `NODE_ENV`, Value: `production`
    - Key: `DATABASE_URL`, Value: *(Connection String PostgreSQL online Anda)*
    - Key: `GEMINI_API_KEY`, Value: *(API Key dari Google AI Studio Anda)*
-6. Klik **Create Web Service**. 
-7. Render akan mulai menarik kode Anda, melakukan *build*, dan menjalankannya. Tunggu beberapa menit hingga statusnya menjadi **Live**. URL publik aplikasi Anda akan muncul di bagian atas (misal: `https://sipeka-pupr.onrender.com`).
+   - Key: `SYSTEM_DRIVE_FOLDER_ID`, Value: *(ID Folder GDrive Anda)*
+6. (Untuk fitur backup): Pada Render, buka menu **Secret Files**, tambahkan file dengan nama `service-account.json` dan isi (*copy-paste*) dari isi file JSON akun servis Google Cloud Anda.
+7. Klik **Create Web Service**. 
+8. Render akan mulai menarik kode Anda, melakukan *build*, dan menjalankannya. Tunggu beberapa menit hingga statusnya menjadi **Live**. URL publik aplikasi Anda akan muncul di bagian atas (misal: `https://sipeka-pupr.onrender.com`).
 
 ### Opsi B: Menggunakan Railway.app
 1. Buka [Railway.app](https://railway.app), klik **New Project**.
 2. Pilih **Deploy from GitHub repo**, lalu pilih repositori SIPEKA Anda.
 3. Railway akan otomatis mendeteksi bahwa repositori ini berisi aplikasi Node.js.
 4. Jangan langsung dibuka, pergi ke tab **Variables** pada *project* tersebut.
-5. Tambahkan variabel yang sama seperti di atas: `DATABASE_URL`, `GEMINI_API_KEY`, dan `NODE_ENV=production`.
+5. Tambahkan variabel yang sama seperti di atas: `DATABASE_URL`, `GEMINI_API_KEY`, `SYSTEM_DRIVE_FOLDER_ID`, dan `NODE_ENV=production`. (Catatan: Untuk menggunakan `service-account.json` di Railway, Anda mungkin perlu mengatur script untuk men-generate file dari environment variables, misal dengan mengekstrak variabel `GOOGLE_CREDENTIALS_JSON` menjadi file fisik `service-account.json` pada saat runtime).
 6. Buka tab **Settings** -> bagian **Networking**, lalu klik **Generate Domain** agar aplikasi Anda mendapatkan URL publik yang bisa diakses.
 7. Railway otomatis mem-*build* dan me-*restart* aplikasi dengan environment yang baru dimasukkan.
 
@@ -110,5 +117,6 @@ Buka URL aplikasi Anda yang baru secara publik, dan uji coba beberapa hal beriku
 2. **Tes Login**: Coba klik tombol "Masuk dengan Google". Pastikan popup Google OAuth terbuka tanpa pesan error otorisasi.
 3. **Tes Database**: Buat permohonan baru atau edit pengaturan sistem, lalu pastikan data tersimpan.
 4. **Tes AI**: Buka Dasbor AI dan tunggu apakah analisis kerusakan AI dari Gemini muncul. Jika muncul, koneksi ke Google AI Studio berhasil.
+5. **Tes Pencadangan Sistem (Double Upload)**: Buat dokumen "Laporan Penilaian" (PDF) atau "Surat Permohonan" lalu cek *File Manager*. Pastikan daftar dokumen di-load dengan benar (koneksi Database) dan periksa apakah file tersebut masuk ke Google Drive sistem (koneksi Service Account).
 
 Selesai! Aplikasi SIPEKA Anda kini berhasil di-*hosting* dan siap digunakan secara publik.

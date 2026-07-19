@@ -6,3 +6,9 @@ coverage/
 *.log
 .env*
 !.env.example
+service-account.json
+firebase-applet-config.json
+test_*.js
+test_*.cjs
+*.pem
+*.key
