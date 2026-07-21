@@ -26,8 +26,8 @@ export const initAuth = (
           const formattedUser = {
             uid: session.user.id,
             email: session.user.email,
-            displayName: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
-            photoURL: session.user.user_metadata?.avatar_url || ''
+            displayName: session.user.user_metadata?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0],
+            photoURL: session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || ''
           };
           onAuthSuccess(formattedUser, cachedAccessToken || '');
         }

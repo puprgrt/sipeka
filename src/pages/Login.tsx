@@ -109,6 +109,9 @@ export default function Login() {
           const localRole = localStorage.getItem("activeRole");
           
           if (isLocalLoggedIn && localRole) {
+            if (user.photoURL) {
+              localStorage.setItem("userPhoto", user.photoURL);
+            }
             navigate("/", { replace: true });
             return;
           }

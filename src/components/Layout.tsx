@@ -583,7 +583,7 @@ export default function Layout() {
                   <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none theme-transition">{user.email}</p>
                   <p className="text-sm text-slate-800 dark:text-slate-200 font-medium group-hover:text-pu-blue dark:group-hover:text-blue-400 transition-colors theme-transition">{user.displayName || 'Tim Teknis'}</p>
                 </div>
-                <img src={user.photoURL || ''} alt="Profile" className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-200 dark:bg-slate-800 rounded-full border-2 border-white dark:border-slate-800 shadow-sm object-cover group-hover:ring-2 group-hover:ring-pu-blue dark:group-hover:ring-blue-400 transition-all theme-transition" />
+                <img src={user.photoURL || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150'} alt="Profile" className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-200 dark:bg-slate-800 rounded-full border-2 border-white dark:border-slate-800 shadow-sm object-cover group-hover:ring-2 group-hover:ring-pu-blue dark:group-hover:ring-blue-400 transition-all theme-transition" />
               </Link>
               <button onClick={handleLogout} className="text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors" title="Keluar">
                 <LogOut className="w-5 h-5" />
