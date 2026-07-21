@@ -65,6 +65,7 @@ export default function DisposisiList() {
 
   const [activeRole, setActiveRole] = useState(() => localStorage.getItem("activeRole") || "Administrator");
   const [timTeknisUsers, setTimTeknisUsers] = useState<any[]>([]);
+  const [petugasSurveyUsers, setPetugasSurveyUsers] = useState<any[]>([]);
 
   useEffect(() => {
     apiFetch("/api/users")
@@ -72,8 +73,9 @@ export default function DisposisiList() {
       .then(data => {
         if (Array.isArray(data)) {
           setTimTeknisUsers(data.filter(u => u.role === "Tim_Teknis"));
+          setPetugasSurveyUsers(data.filter(u => u.role === "Petugas_Survey"));
         }
-      }).catch(err => console.error("Failed to fetch Tim Teknis", err));
+      }).catch(err => console.error("Failed to fetch users", err));
   }, []);
 
   useEffect(() => {
@@ -577,6 +579,7 @@ export default function DisposisiList() {
         setAssessments={setAssessments}
         setDispStatus={setDispStatus}
         timTeknisUsers={timTeknisUsers}
+        petugasSurveyUsers={petugasSurveyUsers}
       />
 
       {/* Lightbox Modal */}

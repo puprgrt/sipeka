@@ -73,7 +73,8 @@ export default function DisposisiDetailModal({
   assessments,
   setAssessments,
   setDispStatus,
-  timTeknisUsers
+  timTeknisUsers,
+  petugasSurveyUsers
 }: any) {
   // IKM Survey state
   const [showIkmModal, setShowIkmModal] = useState(false);
@@ -1047,7 +1048,8 @@ export default function DisposisiDetailModal({
                               {[
                                 "Kepala Bidang Bangunan",
                                 "Koordinator",
-                                ...timTeknisUsers.map(u => `Tim Teknis - ${u.namaLengkap}`)
+                                ...timTeknisUsers.map(u => `Tim Teknis - ${u.namaLengkap}`),
+                                ...(petugasSurveyUsers ? petugasSurveyUsers.map(u => `Petugas Survey - ${u.namaLengkap}`) : [])
                               ].map((roleOption) => {
                                 const checked = dispDiteruskan.includes(roleOption);
                                 return (
@@ -1074,7 +1076,8 @@ export default function DisposisiDetailModal({
                               {[
                                 "Kepala Bidang Bangunan",
                                 "Koordinator",
-                                ...timTeknisUsers.map(u => `Tim Teknis - ${u.namaLengkap}`)
+                                ...timTeknisUsers.map(u => `Tim Teknis - ${u.namaLengkap}`),
+                                ...(petugasSurveyUsers ? petugasSurveyUsers.map(u => `Petugas Survey - ${u.namaLengkap}`) : [])
                               ].map((roleOption) => {
                                 const checked = dispDiteruskan.includes(roleOption);
                                 return (
@@ -1094,6 +1097,7 @@ export default function DisposisiDetailModal({
                                 "Kepala Seksi Perencanaan",
                                 "Koordinator",
                                 ...timTeknisUsers.map(u => `Tim Teknis - ${u.namaLengkap}`),
+                                ...(petugasSurveyUsers ? petugasSurveyUsers.map(u => `Petugas Survey - ${u.namaLengkap}`) : []),
                                 "Tim Teknis Penilai" // Support untuk data lama
                               ].includes(r)).map((r, rIdx) => (
                                 <li key={`other-${rIdx}`} className="font-bold text-slate-800">

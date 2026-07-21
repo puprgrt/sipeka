@@ -13,7 +13,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 export const kategoriKomponenEnum = pgEnum('kategori_komponen', ['Struktur', 'Arsitektur', 'Utilitas']);
-export const roleEnum = pgEnum('role', ['Administrator', 'Pengelola_Bangunan', 'Operator', 'Tim_Teknis', 'Koordinator', 'Kabid', 'Kadis']);
+export const roleEnum = pgEnum('role', ['Administrator', 'Pengelola_Bangunan', 'Operator', 'Tim_Teknis', 'Petugas_Survey', 'Koordinator', 'Kabid', 'Kadis']);
 export const statusPermohonanEnum = pgEnum('status_permohonan', ['Menunggu_Validasi', 'Menunggu_TTE_Koordinator', 'Menunggu_TTE_Kabid', 'Menunggu_Validasi_Kadis', 'Survei_Lapangan', 'Selesai_Dianalisis', 'Arsip_Digital']);
 export const kesimpulanAkhirEnum = pgEnum('kesimpulan_akhir', ['Tidak Rusak', 'Rusak Ringan', 'Rusak Sedang', 'Rusak Berat']);
 export const statusTindakanEnum = pgEnum('status_tindakan', ['Disposisi', 'Setuju_Tanpa_Survei', 'Jadwalkan_Survei', 'Terbitkan_Hasil']);

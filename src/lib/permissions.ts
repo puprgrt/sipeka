@@ -21,8 +21,13 @@ export const DEFAULT_ROLE_PERMISSIONS = {
   },
   Tim_Teknis: {
     name: "Tim Teknis Lapangan",
-    description: "Petugas ahli yang melakukan inspeksi visual, mengukur volume kerusakan di lapangan, dan melengkapi data form penilaian.",
-    permissions: { dashboard: true, manageUsers: false, survey: true, disposition: false, reports: false, editKamus: false, showMap: true, showSettings: false, aiEngine: true }
+    description: "Petugas ahli yang menugaskan survei lapangan atau melakukan inspeksi visual dan melengkapi data penilaian.",
+    permissions: { dashboard: true, manageUsers: false, survey: true, disposition: true, reports: false, editKamus: false, showMap: true, showSettings: false, aiEngine: true }
+  },
+  Petugas_Survey: {
+    name: "Petugas Survey Lapangan",
+    description: "Petugas yang ditugaskan oleh Tim Teknis untuk melakukan survei visual langsung ke lapangan.",
+    permissions: { dashboard: true, manageUsers: false, survey: true, disposition: false, reports: false, editKamus: false, showMap: true, showSettings: false, aiEngine: false }
   },
   Operator: {
     name: "Operator Dinas PUPR",

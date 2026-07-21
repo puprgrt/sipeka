@@ -30,10 +30,19 @@ const DEMO_ROLES: DemoRole[] = [
     id: "teknis",
     name: "Tim Teknis Lapangan",
     email: "teknis@sipeka.com",
-    desc: "Melakukan survei visual kerusakan komponen dan melengkapi draf penilaian di lapangan.",
+    desc: "Menugaskan survei lapangan atau melakukan inspeksi visual kerusakan komponen.",
     role: "Tim_Teknis",
     color: "from-blue-500 to-indigo-600",
     badge: "🔧 Teknis"
+  },
+  {
+    id: "survey",
+    name: "Petugas Survey Lapangan",
+    email: "survey@sipeka.com",
+    desc: "Melakukan survei ke lapangan sesuai tugas yang diberikan oleh Tim Teknis.",
+    role: "Petugas_Survey",
+    color: "from-cyan-500 to-blue-600",
+    badge: "📏 Survey"
   },
   {
     id: "operator",

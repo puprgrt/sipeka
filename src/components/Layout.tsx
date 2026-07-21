@@ -429,7 +429,7 @@ export default function Layout() {
     // Buat Permohonan / Penilaian Baru
     if (activeRole === "Administrator" || activeRole === "Pengelola_Bangunan") {
       items.push({ name: "Buat Permohonan", href: "/new", icon: PlusCircle });
-    } else if (activeRole === "Tim_Teknis" || activeRole === "Koordinator") {
+    } else if (activeRole === "Tim_Teknis" || activeRole === "Petugas_Survey" || activeRole === "Koordinator") {
       items.push({ name: "Penilaian Baru", href: "/new", icon: PlusCircle });
     }
 
@@ -567,6 +567,7 @@ export default function Layout() {
                 <option value="Pengelola_Bangunan" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">🏢 Pengelola Bangunan</option>
                 <option value="Operator" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">💻 Operator PUPR</option>
                 <option value="Tim_Teknis" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">🔧 Tim Teknis Lapangan</option>
+                <option value="Petugas_Survey" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">📏 Petugas Survey</option>
                 <option value="Koordinator" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">📋 Koordinator</option>
                 <option value="Kabid" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">📐 Kepala Bidang</option>
                 <option value="Kadis" className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200">🏛️ Kepala Dinas</option>
