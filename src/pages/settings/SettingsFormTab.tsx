@@ -1,3 +1,4 @@
+import { apiFetch } from "../../lib/api";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, X } from "lucide-react";
@@ -26,7 +27,7 @@ export default function SettingsFormTab({ onToast }: SettingsFormTabProps) {
 
   const fetchBuildingParams = async () => {
     setLoadingParams(true);
-    try { const res = await fetch("/api/building-parameters"); const data = await res.json(); if (Array.isArray(data)) setBuildingParams(data); else setBuildingParams([]); }
+    try { const res = await apiFetch("/api/building-parameters"); const data = await res.json(); if (Array.isArray(data)) setBuildingParams(data); else setBuildingParams([]); }
     catch (error) { console.error(error); } finally { setLoadingParams(false); }
   };
 
@@ -35,8 +36,8 @@ export default function SettingsFormTab({ onToast }: SettingsFormTabProps) {
   const handleSaveParam = async () => {
     if (!paramForm.label) { alert("Label parameter wajib diisi!"); return; }
     try {
-      if (isAddingParam) { await fetch("/api/building-parameters", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(paramForm) }); }
-      else { await fetch(`/api/building-parameters/${editingParamId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(paramForm) }); }
+      if (isAddingParam) { await apiFetch("/api/building-parameters", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(paramForm) }); }
+      else { await apiFetch(`/api/building-parameters/${editingParamId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(paramForm) }); }
       setEditingParamId(null); setIsAddingParam(false); fetchBuildingParams();
       onToast("Parameter formulir berhasil disimpan!");
     } catch (error) { console.error(error); }
@@ -44,7 +45,7 @@ export default function SettingsFormTab({ onToast }: SettingsFormTabProps) {
 
   const handleDeleteParam = async (id: string) => {
     if (!confirm("Hapus parameter formulir ini?")) return;
-    try { const res = await fetch(`/api/building-parameters/${id}`, { method: "DELETE" }); if (!res.ok) { alert("Gagal menghapus parameter formulir."); return; } fetchBuildingParams(); onToast("Parameter formulir berhasil dihapus!"); }
+    try { const res = await apiFetch(`/api/building-parameters/${id}`, { method: "DELETE" }); if (!res.ok) { alert("Gagal menghapus parameter formulir."); return; } fetchBuildingParams(); onToast("Parameter formulir berhasil dihapus!"); }
     catch (error) { console.error(error); alert("Terjadi kesalahan."); }
   };
 
@@ -55,7 +56,7 @@ export default function SettingsFormTab({ onToast }: SettingsFormTabProps) {
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over.id);
         const newItems = arrayMove(items, oldIndex, newIndex);
-        fetch("/api/building-parameters/reorder", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ parameters: newItems }) }).catch(err => console.error("Failed to save building parameters reorder", err));
+        apiFetch("/api/building-parameters/reorder", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ parameters: newItems }) }).catch(err => console.error("Failed to save building parameters reorder", err));
         return newItems;
       });
     }

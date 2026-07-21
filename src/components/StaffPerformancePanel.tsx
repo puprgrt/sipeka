@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { useEffect, useState } from "react";
 import { Users, CheckCircle2, FileText, Loader2, Award, Briefcase, Activity } from "lucide-react";
 
@@ -24,7 +25,7 @@ export default function StaffPerformancePanel() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch("/api/audit-trails");
+        const res = await apiFetch("/api/audit-trails");
         if (res.ok) {
           const data: AuditTrail[] = await res.json();
           

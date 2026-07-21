@@ -1,3 +1,4 @@
+import { apiFetch } from "../../lib/api";
 import { useState, useEffect } from "react";
 import { Edit2, Loader2, Save, X, ExternalLink } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -19,7 +20,7 @@ export default function SettingsTemplateTab({ onToast }: SettingsTemplateTabProp
   const fetchDocTemplates = async () => {
     setLoadingTemplates(true);
     try {
-      const res = await fetch("/api/document-templates");
+      const res = await apiFetch("/api/document-templates");
       const data = await res.json();
       setDocTemplates(data);
     } catch (error) {
@@ -32,7 +33,7 @@ export default function SettingsTemplateTab({ onToast }: SettingsTemplateTabProp
   const handleSaveTemplate = async (templateId: string, kontenHtml: string, driveLink: string) => {
     setSavingTemplate(true);
     try {
-      const res = await fetch(`/api/document-templates/${templateId}`, {
+      const res = await apiFetch(`/api/document-templates/${templateId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ kontenHtml, driveLink })
@@ -54,7 +55,7 @@ export default function SettingsTemplateTab({ onToast }: SettingsTemplateTabProp
   const handleResetTemplate = async (templateId: string) => {
     if (!window.confirm("Apakah Anda yakin ingin mereset template ini ke versi default? Perubahan Anda akan hilang.")) return;
     try {
-      const res = await fetch(`/api/document-templates/${templateId}/reset`, { method: "POST" });
+      const res = await apiFetch(`/api/document-templates/${templateId}/reset`, { method: "POST" });
       const updated = await res.json();
       setDocTemplates(prev => prev.map(t => t.id === templateId ? { ...t, ...updated } : t));
       if (editingTemplateId === templateId) {

@@ -1,5 +1,5 @@
 import React from "react";
-import { Database, Smartphone, XCircle } from "lucide-react";
+import { Database, Smartphone, XCircle, AlertTriangle } from "lucide-react";
 
 export default function ConflictResolutionModal({
   conflict,

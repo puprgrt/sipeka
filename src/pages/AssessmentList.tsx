@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI, DAMAGE_MULTIPLIERS } from "../types";
@@ -60,7 +61,7 @@ export default function AssessmentList() {
     if (selectedIds.length === 0) return;
     setIsUpdatingBulk(true);
     try {
-      const res = await fetch("/api/assessments/bulk-status", {
+      const res = await apiFetch("/api/assessments/bulk-status", {
         method: "PUT",
         headers: getAuditHeaders(),
         body: JSON.stringify({
@@ -158,7 +159,7 @@ export default function AssessmentList() {
 
   const loadAssessments = () => {
     setLoading(true);
-    fetch("/api/assessments")
+    apiFetch("/api/assessments")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -194,7 +195,7 @@ export default function AssessmentList() {
   useEffect(() => {
     if (selectedAssessment) {
       setLoadingLogs(true);
-      fetch(`/api/assessments/${selectedAssessment.id}/logs`)
+      apiFetch(`/api/assessments/${selectedAssessment.id}/logs`)
         .then(res => res.json())
         .then(data => {
           setDispositionLogs(data);
@@ -307,7 +308,7 @@ export default function AssessmentList() {
         const floorCount = assessment.floorCount || 1;
         let componentsConfig: any[] = [];
         try {
-          const res = await fetch("/api/components");
+          const res = await apiFetch("/api/components");
           componentsConfig = await res.json();
         } catch (error) {
           console.error("Failed to fetch components config for spreadsheet", error);
@@ -489,7 +490,7 @@ export default function AssessmentList() {
     if (selectedAssessment && selectedAssessment.id === assessment.id) {
       setSelectedAssessment(prev => prev ? { ...prev, status: newStatus } : null);
     }
-    fetch(`/api/assessments/${assessment.id}/status`, {
+    apiFetch(`/api/assessments/${assessment.id}/status`, {
       method: "PUT",
       headers: getAuditHeaders(),
       body: JSON.stringify({ status: newStatus })
@@ -502,7 +503,7 @@ export default function AssessmentList() {
   const handleDeleteAssessment = async (id: string) => {
     if (!window.confirm("Apakah Anda yakin ingin menghapus permohonan ini secara permanen?")) return;
     try {
-      const res = await fetch(`/api/assessments/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/assessments/${id}`, { method: "DELETE" });
       if (res.ok) {
         setAssessments(assessments.filter(a => a.id !== id));
         alert("Permohonan berhasil dihapus");
@@ -518,7 +519,7 @@ export default function AssessmentList() {
   const handleEditSave = async () => {
     if (!editingAssessment) return;
     try {
-      const res = await fetch(`/api/assessments/${editingAssessment.id}`, {
+      const res = await apiFetch(`/api/assessments/${editingAssessment.id}`, {
         method: "PUT",
         headers: getAuditHeaders(),
         body: JSON.stringify(editForm)
@@ -653,7 +654,7 @@ export default function AssessmentList() {
               if (selectedAssessment && selectedAssessment.id === assessment.id) {
                 setSelectedAssessment(prev => prev ? { ...prev, status: newStatus } : null);
               }
-              fetch(`/api/assessments/${assessment.id}/status`, {
+              apiFetch(`/api/assessments/${assessment.id}/status`, {
                 method: "PUT",
                 headers: getAuditHeaders(),
                 body: JSON.stringify({ status: newStatus })

@@ -1,3 +1,4 @@
+import { apiFetch } from "../../lib/api";
 import { useState, useEffect } from "react";
 import { Edit2, UploadCloud } from "lucide-react";
 import type { LetterConfig } from "./settingsTypes";
@@ -20,7 +21,7 @@ export default function SettingsLetterTab({ onToast }: SettingsLetterTabProps) {
   const fetchLetterConfig = async () => {
     setLoadingLetter(true);
     try {
-      const res = await fetch("/api/pengaturan-surat");
+      const res = await apiFetch("/api/pengaturan-surat");
       const data = await res.json();
       setLetterConfig(data);
       setLetterForm(data);
@@ -31,7 +32,7 @@ export default function SettingsLetterTab({ onToast }: SettingsLetterTabProps) {
   const handleSaveLetter = async () => {
     if (!letterForm) return;
     try {
-      const res = await fetch("/api/pengaturan-surat", {
+      const res = await apiFetch("/api/pengaturan-surat", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(letterForm),

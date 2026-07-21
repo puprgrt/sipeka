@@ -1,3 +1,4 @@
+import { apiFetch } from "../../lib/api";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Edit2, Trash2, Plus, Save, X, Info, UploadCloud } from "lucide-react";
@@ -31,7 +32,7 @@ export default function SettingsComponentTab({ onToast }: SettingsComponentTabPr
   const fetchComponents = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/components");
+      const res = await apiFetch("/api/components");
       const data = await res.json();
       if (Array.isArray(data)) { setComponents(data); } else { setComponents([]); }
     } catch (error) { console.error(error); }
@@ -72,7 +73,7 @@ export default function SettingsComponentTab({ onToast }: SettingsComponentTabPr
 
   const handleInfoSave = async () => {
     try {
-      await fetch(`/api/components/${infoEditingId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(infoEditForm) });
+      await apiFetch(`/api/components/${infoEditingId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(infoEditForm) });
       setInfoEditingId(null);
       fetchComponents();
     } catch (error) { console.error(error); }
@@ -81,9 +82,9 @@ export default function SettingsComponentTab({ onToast }: SettingsComponentTabPr
   const handleSave = async () => {
     try {
       if (isAdding) {
-        await fetch("/api/components", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editForm) });
+        await apiFetch("/api/components", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editForm) });
       } else {
-        await fetch(`/api/components/${editingId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editForm) });
+        await apiFetch(`/api/components/${editingId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editForm) });
       }
       setEditingId(null); setIsAdding(false); fetchComponents();
     } catch (error) { console.error(error); }
@@ -92,7 +93,7 @@ export default function SettingsComponentTab({ onToast }: SettingsComponentTabPr
   const handleDelete = async (id: number) => {
     if (!confirm("Hapus komponen ini?")) return;
     try {
-      const res = await fetch(`/api/components/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/components/${id}`, { method: "DELETE" });
       if (!res.ok) { const err = await res.json().catch(() => ({})); alert(err.error || "Gagal menghapus komponen."); return; }
       fetchComponents();
     } catch (error) { console.error(error); alert("Terjadi kesalahan."); }
@@ -106,7 +107,7 @@ export default function SettingsComponentTab({ onToast }: SettingsComponentTabPr
         const newIndex = items.findIndex((item) => item.idKomponen === over.id);
         const newItems = arrayMove(items, oldIndex, newIndex);
         const updatedItems = newItems.map((item, index) => ({ ...item, urutan: index }));
-        fetch("/api/components/reorder", {
+        apiFetch("/api/components/reorder", {
           method: "PUT", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ components: updatedItems.map(item => ({ idKomponen: item.idKomponen, urutan: item.urutan })) })
         }).catch(err => console.error("Failed to save reorder", err));

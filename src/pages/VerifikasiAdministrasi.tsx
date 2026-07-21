@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { useEffect, useState } from "react";
 import { Assessment } from "../types";
 import { format } from "date-fns";
@@ -23,7 +24,7 @@ export default function VerifikasiAdministrasi() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchAssessments = () => {
-    fetch("/api/assessments")
+    apiFetch("/api/assessments")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -66,7 +67,7 @@ export default function VerifikasiAdministrasi() {
 
     try {
       // 1. Update status
-      const resStatus = await fetch(`/api/assessments/${selectedAssessment.id}/status`, {
+      const resStatus = await apiFetch(`/api/assessments/${selectedAssessment.id}/status`, {
         method: "PUT",
         headers: getAuditHeaders(),
         body: JSON.stringify({ status: newStatus })

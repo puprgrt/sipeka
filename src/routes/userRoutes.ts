@@ -3,7 +3,6 @@ import { db } from '../db';
 import * as schema from '../db/schema';
 import { eq, ne, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
-import path from 'path';
 import { initMasterData } from '../utils/masterData';
 import { getDbConfig, setDbConfig } from '../utils/configHelper';
 
@@ -179,9 +178,7 @@ router.delete("/api/users/:id", async (req, res) => {
   }
 });
 
-// Dynamic Building General Parameters CRUD
 
-const paramsFilePath = path.join(process.cwd(), "building_parameters.json");
 
 async function readParamsFile() { return await getDbConfig('building_parameters', [
         { id: "schoolName", label: "Nama Sekolah / Instansi", type: "text", placeholder: "Contoh: SDN 1 Tegal", required: true, enabled: true },
@@ -293,9 +290,7 @@ router.delete("/api/building-parameters/:id", async (req, res) => {
   }
 });
 
-// Dynamic Profile Parameters CRUD
-const profileParamsFilePath = path.join(process.cwd(), "profile_parameters.json");
-const userProfilesFilePath = path.join(process.cwd(), "user_profiles.json");
+
 
 async function readProfileParamsFile() { return await getDbConfig('profile_parameters', [
         { id: "namaLengkap", label: "Nama Lengkap", type: "text", placeholder: "Nama Sesuai KTP", required: true, enabled: true },

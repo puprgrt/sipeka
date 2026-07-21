@@ -1,3 +1,4 @@
+import { apiFetch } from "../../lib/api";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Edit2, Trash2, CheckCircle2, XCircle, Save, X, Loader2 } from "lucide-react";
@@ -39,7 +40,7 @@ export default function SettingsIkmTab({ onToast }: SettingsIkmTabProps) {
   const fetchQuestions = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/settings/ikm-questions");
+      const res = await apiFetch("/api/settings/ikm-questions");
       if (res.ok) {
         const data = await res.json();
         setQuestions(data);
@@ -109,7 +110,7 @@ export default function SettingsIkmTab({ onToast }: SettingsIkmTabProps) {
     if (!window.confirm("Yakin ingin menghapus pertanyaan ini? Data survei yang menggunakan pertanyaan ini mungkin akan kehilangan labelnya.")) return;
     
     try {
-      const res = await fetch(`/api/settings/ikm-questions/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/settings/ikm-questions/${id}`, { method: "DELETE" });
       if (res.ok) {
         onToast("Pertanyaan IKM dihapus");
         fetchQuestions();

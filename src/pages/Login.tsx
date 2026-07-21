@@ -1,8 +1,10 @@
+import { apiFetch } from "../lib/api";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, Chrome, ArrowRight, Building2, Shield, Activity, Info, UserCheck, CheckCircle2, AlertCircle } from "lucide-react";
 import { motion } from "motion/react";
 import { googleSignIn, initAuth } from "../lib/firebaseAuth";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 interface DemoRole {
   id: string;
@@ -80,13 +82,14 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [appSettings, setAppSettings] = useState<{logoKiri: string, logoKanan: string}>({
     logoKiri: "https://upload.wikimedia.org/wikipedia/commons/b/b3/Coat_of_arms_of_Garut_Regency.svg",
     logoKanan: "https://upload.wikimedia.org/wikipedia/commons/0/06/Logo_PUPR.png"
   });
 
   useEffect(() => {
-    fetch("/api/app-settings")
+    apiFetch("/api/app-settings")
       .then(res => res.json())
       .then(data => {
         if (data && data.logoKiri && data.logoKanan) {
@@ -118,7 +121,7 @@ export default function Login() {
 
           // Check for users in database
           try {
-            const res = await fetch("/api/users");
+            const res = await apiFetch("/api/users");
             if (res.ok) {
               const dbUsers = await res.json();
               if (Array.isArray(dbUsers)) {
@@ -173,9 +176,25 @@ export default function Login() {
       return;
     }
 
+    if (!turnstileToken) {
+      setError("Silakan selesaikan validasi keamanan CAPTCHA (Turnstile).");
+      return;
+    }
+
     setLoading(true);
 
     try {
+      // Verifikasi Turnstile ke backend
+      const turnstileRes = await apiFetch("/api/auth/verify-turnstile", {
+        method: "POST",
+        body: JSON.stringify({ token: turnstileToken })
+      });
+      
+      const turnstileData = await turnstileRes.json();
+      if (!turnstileData.success) {
+        throw new Error("Validasi keamanan gagal. Coba muat ulang halaman.");
+      }
+
       // Validate password for demo
       if (password !== "password" && password !== "admin123") {
         throw new Error("Kata sandi salah. (Petunjuk demo: gunakan 'password')");
@@ -184,7 +203,7 @@ export default function Login() {
       // Check for users in database if possible
       let dbUserFound = null;
       try {
-        const res = await fetch("/api/users");
+        const res = await apiFetch("/api/users");
         if (res.ok) {
           const dbUsers = await res.json();
           if (Array.isArray(dbUsers)) {
@@ -281,7 +300,7 @@ export default function Login() {
     try {
       // Auto-fetch profile role from DB to sync if exists, else we override
       try {
-        const res = await fetch(`/api/profile?email=${encodeURIComponent(demo.email)}`);
+        const res = await apiFetch(`/api/profile?email=${encodeURIComponent(demo.email)}`);
         if (res.ok) {
           const profile = await res.json();
           if (profile && profile.role) {
@@ -461,9 +480,19 @@ export default function Login() {
                   </div>
                 </div>
 
+                {/* Cloudflare Turnstile CAPTCHA */}
+                <div className="flex justify-center mt-2 mb-4">
+                  <Turnstile
+                    siteKey="1x00000000000000000000AA"
+                    onSuccess={(token) => setTurnstileToken(token)}
+                    onError={() => setError("Error pada verifikasi keamanan. Silakan muat ulang halaman.")}
+                    options={{ theme: "dark" }}
+                  />
+                </div>
+
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || !turnstileToken}
                   className="w-full mt-4 bg-pu-yellow hover:bg-yellow-500 active:bg-yellow-600 text-slate-950 font-extrabold text-sm py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? "Menautkan Sesi..." : "Masuk Aplikasi"}

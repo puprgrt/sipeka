@@ -27,11 +27,20 @@ router.get("/api/files", async (req: Request, res: Response) => {
     const users = await db.select().from(schema.users);
     
     // Map to FileItem format for frontend
-    const mappedFiles = dbFiles.map(f => {
+    const mappedFiles = await Promise.all(dbFiles.map(async f => {
       const u = users.find(u => u.idUser === f.idUser);
       let type = "other";
       if (f.mimeType === "application/pdf") type = "pdf";
       else if (f.mimeType?.startsWith("image/")) type = "image";
+      
+      let previewUrl = f.urlGdriveSistem || f.urlGdriveUser;
+      if (f.urlR2) {
+        try {
+          previewUrl = await getSignedUrlFromR2(f.urlR2);
+        } catch (e) {
+          console.error("Failed to generate signed url for", f.urlR2);
+        }
+      }
       
       return {
         id: f.idDokumen,
@@ -42,9 +51,9 @@ router.get("/api/files", async (req: Request, res: Response) => {
         author: u ? u.namaLengkap : "Unknown",
         folderId: null, // For now, put in root
         accessRole: ["Administrator", "Kadis", "Kabid", "Koordinator", "Tim_Teknis", "Operator", "Pengelola_Bangunan"],
-        previewUrl: f.urlGdriveSistem || f.urlGdriveUser,
+        previewUrl: previewUrl,
       };
-    });
+    }));
     
     // Combine with mock folders for structure
     res.json([...MOCK_FILES, ...mappedFiles]);
@@ -54,10 +63,12 @@ router.get("/api/files", async (req: Request, res: Response) => {
   }
 });
 
+import { uploadToR2, getSignedUrlFromR2 } from "../lib/r2Service";
+
 // Endpoint to backup file to system drive and save metadata to DB
 router.post("/api/drive/backup", upload.single("file"), async (req: Request, res: Response): Promise<any> => {
   try {
-    const file = req.file;
+    const file = (req as any).file;
     const { idUser, tipeDokumen, urlGdriveUser, namaFile } = req.body;
 
     if (!idUser || !namaFile) {
@@ -65,10 +76,22 @@ router.post("/api/drive/backup", upload.single("file"), async (req: Request, res
     }
 
     let urlGdriveSistem = null;
+    let urlR2 = null;
 
     if (file) {
-      // Upload to system drive using service account
-      urlGdriveSistem = await uploadToSystemDrive(file.buffer, file.originalname || namaFile, file.mimetype);
+      // 1. Upload to system drive using service account
+      try {
+        urlGdriveSistem = await uploadToSystemDrive(file.buffer, file.originalname || namaFile, file.mimetype);
+      } catch (err) {
+        console.error("Gdrive backup failed, continuing with R2 if configured", err);
+      }
+      
+      // 2. Upload to Cloudflare R2
+      try {
+        urlR2 = await uploadToR2(file.originalname || namaFile, file.buffer, file.mimetype);
+      } catch (err) {
+        console.error("R2 backup failed", err);
+      }
     }
 
     // Insert to DB
@@ -77,12 +100,19 @@ router.post("/api/drive/backup", upload.single("file"), async (req: Request, res
       namaFile: namaFile,
       urlGdriveUser: urlGdriveUser || null,
       urlGdriveSistem: urlGdriveSistem,
+      urlR2: urlR2,
       tipeDokumen: tipeDokumen || "Unggahan_Bebas",
       mimeType: file?.mimetype || null,
       sizeBytes: file?.size || 0,
     }).returning();
 
-    res.json({ success: true, document: newDoc[0] });
+    // Generate signed URL if we have R2 object key
+    let publicUrl = urlGdriveSistem;
+    if (urlR2) {
+      publicUrl = await getSignedUrlFromR2(urlR2);
+    }
+
+    res.json({ success: true, document: { ...newDoc[0], previewUrl: publicUrl } });
   } catch (error: any) {
     console.error("POST /api/drive/backup error:", error);
     res.status(500).json({ error: "Failed to backup file", details: error.message });

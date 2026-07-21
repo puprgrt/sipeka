@@ -1,3 +1,4 @@
+import { apiFetch } from "../../lib/api";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Edit2, Trash2, Plus, X, Camera, HelpCircle, UploadCloud } from "lucide-react";
@@ -22,17 +23,17 @@ export default function SettingsKatalogTab({ onToast }: SettingsKatalogTabProps)
 
   const fetchKatalog = async () => {
     setLoadingKatalog(true);
-    try { const res = await fetch("/api/katalog"); const data = await res.json(); if (Array.isArray(data)) setKatalogList(data); else setKatalogList([]); }
+    try { const res = await apiFetch("/api/katalog"); const data = await res.json(); if (Array.isArray(data)) setKatalogList(data); else setKatalogList([]); }
     catch (error) { console.error(error); } finally { setLoadingKatalog(false); }
   };
 
   const fetchComponents = async () => {
-    try { const res = await fetch("/api/components"); const data = await res.json(); if (Array.isArray(data)) setComponents(data); }
+    try { const res = await apiFetch("/api/components"); const data = await res.json(); if (Array.isArray(data)) setComponents(data); }
     catch (error) { console.error(error); }
   };
 
   const fetchClassifications = async () => {
-    try { const res = await fetch("/api/klasifikasi"); const data = await res.json(); if (Array.isArray(data)) setClassifications(data); }
+    try { const res = await apiFetch("/api/klasifikasi"); const data = await res.json(); if (Array.isArray(data)) setClassifications(data); }
     catch (error) { console.error(error); }
   };
 
@@ -70,15 +71,15 @@ export default function SettingsKatalogTab({ onToast }: SettingsKatalogTabProps)
   const handleSaveKatalog = async () => {
     if (!katalogForm.idKomponen || !katalogForm.idKlasifikasi || !katalogForm.deskripsiPupr) { alert("Komponen, Tingkat Kerusakan, dan Deskripsi wajib diisi!"); return; }
     try {
-      if (isAddingKatalog) { await fetch("/api/katalog", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(katalogForm) }); }
-      else { await fetch(`/api/katalog/${editingKatalogId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(katalogForm) }); }
+      if (isAddingKatalog) { await apiFetch("/api/katalog", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(katalogForm) }); }
+      else { await apiFetch(`/api/katalog/${editingKatalogId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(katalogForm) }); }
       setEditingKatalogId(null); setIsAddingKatalog(false); fetchKatalog();
     } catch (error) { console.error(error); }
   };
 
   const handleDeleteKatalog = async (id: number) => {
     if (!confirm("Hapus panduan visual ini?")) return;
-    try { const res = await fetch(`/api/katalog/${id}`, { method: "DELETE" }); if (!res.ok) { const err = await res.json().catch(() => ({})); alert(err.error || "Gagal menghapus panduan visual."); return; } fetchKatalog(); }
+    try { const res = await apiFetch(`/api/katalog/${id}`, { method: "DELETE" }); if (!res.ok) { const err = await res.json().catch(() => ({})); alert(err.error || "Gagal menghapus panduan visual."); return; } fetchKatalog(); }
     catch (error) { console.error(error); alert("Terjadi kesalahan."); }
   };
 

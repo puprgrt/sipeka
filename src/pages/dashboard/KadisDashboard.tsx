@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { 
   Activity, ClipboardList, FileText, Map as MapIcon, Brain, Building, 
   Clock, MapPin, CheckCircle2, ArrowRight, BarChart as BarChartIcon, 
-  PieChart as PieChartIcon, SlidersHorizontal 
+  PieChart as PieChartIcon, SlidersHorizontal, DollarSign 
 } from "lucide-react";
 import { motion } from "motion/react";
 import { AreaChart, Area, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";

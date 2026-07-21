@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { 
@@ -40,7 +41,7 @@ export default function AiDashboard() {
       setUploadedPhotoUrl(base64);
 
       try {
-        const res = await fetch("/api/analyze-document", {
+        const res = await apiFetch("/api/analyze-document", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -84,7 +85,7 @@ export default function AiDashboard() {
   const activeUserId = localStorage.getItem("activeUserId");
 
   useEffect(() => {
-    fetch("/api/assessments")
+    apiFetch("/api/assessments")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {

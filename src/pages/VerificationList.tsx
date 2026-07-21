@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI } from "../types";
@@ -61,7 +62,7 @@ export default function VerificationList() {
   };
 
   useEffect(() => {
-    fetch("/api/components")
+    apiFetch("/api/components")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setComponentsConfig(data);
@@ -125,7 +126,7 @@ export default function VerificationList() {
     if (!selectedAssessment) return;
     setSavingVerification(true);
     try {
-      const res = await fetch(`/api/assessments/${selectedAssessment.id}/verification`, {
+      const res = await apiFetch(`/api/assessments/${selectedAssessment.id}/verification`, {
         method: "PUT",
         headers: getAuditHeaders(),
         body: JSON.stringify({ verification: localVerification, isTTE: true })
@@ -151,7 +152,7 @@ export default function VerificationList() {
           tteSignatures: data.tteSignatures || prev.tteSignatures
         } : null);
         alert("Catatan verifikasi komponen dan TTE Otomatis berhasil disimpan!");
-        setShowDetail(false);
+        setSelectedAssessment(null);
       } else {
         alert("Gagal menyimpan catatan verifikasi.");
       }
@@ -164,8 +165,8 @@ export default function VerificationList() {
   };
 
   useEffect(() => {
-    fetch("/api/building-parameters").then(res => res.json()).then(data => { if(Array.isArray(data)) setFormParams(data); });
-    fetch("/api/assessments")
+    apiFetch("/api/building-parameters").then(res => res.json()).then(data => { if(Array.isArray(data)) setFormParams(data); });
+    apiFetch("/api/assessments")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -187,16 +188,16 @@ export default function VerificationList() {
         setLoading(false);
       });
       
-    fetch("/api/dinas")
+    apiFetch("/api/dinas")
       .then(res => res.json())
       .then(data => setDinasConfig(data));
       
-    fetch("/api/app-settings")
+    apiFetch("/api/app-settings")
       .then(res => res.json())
       .then(data => setAppConfig(data))
       .catch(err => console.error("Failed to fetch app-settings", err));
       
-    fetch("/api/document-templates")
+    apiFetch("/api/document-templates")
       .then(res => res.json())
       .then((templates: any[]) => {
         const disposisi = templates.find((t: any) => t.id === 'lembar_disposisi');
@@ -211,7 +212,7 @@ export default function VerificationList() {
   useEffect(() => {
     if (selectedAssessment) {
       setLoadingLogs(true);
-      fetch(`/api/assessments/${selectedAssessment.id}/logs`)
+      apiFetch(`/api/assessments/${selectedAssessment.id}/logs`)
         .then(res => res.json())
         .then(data => {
           setDispositionLogs(data);
@@ -299,7 +300,7 @@ export default function VerificationList() {
     if (!confirm("Teruskan Berita Acara Pemeriksaan (BAP) ini kepada Kepala Dinas?")) return;
     setIsForwarding(true);
     try {
-      const res = await fetch(`/api/assessments/${selectedAssessment.id}/status`, {
+      const res = await apiFetch(`/api/assessments/${selectedAssessment.id}/status`, {
         method: "PUT",
         headers: getAuditHeaders(),
         body: JSON.stringify({ status: 'Menunggu_Pengesahan' })

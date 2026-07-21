@@ -1,7 +1,7 @@
 import express from 'express';
 import { db } from '../db';
 import * as schema from '../db/schema';
-import { getMessaging } from 'firebase-admin/messaging';
+import { sendPushNotification } from './firebaseAdmin';
 import { eq } from 'drizzle-orm';
 
 export async function logAuditTrail(
@@ -11,9 +11,9 @@ export async function logAuditTrail(
   details: string
 ) {
   try {
-    const email = (req.headers["x-user-email"] as string) || "admin@sipeka.com";
-    const name = (req.headers["x-user-name"] as string) || "Sistem Admin";
-    const role = (req.headers["x-user-role"] as string) || "Administrator";
+    const email = req.user?.email || (req.headers["x-user-email"] as string) || "admin@sipeka.com";
+    const name = req.user?.namaLengkap || (req.headers["x-user-name"] as string) || "Sistem Admin";
+    const role = req.user?.role || (req.headers["x-user-role"] as string) || "Administrator";
 
     await db.insert(schema.auditTrails).values({
       idPermohonan,
@@ -47,15 +47,7 @@ export async function sendDisposisiNotification(
 
     const [user] = await db.select().from(schema.users).where(eq(schema.users.idUser, userId));
     if (user && user.fcmToken) {
-      try {
-        await getMessaging().send({
-          token: user.fcmToken,
-          notification: { title, body },
-          data: { idPermohonan, type: 'DISPOSISI' }
-        });
-      } catch(err) {
-        console.error("FCM Send Error:", err);
-      }
+      await sendPushNotification(user.fcmToken, title, body, { idPermohonan, type: 'DISPOSISI' });
     }
   } catch (err) {
     console.error("Failed to create disposisi notifications", err);

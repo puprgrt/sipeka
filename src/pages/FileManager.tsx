@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -30,7 +31,7 @@ interface FileActivity {
   user: string;
 }
 
-interface FileItem {
+export interface FileItem {
   id: string;
   name: string;
   type: 'folder' | 'pdf' | 'image' | 'word' | 'excel' | 'other';
@@ -71,7 +72,7 @@ export default function FileManager() {
   const [previewScale, setPreviewScale] = useState(1);
   const [previewPage, setPreviewPage] = useState(1);
   const [previewRotation, setPreviewRotation] = useState(0);
-  const [imageFilter, setImageFilter] = useState<'normal' | 'grayscale' | 'contrast' | 'thermal' | 'edge' | 'lowlight'>('normal');
+  const [imageFilter, setImageFilter] = useState<string>('normal');
   const [showGrid, setShowGrid] = useState(false);
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [measurePoints, setMeasurePoints] = useState<{ x: number, y: number }[]>([]);
@@ -123,7 +124,7 @@ export default function FileManager() {
     }
 
     try {
-      const response = await fetch("/api/gemini/analyze-document", {
+      const response = await apiFetch("/api/gemini/analyze-document", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

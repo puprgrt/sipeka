@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { 
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, 
   WidthType, HeadingLevel, ImageRun, AlignmentType,
@@ -28,7 +29,7 @@ export const exportIkmReportToDocx = async (
 ) => {
   let questionsConfig: any[] = [];
   try {
-    const res = await fetch("/api/settings/ikm-questions");
+    const res = await apiFetch("/api/settings/ikm-questions");
     questionsConfig = await res.json();
   } catch (error) {
     console.error("Failed to fetch IKM questions config for DOCX export", error);

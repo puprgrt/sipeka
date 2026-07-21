@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { useEffect, useState } from "react";
 import { Assessment } from "../types";
 import { format } from "date-fns";
@@ -18,7 +19,7 @@ export default function SuratReports() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const fetchAssessments = () => {
-    fetch("/api/assessments")
+    apiFetch("/api/assessments")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {

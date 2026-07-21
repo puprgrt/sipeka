@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { CheckCircle2, XCircle, Loader2, Building, User, Calendar, FileCheck } from "lucide-react";
@@ -11,7 +12,7 @@ export function DocumentValidation() {
   useEffect(() => {
     // We can use the existing assessment log/detail endpoint or create a specific one
     // We'll use the existing /api/assessments/:id endpoint
-    fetch(`/api/assessments/${id}`)
+    apiFetch(`/api/assessments/${id}`)
       .then(res => {
         if (!res.ok) throw new Error("Document not found");
         return res.json();

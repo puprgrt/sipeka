@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { useState, useEffect, useCallback } from 'react';
 import { listDriveFiles, createDriveFolder, uploadFileToDrive, deleteFileFromDrive } from '../lib/driveService';
 import { FileItem } from '../pages/FileManager';
@@ -9,7 +10,7 @@ export function useDriveFiles(currentFolder: string | null) {
   const fetchFiles = useCallback(async () => {
     setLoadingFiles(true);
     try {
-      const response = await fetch(`/api/files`);
+      const response = await apiFetch(`/api/files`);
       if (!response.ok) throw new Error("Failed to fetch files from database");
       const data = await response.json();
       setFiles(data);
@@ -91,7 +92,7 @@ export function useDriveFiles(currentFolder: string | null) {
       }
       formData.append("tipeDokumen", "Unggahan_Bebas");
 
-      const response = await fetch("/api/drive/backup", {
+      const response = await apiFetch("/api/drive/backup", {
         method: "POST",
         body: formData
       });

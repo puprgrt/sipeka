@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI } from "../types";
@@ -66,7 +67,7 @@ export default function DisposisiList() {
   const [timTeknisUsers, setTimTeknisUsers] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch("/api/users")
+    apiFetch("/api/users")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -92,7 +93,7 @@ export default function DisposisiList() {
     : assessments.filter(a => (a.status || 'Menunggu_Validasi') === activeTab);
 
   useEffect(() => {
-    fetch("/api/assessments")
+    apiFetch("/api/assessments")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -115,21 +116,21 @@ export default function DisposisiList() {
         setLoading(false);
       });
       
-    fetch("/api/dinas")
+    apiFetch("/api/dinas")
       .then(res => res.json())
       .then(data => setDinasConfig(data));
       
-    fetch("/api/app-settings")
+    apiFetch("/api/app-settings")
       .then(res => res.json())
       .then(data => setAppConfig(data))
       .catch(err => console.error("Failed to fetch app-settings", err));
       
-    fetch("/api/pengaturan-surat")
+    apiFetch("/api/pengaturan-surat")
       .then(res => res.json())
       .then(data => setLetterConfig(data))
       .catch(err => console.error("Failed to fetch pengaturan-surat", err));
       
-    fetch("/api/document-templates")
+    apiFetch("/api/document-templates")
       .then(res => res.json())
       .then((templates: any[]) => {
         const surat = templates.find((t: any) => t.id === 'surat_hasil_perhitungan');
@@ -153,7 +154,7 @@ export default function DisposisiList() {
   useEffect(() => {
     if (selectedAssessment) {
       setLoadingLogs(true);
-      fetch(`/api/assessments/${selectedAssessment.id}/logs`)
+      apiFetch(`/api/assessments/${selectedAssessment.id}/logs`)
         .then(res => res.json())
         .then(data => {
           setDispositionLogs(data);
@@ -216,7 +217,7 @@ export default function DisposisiList() {
     };
 
     try {
-      const res = await fetch(`/api/assessments/${selectedAssessment.id}/disposisi`, {
+      const res = await apiFetch(`/api/assessments/${selectedAssessment.id}/disposisi`, {
         method: "PUT",
         headers: getAuditHeaders(),
         body: JSON.stringify({
@@ -305,7 +306,7 @@ export default function DisposisiList() {
     };
 
     try {
-      const res = await fetch(`/api/assessments/${selectedAssessment.id}/disposisi`, {
+      const res = await apiFetch(`/api/assessments/${selectedAssessment.id}/disposisi`, {
         method: "PUT",
         headers: getAuditHeaders(),
         body: JSON.stringify({

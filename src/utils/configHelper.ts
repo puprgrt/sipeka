@@ -1,8 +1,6 @@
 import { db } from '../db';
 import * as schema from '../db/schema';
 import { eq } from 'drizzle-orm';
-import fs from 'fs';
-import path from 'path';
 
 export async function getDbConfig(key: string, defaultVal: any) {
   try {
@@ -33,10 +31,6 @@ export async function setDbConfig(key: string, value: any) {
 
 export async function readLetterParamsFile() {
   let defaultVal: any = {
-      provider: "google",
-      openaiApiKey: "",
-      anthropicApiKey: "",
-      ollamaEndpoint: "http://localhost:11434",
     sistem: {
       logoKiri: "",
       logoKanan: "",

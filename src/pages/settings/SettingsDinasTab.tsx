@@ -1,3 +1,4 @@
+import { apiFetch } from "../../lib/api";
 import { useState, useEffect } from "react";
 import { Edit2 } from "lucide-react";
 import type { DinasConfig, UserConfig } from "./settingsTypes";
@@ -21,7 +22,7 @@ export default function SettingsDinasTab({ onToast }: SettingsDinasTabProps) {
   const fetchDinas = async () => {
     setLoadingDinas(true);
     try {
-      const res = await fetch("/api/dinas");
+      const res = await apiFetch("/api/dinas");
       const data = await res.json();
       setDinasConfig(data);
       setDinasForm(data);
@@ -34,7 +35,7 @@ export default function SettingsDinasTab({ onToast }: SettingsDinasTabProps) {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch("/api/users");
+      const res = await apiFetch("/api/users");
       const data = await res.json();
       if (Array.isArray(data)) setUsersList(data);
     } catch (error) {
@@ -48,7 +49,7 @@ export default function SettingsDinasTab({ onToast }: SettingsDinasTabProps) {
       return;
     }
     try {
-      const res = await fetch("/api/dinas", {
+      const res = await apiFetch("/api/dinas", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(dinasForm),

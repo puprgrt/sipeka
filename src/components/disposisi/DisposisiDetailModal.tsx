@@ -1,3 +1,4 @@
+import { apiFetch } from "../../lib/api";
 import React, { useState } from "react";
 import IkmSurveyModal from "../assessment/IkmSurveyModal";
 import { motion, AnimatePresence } from "motion/react";
@@ -93,7 +94,7 @@ export default function DisposisiDetailModal({
 
     try {
       const userId = localStorage.getItem("activeUserId");
-      const res = await fetch(`/api/assessments/${assessment.id}/ikm?userId=${userId}`);
+      const res = await apiFetch(`/api/assessments/${assessment.id}/ikm?userId=${userId}`);
       const data = await res.json();
 
       if (data.filled) {
@@ -194,7 +195,7 @@ export default function DisposisiDetailModal({
                           setAssessments(assessments.map(a => a.id === selectedAssessment.id ? { ...a, status: newStatus } : a));
                           setSelectedAssessment(prev => prev ? { ...prev, status: newStatus } : null);
                           setDispStatus(newStatus);
-                          fetch(`/api/assessments/${selectedAssessment.id}/status`, {
+                          apiFetch(`/api/assessments/${selectedAssessment.id}/status`, {
                             method: "PUT",
                             headers: getAuditHeaders(),
                             body: JSON.stringify({ status: newStatus })
@@ -388,7 +389,7 @@ export default function DisposisiDetailModal({
                                 setAssessments(assessments.map(a => a.id === selectedAssessment.id ? { ...a, status: "Arsip_Digital" } : a));
                                 setSelectedAssessment(prev => prev ? { ...prev, status: "Arsip_Digital" } : null);
                                 setDispStatus("Arsip_Digital");
-                                fetch(`/api/assessments/${selectedAssessment.id}/status`, {
+                                apiFetch(`/api/assessments/${selectedAssessment.id}/status`, {
                                   method: "PUT",
                                   headers: getAuditHeaders(),
                                   body: JSON.stringify({ status: "Arsip_Digital" })

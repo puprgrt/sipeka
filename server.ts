@@ -18,6 +18,7 @@ import userRoutes from "./src/routes/userRoutes";
 import settingsRoutes from "./src/routes/settingsRoutes";
 import fileRoutes from "./src/routes/fileRoutes";
 import reportRoutes from "./src/routes/reportRoutes";
+import authRoutes from "./src/routes/authRoutes";
 
 // Initialize Firebase Admin once at startup
 getFirebaseAdmin();
@@ -27,6 +28,8 @@ const PORT = 3000;
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+
+import { verifyToken } from "./src/middleware/authMiddleware";
 
 // --- Health Check ---
 app.get("/api/health", async (req, res) => {
@@ -49,6 +52,37 @@ app.get("/api/health", async (req, res) => {
       error: (error as Error).message,
     });
   }
+});
+
+// --- Auth Middleware (Global API guard) ---
+app.use("/api", (req, res, next) => {
+  const publicPaths = [
+    { method: "GET", path: "/api/health" },
+    { method: "GET", path: "/api/app-settings" },
+    { method: "POST", path: "/api/auth/verify-turnstile" },
+    { method: "GET", regex: /^\/api\/assessments\/[a-zA-Z0-9_-]+$/ }
+  ];
+
+  const isPublic = publicPaths.some(p => {
+    if (p.method !== req.method) return false;
+    if (p.path) return p.path === req.path;
+    if (p.regex) return p.regex.test(req.path);
+    return false;
+  });
+
+  if (isPublic) {
+    return next();
+  }
+
+  // Allow webhooks/SSE to bypass JWT if needed, or handle them via specific auth?
+  // Stream uses SSE, which might be hard to pass Bearer token in EventSource.
+  // We'll skip stream auth if it's tricky, but better to protect it. We can pass token in URL.
+  // Actually, let's keep stream public or pass token in query param.
+  if (req.path === "/notifications/stream") {
+     return next(); 
+  }
+
+  return verifyToken(req, res, next);
 });
 
 // --- API Routes ---
@@ -234,6 +268,9 @@ app.use(fileRoutes);
 // Report Routes
 app.use(reportRoutes);
 
+// Auth Routes (Turnstile etc)
+app.use(authRoutes);
+
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -245,6 +282,9 @@ async function startServer() {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
+      if (req.path.startsWith("/api/")) {
+        return res.status(404).json({ error: "API endpoint not found" });
+      }
       res.sendFile(path.join(distPath, "index.html"));
     });
   }

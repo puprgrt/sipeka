@@ -244,6 +244,7 @@ export const dokumenDigital = pgTable('dokumen_digital', {
   namaFile: text('nama_file').notNull(),
   urlGdriveUser: text('url_gdrive_user'), // link drive pribadi user
   urlGdriveSistem: text('url_gdrive_sistem'), // link backup drive sistem
+  urlR2: text('url_r2'), // link R2 Cloudflare Object Storage
   tipeDokumen: tipeDokumenEnum('tipe_dokumen').default('Unggahan_Bebas').notNull(),
   mimeType: text('mime_type'),
   sizeBytes: integer('size_bytes'),

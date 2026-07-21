@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import React, { useEffect, useState } from "react";
 import { Activity, Clock, AlertTriangle, FileText } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
@@ -7,7 +8,7 @@ export default function ExecutiveSummaryWidget() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/dashboard/stats")
+    apiFetch("/api/dashboard/stats")
       .then((res) => res.json())
       .then((data) => {
         setStats(data);

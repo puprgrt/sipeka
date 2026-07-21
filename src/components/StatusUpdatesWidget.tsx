@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { useEffect, useState } from "react";
 import { Activity, Bell, FileText, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -22,7 +23,7 @@ export default function StatusUpdatesWidget() {
   useEffect(() => {
     async function fetchUpdates() {
       try {
-        const res = await fetch("/api/audit-trails");
+        const res = await apiFetch("/api/audit-trails");
         if (res.ok) {
           const data = await res.json();
           // Filter only status changes or verification

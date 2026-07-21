@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { getMessaging, getToken } from "firebase/messaging";
 import { getApp } from "firebase/app";
 
@@ -12,7 +13,7 @@ export async function requestFcmToken(uid: string) {
       if (token) {
         console.log("FCM Token obtained");
         // Send to backend
-        await fetch("/api/users/fcm-token", {
+        await apiFetch("/api/users/fcm-token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ uid, token })

@@ -39,6 +39,7 @@ export interface Assessment {
   verification?: Record<string, { status: 'Sesuai' | 'Butuh_Survey'; comment: string }>;
   disposisiData?: string;
   documentLink?: string | null;
+  tteSignatures?: string | null;
 }
 
 export const DAMAGE_MULTIPLIERS: Record<string, number> = {

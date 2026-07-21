@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import React, { useEffect, useState } from "react";
 import { Assessment } from "../types";
 import { format } from "date-fns";
@@ -40,7 +41,7 @@ export default function BuildingHistoryModal({ selectedAssessment, setSelectedAs
 
     try {
       const userId = localStorage.getItem("activeUserId");
-      const res = await fetch(`/api/assessments/${selectedAssessment.id}/ikm?userId=${userId}`);
+      const res = await apiFetch(`/api/assessments/${selectedAssessment.id}/ikm?userId=${userId}`);
       const data = await res.json();
 
       if (data.filled) {
@@ -61,7 +62,7 @@ export default function BuildingHistoryModal({ selectedAssessment, setSelectedAs
       const idBangunan = selectedAssessment.customFields?.idBangunan;
       if (idBangunan) {
         setLoadingHistory(true);
-        fetch(`/api/buildings/${idBangunan}/history`)
+        apiFetch(`/api/buildings/${idBangunan}/history`)
           .then(res => res.json())
           .then(data => {
             if (Array.isArray(data)) {

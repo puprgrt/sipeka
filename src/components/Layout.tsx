@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, FileCheck, FileText, PlusCircle, Map as MapIcon, LogOut, Menu, X, Settings as SettingsIcon, ClipboardList, UserCog, Brain, ChevronLeft, ChevronRight, RefreshCw, WifiOff, AlertTriangle, Database, Smartphone, FolderOpen, Star } from "lucide-react";
 import ConflictResolutionModal from "./layout/ConflictResolutionModal";
@@ -93,7 +94,7 @@ export default function Layout() {
           // Conflict detection for edited assessments
           if (editId) {
             try {
-              const checkRes = await fetch(`/api/assessments/${editId}`);
+              const checkRes = await apiFetch(`/api/assessments/${editId}`);
               if (checkRes.ok) {
                 const serverData = await checkRes.json();
                 
@@ -347,7 +348,7 @@ export default function Layout() {
       if (user.email) localStorage.setItem("userEmail", user.email);
       if (user.displayName) localStorage.setItem("userName", user.displayName || user.email.split("@")[0]);
       if (user.email) {
-        fetch("/api/users")
+        apiFetch("/api/users")
           .then(res => res.json())
           .then(data => {
             if (Array.isArray(data)) {
@@ -384,7 +385,7 @@ export default function Layout() {
   }, [user]);
 
   useEffect(() => {
-    fetch("/api/app-settings")
+    apiFetch("/api/app-settings")
       .then(res => res.json())
       .then(data => {
         if (data && data.logoKiri && data.logoKanan) {

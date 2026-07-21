@@ -4,6 +4,8 @@ import * as schema from '../db/schema';
 import { readAppSettingsFile, writeAppSettingsFile, readLetterParamsFile, writeLetterParamsFile, readAiSettings, writeAiSettings, readDocumentTemplates, writeDocumentTemplates } from '../utils/configHelper';
 
 
+import { requireRole } from '../middleware/authMiddleware';
+
 const router = express.Router();
 
 router.get("/api/app-settings", async (req, res) => {
@@ -11,7 +13,7 @@ router.get("/api/app-settings", async (req, res) => {
   res.json(params);
 });
 
-router.put("/api/app-settings", async (req, res) => {
+router.put("/api/app-settings", requireRole('Administrator'), async (req, res) => {
   try {
     const updated = req.body;
     await writeAppSettingsFile(updated);

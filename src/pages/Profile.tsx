@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { User, Mail, Phone, Shield, Save, Camera, Building2, Briefcase, Award, MapPin, Volume2, Lock, Key, RefreshCw, AlertCircle, CheckCircle } from "lucide-react";
@@ -187,13 +188,13 @@ export default function Profile() {
     setLoading(true);
     try {
       // 1. Fetch profile parameters config
-      const paramsRes = await fetch("/api/profile-parameters");
+      const paramsRes = await apiFetch("/api/profile-parameters");
       const paramsData = await paramsRes.json();
       const activeParams = paramsData.filter((p: ProfileField) => p.enabled);
       setProfileParams(activeParams);
 
       // 2. Fetch user detailed profile info
-      const profileRes = await fetch(`/api/profile?email=${encodeURIComponent(email)}`);
+      const profileRes = await apiFetch(`/api/profile?email=${encodeURIComponent(email)}`);
       const profileObj = await profileRes.json();
       
       setProfileData({
@@ -205,7 +206,7 @@ export default function Profile() {
       if (profileObj.role === "Pengelola_Bangunan" && profileObj.idUser) {
         setLoadingBuildings(true);
         try {
-          const bRes = await fetch("/api/buildings");
+          const bRes = await apiFetch("/api/buildings");
           const bData = await bRes.json();
           if (Array.isArray(bData)) {
             setManagedBuildings(bData.filter(b => b.idUserPengelola === profileObj.idUser));
@@ -267,7 +268,7 @@ export default function Profile() {
         email: emailToUse
       };
 
-      const res = await fetch("/api/profile", {
+      const res = await apiFetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)

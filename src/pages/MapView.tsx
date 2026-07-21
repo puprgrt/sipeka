@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { useEffect, useState } from "react";
 import { Assessment } from "../types";
 import { Camera, Search, Filter, ArrowRight } from "lucide-react";
@@ -108,7 +109,7 @@ export default function MapView() {
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/assessments")
+    apiFetch("/api/assessments")
       .then(res => res.json())
       .then(data => {
         setAssessments(data);

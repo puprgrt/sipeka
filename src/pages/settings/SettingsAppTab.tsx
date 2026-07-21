@@ -1,3 +1,4 @@
+import { apiFetch } from "../../lib/api";
 import { useState, useEffect } from "react";
 import { Edit2, UploadCloud, Sun, Moon } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -34,7 +35,7 @@ export default function SettingsAppTab({ onToast }: SettingsAppTabProps) {
   const fetchAppConfig = async () => {
     setLoadingAppConfig(true);
     try {
-      const res = await fetch("/api/app-settings");
+      const res = await apiFetch("/api/app-settings");
       const data = await res.json();
       setAppConfig(data);
       setAppConfigForm(data);
@@ -47,7 +48,7 @@ export default function SettingsAppTab({ onToast }: SettingsAppTabProps) {
 
   const handleSaveAppConfig = async () => {
     try {
-      const res = await fetch("/api/app-settings", {
+      const res = await apiFetch("/api/app-settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(appConfigForm)

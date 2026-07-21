@@ -99,9 +99,9 @@ export const get_assessments = async (req: express.Request, res: express.Respons
         buildingName: b?.namaMassaBangunan || "Unknown",
         npsn: b?.npsnNup || "Unknown",
         nup: b?.npsnNup || "Unknown",
-        address: parsedCustomFields.address || (b && b.customFields && JSON.parse(b.customFields).address) || "Jl. Raya Pembangunan No. 123",
-        city: parsedCustomFields.city || (b && b.customFields && JSON.parse(b.customFields).city) || "Unknown",
-        province: parsedCustomFields.province || (b && b.customFields && JSON.parse(b.customFields).province) || "Unknown",
+        address: parsedCustomFields.address || "Jl. Raya Pembangunan No. 123",
+        city: parsedCustomFields.city || "Unknown",
+        province: parsedCustomFields.province || "Unknown",
         buildingArea: b ? Number(b.luasBangunanM2) : 0,
         floorCount: b ? b.jumlahLantai : 1,
         coordinates: coords,
@@ -304,8 +304,13 @@ export const post_assessments = async (req: express.Request, res: express.Respon
     }
 
     // 3. Insert Permohonan Penilaian
-    const kesimpulan = payload.finalResult.category === 'Ringan' ? 'Rusak Ringan' : 
-                       payload.finalResult.category === 'Sedang' ? 'Rusak Sedang' : 'Rusak Berat';
+    const categoryMap: Record<string, string> = {
+      'Tidak Rusak': 'Tidak Rusak',
+      'Ringan': 'Rusak Ringan',
+      'Sedang': 'Rusak Sedang',
+      'Berat': 'Rusak Berat'
+    };
+    const kesimpulan = categoryMap[payload.finalResult.category] || 'Rusak Ringan';
     
     const [permohonan] = await db.insert(schema.permohonanPenilaian).values({
       idBangunan: finalIdBangunan,
@@ -392,7 +397,7 @@ export const post_assessments = async (req: express.Request, res: express.Respon
     res.status(201).json(responseAssessment);
   } catch (error) {
     console.error("POST assessments error", error);
-    res.status(500).json({ error: "Failed to save assessment", details: (error as any).message, stack: (error as any).stack });
+    res.status(500).json({ error: "Failed to save assessment", details: (error as any).message });
   }
 };
 
@@ -478,9 +483,9 @@ export const get_assessments_by_id = async (req: express.Request, res: express.R
       buildingName: b?.namaMassaBangunan || "Unknown",
       npsn: b?.npsnNup || "Unknown",
       nup: b?.npsnNup || "Unknown",
-      address: parsedCustomFields.address || (b && b.customFields && JSON.parse(b.customFields).address) || "Jl. Raya Pembangunan No. 123",
-      city: parsedCustomFields.city || (b && b.customFields && JSON.parse(b.customFields).city) || "Unknown",
-      province: parsedCustomFields.province || (b && b.customFields && JSON.parse(b.customFields).province) || "Unknown",
+      address: parsedCustomFields.address || "Jl. Raya Pembangunan No. 123",
+      city: parsedCustomFields.city || "Unknown",
+      province: parsedCustomFields.province || "Unknown",
       buildingArea: b ? Number(b.luasBangunanM2) : 0,
       floorCount: b ? b.jumlahLantai : 1,
       coordinates: coords,

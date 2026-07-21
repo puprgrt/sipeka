@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import React, { useState } from 'react';
 import { cn } from '../lib/utils';
 import { 
@@ -64,7 +65,7 @@ export default function SmartPhotoViewer({
         });
       }
 
-      const res = await fetch("/api/analyze-document", {
+      const res = await apiFetch("/api/analyze-document", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

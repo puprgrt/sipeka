@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { 
@@ -42,9 +43,9 @@ export default function IkmDashboard() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/ikm/stats").then(res => res.json()),
-      fetch("/api/ikm/responses").then(res => res.json()),
-      fetch("/api/settings/ikm-questions").then(res => res.json()).catch(() => [])
+      apiFetch("/api/ikm/stats").then(res => res.json()),
+      apiFetch("/api/ikm/responses").then(res => res.json()),
+      apiFetch("/api/settings/ikm-questions").then(res => res.json()).catch(() => [])
     ])
     .then(([statsData, responsesData, questionsData]) => {
       setStats(statsData);
@@ -90,7 +91,7 @@ export default function IkmDashboard() {
     // 2. Fetch AI Narrative
     let aiNarrative = "";
     try {
-      const aiRes = await fetch("/api/gemini/analyze-ikm", {
+      const aiRes = await apiFetch("/api/gemini/analyze-ikm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stats, responses, questionsConfig })

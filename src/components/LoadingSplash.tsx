@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Shield, Activity, Cpu, Map, CheckCircle2, HardDrive } from "lucide-react";
@@ -25,7 +26,7 @@ export default function LoadingSplash() {
   });
 
   useEffect(() => {
-    fetch("/api/app-settings")
+    apiFetch("/api/app-settings")
       .then(res => res.json())
       .then(data => {
         if (data && data.logoKiri && data.logoKanan) {

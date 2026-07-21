@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { useEffect, useState, useRef } from "react";
 import { Bell, Check, MailOpen, AlertCircle, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -112,7 +113,7 @@ export default function NotificationBell() {
 
   const handleMarkAsRead = async (id: number) => {
     try {
-      const res = await fetch(`/api/notifications/${id}/read`, {
+      const res = await apiFetch(`/api/notifications/${id}/read`, {
         method: "PUT",
       });
       if (res.ok) {
@@ -127,7 +128,7 @@ export default function NotificationBell() {
 
   const handleMarkAllRead = async () => {
     try {
-      const res = await fetch("/api/notifications/read-all", {
+      const res = await apiFetch("/api/notifications/read-all", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

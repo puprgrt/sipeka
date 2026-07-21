@@ -1,3 +1,4 @@
+import { apiFetch } from "../../lib/api";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, X } from "lucide-react";
@@ -26,7 +27,7 @@ export default function SettingsProfileParamTab({ onToast }: SettingsProfilePara
 
   const fetchProfileParams = async () => {
     setLoadingProfileParams(true);
-    try { const res = await fetch("/api/profile-parameters"); const data = await res.json(); if (Array.isArray(data)) setProfileParams(data); else setProfileParams([]); }
+    try { const res = await apiFetch("/api/profile-parameters"); const data = await res.json(); if (Array.isArray(data)) setProfileParams(data); else setProfileParams([]); }
     catch (error) { console.error(error); } finally { setLoadingProfileParams(false); }
   };
 
@@ -35,8 +36,8 @@ export default function SettingsProfileParamTab({ onToast }: SettingsProfilePara
   const handleSaveProfileParam = async () => {
     if (!profileParamForm.label) { alert("Label parameter wajib diisi!"); return; }
     try {
-      if (isAddingProfileParam) { await fetch("/api/profile-parameters", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profileParamForm) }); }
-      else { await fetch(`/api/profile-parameters/${editingProfileParamId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profileParamForm) }); }
+      if (isAddingProfileParam) { await apiFetch("/api/profile-parameters", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profileParamForm) }); }
+      else { await apiFetch(`/api/profile-parameters/${editingProfileParamId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profileParamForm) }); }
       setEditingProfileParamId(null); setIsAddingProfileParam(false); fetchProfileParams();
       onToast("Parameter profil berhasil disimpan!");
     } catch (error) { console.error(error); }
@@ -44,7 +45,7 @@ export default function SettingsProfileParamTab({ onToast }: SettingsProfilePara
 
   const handleDeleteProfileParam = async (id: string) => {
     if (!confirm("Hapus parameter profil ini?")) return;
-    try { const res = await fetch(`/api/profile-parameters/${id}`, { method: "DELETE" }); if (!res.ok) { alert("Gagal menghapus parameter profil."); return; } fetchProfileParams(); onToast("Parameter profil berhasil dihapus!"); }
+    try { const res = await apiFetch(`/api/profile-parameters/${id}`, { method: "DELETE" }); if (!res.ok) { alert("Gagal menghapus parameter profil."); return; } fetchProfileParams(); onToast("Parameter profil berhasil dihapus!"); }
     catch (error) { console.error(error); alert("Terjadi kesalahan."); }
   };
 
@@ -55,7 +56,7 @@ export default function SettingsProfileParamTab({ onToast }: SettingsProfilePara
         const oldIndex = items.findIndex((item) => item.id === active.id);
         const newIndex = items.findIndex((item) => item.id === over.id);
         const newItems = arrayMove(items, oldIndex, newIndex);
-        fetch("/api/profile-parameters/reorder", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ parameters: newItems }) }).catch(err => console.error("Failed to save profile parameters reorder", err));
+        apiFetch("/api/profile-parameters/reorder", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ parameters: newItems }) }).catch(err => console.error("Failed to save profile parameters reorder", err));
         return newItems;
       });
     }

@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import React, { useEffect, useState } from "react";
 import AdminDashboard from "./dashboard/AdminDashboard";
 import PengelolaDashboard from "./dashboard/PengelolaDashboard";
@@ -24,7 +25,7 @@ export default function Dashboard() {
 
   const fetchAssessments = () => {
     setLoading(true);
-    fetch("/api/assessments")
+    apiFetch("/api/assessments")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) { setAssessments(data); } else { setAssessments([]); }
@@ -38,7 +39,7 @@ export default function Dashboard() {
 
   const fetchAuditTrails = () => {
     setLoadingAudit(true);
-    fetch("/api/audit-trails")
+    apiFetch("/api/audit-trails")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -75,7 +76,7 @@ export default function Dashboard() {
     if (seeding) return;
     setSeeding(true);
     try {
-      const res = await fetch("/api/seed-sample-building", { method: "POST" });
+      const res = await apiFetch("/api/seed-sample-building", { method: "POST" });
       const result = await res.json();
       if (res.ok) {
         alert("🎉 " + result.message);

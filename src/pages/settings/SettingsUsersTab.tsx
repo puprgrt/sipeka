@@ -1,3 +1,4 @@
+import { apiFetch } from "../../lib/api";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Edit2, Trash2, Plus, X, Phone, Shield } from "lucide-react";
@@ -27,7 +28,7 @@ export default function SettingsUsersTab({ onToast }: SettingsUsersTabProps) {
 
   const fetchUsers = async (silent = false) => {
     if (!silent) setLoadingUsers(true);
-    try { const res = await fetch("/api/users"); const data = await res.json(); if (Array.isArray(data)) setUsersList(data); }
+    try { const res = await apiFetch("/api/users"); const data = await res.json(); if (Array.isArray(data)) setUsersList(data); }
     catch (error) { console.error(error); }
     finally { if (!silent) setLoadingUsers(false); }
   };
@@ -37,15 +38,15 @@ export default function SettingsUsersTab({ onToast }: SettingsUsersTabProps) {
   const handleSaveUser = async () => {
     if (!userForm.namaLengkap) { alert("Nama Lengkap wajib diisi!"); return; }
     try {
-      if (isAddingUser) { await fetch("/api/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(userForm) }); }
-      else { await fetch(`/api/users/${editingUserId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(userForm) }); }
+      if (isAddingUser) { await apiFetch("/api/users", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(userForm) }); }
+      else { await apiFetch(`/api/users/${editingUserId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(userForm) }); }
       setEditingUserId(null); setIsAddingUser(false); fetchUsers();
     } catch (error) { console.error(error); }
   };
 
   const handleDeleteUser = async (id: number) => {
     if (!confirm("Hapus user ini?")) return;
-    try { const res = await fetch(`/api/users/${id}`, { method: "DELETE" }); if (!res.ok) { const errorData = await res.json().catch(() => ({})); alert(errorData.error || "Gagal menghapus user."); return; } fetchUsers(); }
+    try { const res = await apiFetch(`/api/users/${id}`, { method: "DELETE" }); if (!res.ok) { const errorData = await res.json().catch(() => ({})); alert(errorData.error || "Gagal menghapus user."); return; } fetchUsers(); }
     catch (error) { console.error(error); alert("Terjadi kesalahan koneksi saat mencoba menghapus user."); }
   };
 

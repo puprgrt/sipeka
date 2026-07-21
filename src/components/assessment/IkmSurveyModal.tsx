@@ -1,3 +1,4 @@
+import { apiFetch } from "../../lib/api";
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, Star, MessageSquare, CheckCircle2, Loader2, ClipboardCheck, Send } from "lucide-react";
@@ -45,7 +46,7 @@ export default function IkmSurveyModal({
 
   React.useEffect(() => {
     if (isOpen) {
-      fetch("/api/settings/ikm-questions")
+      apiFetch("/api/settings/ikm-questions")
         .then(res => res.json())
         .then(data => {
           setQuestions(data.filter((q: IkmQuestion) => q.isActive));
@@ -76,7 +77,7 @@ export default function IkmSurveyModal({
 
     try {
       const userId = localStorage.getItem("activeUserId");
-      const res = await fetch(`/api/assessments/${assessmentId}/ikm`, {
+      const res = await apiFetch(`/api/assessments/${assessmentId}/ikm`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -319,7 +320,7 @@ export default function IkmSurveyModal({
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-[9px] text-slate-400 font-mono">{IKM_UNSUR.filter(u => scores[u.key]).length}/9 unsur terisi</p>
+                    <p className="text-[9px] text-slate-400 font-mono">{questions.filter(u => scores[u.key]).length}/{questions.length} unsur terisi</p>
                   </div>
                 </div>
               </motion.div>
@@ -336,7 +337,7 @@ export default function IkmSurveyModal({
                 </span>
               ) : (
                 <span>
-                  Lengkapi {9 - IKM_UNSUR.filter(u => scores[u.key]).length} unsur{!testimoni.trim() ? " & testimoni" : ""} lagi
+                  Lengkapi {questions.length - questions.filter(u => scores[u.key]).length} unsur{!testimoni.trim() ? " & testimoni" : ""} lagi
                 </span>
               )}
             </div>

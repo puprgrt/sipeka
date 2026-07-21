@@ -23,7 +23,7 @@ router.get("/api/reports/batch-export", async (req, res) => {
         idPermohonan: a.idPermohonan,
         sekolah: b?.namaSekolahInstansi || '-',
         bangunan: b?.namaMassaBangunan || '-',
-        pengelola: u?.nama || '-',
+        pengelola: u?.namaLengkap || '-',
         status: a.statusTerakhir || '-',
         kesimpulan: a.kesimpulanAkhir || '-',
         kerusakan: a.totalPersentaseKerusakan ? `${a.totalPersentaseKerusakan}%` : '-',

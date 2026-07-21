@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI, DAMAGE_MULTIPLIERS, ComponentAssessment } from "../types";
@@ -225,7 +226,7 @@ export function useAssessmentForm() {
   useEffect(() => {
     if (editId) {
       // Fetch server data
-      fetch(`/api/assessments/${editId}`)
+      apiFetch(`/api/assessments/${editId}`)
         .then(res => res.json())
         .then(async (serverData) => {
           if (serverData && !serverData.error) {
@@ -330,7 +331,7 @@ export function useAssessmentForm() {
   const permissions = getRolePermissions()[activeRole as keyof ReturnType<typeof getRolePermissions>]?.permissions;
 
   useEffect(() => {
-    fetch("/api/building-parameters")
+    apiFetch("/api/building-parameters")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -371,17 +372,17 @@ export function useAssessmentForm() {
     // Set initial custom reference number
     setLetterReferenceNo(`050/PUPR/BB/${new Date().getFullYear()}/${Math.floor(100 + Math.random() * 900)}`);
 
-    fetch("/api/dinas")
+    apiFetch("/api/dinas")
       .then(res => res.json())
       .then(data => setDinasConfig(data))
       .catch(err => console.error("Failed to fetch dinas config", err));
 
-    fetch("/api/pengaturan-surat")
+    apiFetch("/api/pengaturan-surat")
       .then(res => res.json())
       .then(data => setLetterConfig(data))
       .catch(err => console.error("Failed to fetch letter config", err));
 
-    fetch("/api/document-templates")
+    apiFetch("/api/document-templates")
       .then(res => res.json())
       .then((templates: any[]) => {
         const surat = templates.find((t: any) => t.id === 'surat_permohonan');
@@ -401,7 +402,7 @@ export function useAssessmentForm() {
   useEffect(() => {
     const reassessId = new URLSearchParams(window.location.search).get("reassessBuildingId");
     if (reassessId) {
-      fetch("/api/buildings")
+      apiFetch("/api/buildings")
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
@@ -564,7 +565,7 @@ export function useAssessmentForm() {
   }, [schoolName, buildingName, npsn, address, buildingArea, floorCount, coordinates, photos, dynamicValues, safetyChecks, components, step, isDirty]);
 
   useEffect(() => {
-    fetch("/api/components")
+    apiFetch("/api/components")
       .then(res => res.json())
       .then(data => {
         if (data && data.length > 0) {
@@ -604,7 +605,7 @@ export function useAssessmentForm() {
       })
       .finally(() => setLoadingParams(false));
 
-    fetch("/api/katalog")
+    apiFetch("/api/katalog")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -734,7 +735,7 @@ Koordinat GPS: ${coordinates ? `Latitude: ${coordinates.lat}, Longitude: ${coord
         formData.append("tipeDokumen", "Surat_Permohonan");
         formData.append("urlGdriveUser", link);
 
-        fetch("/api/drive/backup", { method: "POST", body: formData })
+        apiFetch("/api/drive/backup", { method: "POST", body: formData })
           .catch(e => console.warn("Failed to register doc to system DB", e));
       } catch (err) {
         console.warn("Failed to register doc", err);
@@ -1188,7 +1189,7 @@ Pengelola Bangunan / Pemohon`;
       reader.onloadend = async () => {
         const imageBase64 = reader.result as string;
         try {
-          const response = await fetch("/api/gemini/analyze-damage", {
+          const response = await apiFetch("/api/gemini/analyze-damage", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ imageBase64, componentName: compName })

@@ -1,3 +1,4 @@
+import { apiFetch } from "../lib/api";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { 
@@ -30,7 +31,7 @@ export const exportAssessmentToPdf = async (assessment: Assessment, history: any
 
   let componentsConfig: any[] = [];
   try {
-    const res = await fetch("/api/components");
+    const res = await apiFetch("/api/components");
     componentsConfig = await res.json();
   } catch (error) {
     console.error("Failed to fetch components config for PDF export", error);
@@ -292,7 +293,7 @@ export const exportAssessmentToPdf = async (assessment: Assessment, history: any
     formData.append("namaFile", fileName);
     formData.append("tipeDokumen", "Laporan_Penilaian");
     
-    fetch("/api/drive/backup", { method: "POST", body: formData })
+    apiFetch("/api/drive/backup", { method: "POST", body: formData })
       .catch(e => console.warn("System backup failed", e));
   } catch (e) {
     console.warn("Failed to prepare backup", e);
@@ -304,7 +305,7 @@ export const exportAssessmentToPdf = async (assessment: Assessment, history: any
 export const exportIkmReportToPdf = async (stats: any, responses: any[], aiNarrative: string = "", radarImg: string = "", pieImg: string = "") => {
   let questionsConfig: any[] = [];
   try {
-    const res = await fetch("/api/settings/ikm-questions");
+    const res = await apiFetch("/api/settings/ikm-questions");
     questionsConfig = await res.json();
   } catch (error) {
     console.error("Failed to fetch IKM questions config for PDF export", error);
@@ -500,7 +501,7 @@ export const exportIkmReportToPdf = async (stats: any, responses: any[], aiNarra
     formData.append("namaFile", fileName);
     formData.append("tipeDokumen", "Lainnya");
     
-    fetch("/api/drive/backup", { method: "POST", body: formData })
+    apiFetch("/api/drive/backup", { method: "POST", body: formData })
       .catch(e => console.warn("System backup failed", e));
   } catch (e) {
     console.warn("Failed to prepare backup", e);
