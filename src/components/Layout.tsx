@@ -1,6 +1,6 @@
 import { apiFetch } from "../lib/api";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, FileCheck, FileText, PlusCircle, Map as MapIcon, LogOut, Menu, X, Settings as SettingsIcon, ClipboardList, UserCog, Brain, ChevronLeft, ChevronRight, RefreshCw, WifiOff, AlertTriangle, Database, Smartphone, FolderOpen, Star } from "lucide-react";
+import { LayoutDashboard, FileCheck, FileText, PlusCircle, Map as MapIcon, LogOut, Menu, X, Settings as SettingsIcon, ClipboardList, UserCog, Brain, ChevronLeft, ChevronRight, RefreshCw, WifiOff, AlertTriangle, Database, Smartphone, FolderOpen, Star, MessageCircle } from "lucide-react";
 import ConflictResolutionModal from "./layout/ConflictResolutionModal";
 import { cn } from "../lib/utils";
 import { useEffect, useState, useRef } from "react";
@@ -449,6 +449,11 @@ export default function Layout() {
 
     // Smart File Manager (Baru)
     items.push({ name: "Manajemen File", href: "/file-manager", icon: FolderOpen });
+
+    // WhatsApp Center (Khusus Admin)
+    if (activeRole === "Administrator") {
+      items.push({ name: "WhatsApp Center", href: "/wa-center", icon: MessageCircle });
+    }
 
     // Peta Lokasi Bangunan
     if (currentRolePerms.showMap !== false || activeRole === "Administrator") {

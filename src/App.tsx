@@ -21,6 +21,7 @@ import AiDashboard from "./pages/AiDashboard";
 import NotFoundPage from "./pages/NotFoundPage";
 import IkmDashboard from "./pages/IkmDashboard";
 import { DocumentValidation } from "./pages/DocumentValidation";
+import WhatsappCenter from "./pages/WhatsappCenter";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export default function App() {
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="ikm-dashboard" element={<IkmDashboard />} />
             <Route path="map" element={<MapView />} />
             <Route path="file-manager" element={<FileManager />} />
+            <Route path="wa-center" element={<WhatsappCenter />} />
             <Route path="settings" element={<Settings />} />
             <Route path="profile" element={<Profile />} />
             <Route path="*" element={<NotFoundPage />} />

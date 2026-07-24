@@ -19,6 +19,7 @@ import settingsRoutes from "./src/routes/settingsRoutes";
 import fileRoutes from "./src/routes/fileRoutes";
 import reportRoutes from "./src/routes/reportRoutes";
 import authRoutes from "./src/routes/authRoutes";
+import waRoutes from "./src/routes/waRoutes";
 
 // Initialize Firebase Admin once at startup
 getFirebaseAdmin();
@@ -87,6 +88,7 @@ app.use("/api", (req, res, next) => {
 
 // --- API Routes ---
 app.use("/api/gemini", aiRoutes);
+app.use("/api/wa", waRoutes);
 app.use(assessmentRoutes);
 
 app.get("/api/audit-trails", async (req, res) => {
