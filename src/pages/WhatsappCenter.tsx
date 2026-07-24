@@ -372,11 +372,18 @@ export default function WhatsappCenter() {
                             }`}
                           >
                             {msg.message?.imageMessage && (
-                              <div className="mb-2 rounded flex items-center justify-center bg-black/10 h-32 text-xs italic">
-                                [Gambar]
+                              <div className="mb-2 rounded flex items-center justify-center bg-black/5 dark:bg-black/20 overflow-hidden relative group/image">
+                                <img 
+                                  src={`/api/wa/media/${encodeURIComponent(msg.key.remoteJid)}/${msg.key.id}`}
+                                  alt="Media"
+                                  className="max-w-full max-h-64 object-cover rounded cursor-pointer"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'%3E%3C/circle%3E%3Cpolyline points='21 15 16 10 5 21'%3E%3C/polyline%3E%3C/svg%3E";
+                                  }}
+                                />
                               </div>
                             )}
-                            <div className="text-[15px] leading-relaxed break-words whitespace-pre-wrap">{text}</div>
+                            {text && <div className="text-[15px] leading-relaxed break-words whitespace-pre-wrap">{text}</div>}
                             <div className="flex items-center justify-end gap-1 mt-1 -mb-1 text-[11px] text-slate-500 dark:text-slate-400">
                               <span>{formatTime(msg.messageTimestamp)}</span>
                               {isMe && (

@@ -6,7 +6,8 @@ import {
   getChats, 
   getMessages, 
   sendMessage, 
-  getContacts
+  getContacts,
+  getMediaMessage
 } from "../services/waService";
 import { verifyToken } from "../middleware/authMiddleware";
 
@@ -68,6 +69,18 @@ router.get("/chats/:jid/messages", async (req, res) => {
     res.json({ messages });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/media/:jid/:id", async (req, res) => {
+  try {
+    const { jid, id } = req.params;
+    const { buffer, mimetype } = await getMediaMessage(jid, id);
+    res.set("Content-Type", mimetype);
+    res.send(buffer);
+  } catch (error: any) {
+    console.error("Failed to fetch media:", error);
+    res.status(404).json({ error: "Media not found or failed to download" });
   }
 });
 

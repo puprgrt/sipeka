@@ -2,7 +2,9 @@ import {
   makeWASocket,
   DisconnectReason,
   useMultiFileAuthState,
-  Browsers
+  Browsers,
+  downloadMediaMessage,
+  WAMessage
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
 import pino from "pino";
@@ -213,6 +215,30 @@ export const getChats = async () => {
 export const getMessages = async (jid: string, limit = 50) => {
   const msgs = store.messages[jid] || [];
   return msgs.slice(-limit);
+};
+
+export const getMediaMessage = async (jid: string, messageId: string) => {
+  const msgs = store.messages[jid] || [];
+  const msg = msgs.find(m => m.key.id === messageId);
+  if (!msg) throw new Error("Message not found");
+
+  const buffer = await downloadMediaMessage(
+    msg as WAMessage,
+    "buffer",
+    {},
+    {
+      logger: pino({ level: "silent" }),
+      reuploadRequest: sock?.updateMediaMessage
+    }
+  );
+
+  let mimetype = "application/octet-stream";
+  if (msg.message?.imageMessage) mimetype = msg.message.imageMessage.mimetype || "image/jpeg";
+  if (msg.message?.videoMessage) mimetype = msg.message.videoMessage.mimetype || "video/mp4";
+  if (msg.message?.audioMessage) mimetype = msg.message.audioMessage.mimetype || "audio/ogg";
+  if (msg.message?.documentMessage) mimetype = msg.message.documentMessage.mimetype || "application/octet-stream";
+
+  return { buffer, mimetype };
 };
 
 export const getContacts = async () => {
