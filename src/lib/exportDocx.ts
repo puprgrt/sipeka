@@ -90,7 +90,8 @@ export const exportIkmReportToDocx = async (
     if (radarImg) {
       imageRuns.push(new ImageRun({
         data: base64DataUriToArrayBuffer(radarImg),
-        transformation: { width: 300, height: 250 }
+        transformation: { width: 300, height: 250 },
+        type: 'png'
       }));
     }
     
@@ -98,14 +99,16 @@ export const exportIkmReportToDocx = async (
     if (radarImg && pieImg) {
       imageRuns.push(new ImageRun({
         data: base64DataUriToArrayBuffer("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="), // 1px transparent png
-        transformation: { width: 20, height: 1 }
+        transformation: { width: 20, height: 1 },
+        type: 'png'
       }));
     }
 
     if (pieImg) {
       imageRuns.push(new ImageRun({
         data: base64DataUriToArrayBuffer(pieImg),
-        transformation: { width: 300, height: 250 }
+        transformation: { width: 300, height: 250 },
+        type: 'png'
       }));
     }
 

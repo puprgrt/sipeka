@@ -555,6 +555,23 @@ export const get_buildings_by_id_history = async (req: express.Request, res: exp
   }
 };
 
+// Helper: normalize legacy status to simplified 5-stage flow
+function normalizeStatusServer(status: string): string {
+  switch (status) {
+    case 'Verifikasi_Berkas': return 'Menunggu_Validasi';
+    case 'Menunggu_TTE_Koordinator':
+    case 'Menunggu_TTE_Kabid':
+    case 'Menunggu_Validasi_Kadis':
+      return 'Menunggu_Pengesahan';
+    default: return status;
+  }
+}
+
+// TTE signing order for Hasil Penilaian: Tim_Teknis (auto) → Koordinator → Kabid
+// TTE signing order for Surat Jawaban: Kabid → Kadis
+const TTE_ORDER_PENILAIAN = ['Petugas_Survey', 'Tim_Teknis', 'Koordinator', 'Kabid'];
+const TTE_ORDER_SURAT = ['Kabid', 'Kadis'];
+
 export const put_assessments_by_id_verification = async (req: express.Request, res: express.Response) => {
   try {
     const id = req.params.id;
@@ -587,13 +604,13 @@ export const put_assessments_by_id_verification = async (req: express.Request, r
       try { tteSignatures = JSON.parse(p.tteSignatures); } catch (e) {}
     }
 
-    let nextStatus = p.statusTerakhir;
+    const currentStatus = normalizeStatusServer(p.statusTerakhir);
+    let nextStatus = currentStatus;
     let tteApplied = false;
 
     if (isTTE && role) {
       const appDomain = req.headers.host ? `http://${req.headers.host}` : 'http://localhost:5173';
       const validationUrl = `${appDomain}/validasi/${id}`;
-      // QR Code links to the validation URL
       const qrData = encodeURIComponent(validationUrl);
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrData}`;
       
@@ -607,19 +624,31 @@ export const put_assessments_by_id_verification = async (req: express.Request, r
       
       tteApplied = true;
 
-      if (role === 'Tim_Teknis' && (nextStatus === 'Menunggu_Validasi' || nextStatus === 'Survei_Lapangan')) {
-        nextStatus = 'Menunggu_TTE_Koordinator';
-      } else if (role === 'Koordinator' && nextStatus === 'Menunggu_TTE_Koordinator') {
-        nextStatus = 'Menunggu_TTE_Kabid';
-      } else if (role === 'Kabid' && nextStatus === 'Menunggu_TTE_Kabid') {
-        nextStatus = 'Menunggu_Validasi_Kadis';
-      } else if (role === 'Kadis' && nextStatus === 'Menunggu_Validasi_Kadis') {
-        nextStatus = 'Arsip_Digital'; 
+      // Simplified sequential TTE flow:
+      // When analysis is done (Selesai_Dianalisis), Tim_Teknis & Petugas_Survey auto-TTE
+      // → move to Menunggu_Pengesahan for Koordinator → Kabid sequential signing
+      // After Kabid signs for Hasil Penilaian → Kadis signs Surat Jawaban → Arsip_Digital
+      if ((role === 'Tim_Teknis' || role === 'Petugas_Survey') && 
+          (currentStatus === 'Menunggu_Validasi' || currentStatus === 'Survei_Lapangan' || currentStatus === 'Selesai_Dianalisis')) {
+        nextStatus = 'Menunggu_Pengesahan';
+      } else if (role === 'Koordinator' && currentStatus === 'Menunggu_Pengesahan') {
+        // Koordinator signs, still waiting for Kabid
+        nextStatus = 'Menunggu_Pengesahan';
+      } else if (role === 'Kabid' && currentStatus === 'Menunggu_Pengesahan') {
+        // Kabid signs for Hasil Penilaian — check if Kadis still needs to sign Surat Jawaban
+        if (tteSignatures['Kadis']) {
+          nextStatus = 'Arsip_Digital';
+        } else {
+          nextStatus = 'Menunggu_Pengesahan'; // Still waiting for Kadis
+        }
+      } else if (role === 'Kadis' && currentStatus === 'Menunggu_Pengesahan') {
+        // Kadis signs Surat Jawaban — all done
+        nextStatus = 'Arsip_Digital';
       }
 
       await db.update(schema.permohonanPenilaian)
         .set({ 
-          statusTerakhir: nextStatus,
+          statusTerakhir: nextStatus as any,
           tteSignatures: JSON.stringify(tteSignatures) 
         })
         .where(eq(schema.permohonanPenilaian.idPermohonan, id));
@@ -650,123 +679,111 @@ export const get_assessments_by_id_logs = async (req: express.Request, res: expr
     if (!p) return res.status(404).json({ error: "Permohonan tidak ditemukan" });
 
     const date = p.tanggalPengajuan;
-    const status = p.statusTerakhir;
+    const rawStatus = p.statusTerakhir;
+    const status = normalizeStatusServer(rawStatus);
+
+    // Parse TTE signatures to show real signing progress
+    let tteSignatures: any = {};
+    if (p.tteSignatures) {
+      try { tteSignatures = JSON.parse(p.tteSignatures); } catch (e) {}
+    }
 
     const logs = [];
 
-    // Log 1: Pengajuan
+    // === TAHAP 1: Pengajuan & Validasi ===
+    const isValidasiSelesai = ['Survei_Lapangan', 'Selesai_Dianalisis', 'Menunggu_Pengesahan', 'Arsip_Digital'].includes(status);
     logs.push({
       waktu: date.toISOString(),
-      tahap: "Pengajuan",
-      judul: "Permohonan Dikirim",
-      deskripsi: "Berkas permohonan penilaian kerusakan telah diajukan secara online oleh Pemohon.",
-      status: "SELESAI",
-      petugas: "Pemohon (Sistem)",
+      tahap: "Validasi",
+      judul: "Pengajuan & Validasi Administrasi",
+      deskripsi: isValidasiSelesai
+        ? "Permohonan telah dikirim dan berkas administrasi diverifikasi lengkap oleh Operator Bidang Bangunan."
+        : "Berkas permohonan sedang dalam antrean validasi dan verifikasi kelengkapan administrasi.",
+      status: isValidasiSelesai ? "SELESAI" : (status === 'Menunggu_Validasi' ? "PROSES" : "PENDING"),
+      petugas: "Operator Bidang Bangunan",
     });
 
-    // Log 2: Verifikasi
-    const isVerifikasiSelesai = ["Survei_Lapangan", "Selesai_Dianalisis", "Arsip_Digital"].includes(status);
-    const verifDate = new Date(date.getTime() + 1000 * 60 * 30); // 30 mins later
+    // === TAHAP 2: Survei Lapangan ===
+    const isSurveiSelesai = ['Selesai_Dianalisis', 'Menunggu_Pengesahan', 'Arsip_Digital'].includes(status);
+    const isSurveiActive = status === 'Survei_Lapangan';
+    const surveiDate = new Date(date.getTime() + 1000 * 60 * 60 * 2);
     logs.push({
-      waktu: isVerifikasiSelesai ? verifDate.toISOString() : new Date().toISOString(),
-      tahap: "Verifikasi",
-      judul: "Verifikasi Kelengkapan Administrasi",
-      deskripsi: isVerifikasiSelesai 
-        ? "Dokumen surat permohonan resmi kedinasan dan parameter kelayakan bangunan telah diverifikasi lengkap oleh Bidang Bangunan."
-        : "Berkas sedang dalam antrean verifikasi oleh petugas Bidang Bangunan.",
-      status: isVerifikasiSelesai ? "SELESAI" : "PROSES",
-      petugas: "Petugas Verifikator Bidang Bangunan",
+      waktu: (isSurveiActive || isSurveiSelesai) ? surveiDate.toISOString() : "-",
+      tahap: "Survei",
+      judul: isSurveiSelesai ? "Survei Lapangan Selesai" : isSurveiActive ? "Survei Lapangan Berlangsung" : "Survei Lapangan",
+      deskripsi: isSurveiSelesai
+        ? "Tim Teknis dan Petugas Survey telah merampungkan peninjauan fisik bangunan di lokasi."
+        : isSurveiActive
+        ? "Tim sedang melakukan inspeksi fisik dan dokumentasi kerusakan bangunan di lapangan."
+        : "Menunggu validasi administrasi selesai untuk penjadwalan survei lapangan.",
+      status: isSurveiSelesai ? "SELESAI" : isSurveiActive ? "PROSES" : "PENDING",
+      petugas: "Tim Teknis & Petugas Survey",
     });
 
-    // Log 3: Penjadwalan Survei
-    const isSurveiSelesai = ["Selesai_Dianalisis", "Arsip_Digital"].includes(status);
-    const isSurveiActive = status === "Survei_Lapangan";
-    const surveiDate = new Date(date.getTime() + 1000 * 60 * 60 * 2); // 2 hours later
-    if (isSurveiActive || isSurveiSelesai) {
-      logs.push({
-        waktu: surveiDate.toISOString(),
-        tahap: "Disposisi",
-        judul: "Disposisi Jadwal Survei Lapangan",
-        deskripsi: isSurveiSelesai
-          ? "Jadwal survei lapangan telah disetujui dan tim survei telah merampungkan pengecekan lapangan."
-          : "Kepala Bidang Bangunan menyetujui disposisi. Jadwal peninjauan lapangan dikoordinasikan dengan Tim Teknis.",
-        status: isSurveiSelesai ? "SELESAI" : "PROSES",
-        petugas: "Kepala Bidang Bangunan Wilayah",
-      });
-    } else {
-      logs.push({
-        waktu: "-",
-        tahap: "Disposisi",
-        judul: "Penyusunan Disposisi Survei",
-        deskripsi: "Menunggu penyelesaian verifikasi administrasi untuk penerbitan surat tugas survei lapangan.",
-        status: "PENDING",
-        petugas: "Koordinator Tim Teknis",
-      });
-    }
+    // === TAHAP 3: Analisis Kerusakan ===
+    const isAnalisisSelesai = ['Selesai_Dianalisis', 'Menunggu_Pengesahan', 'Arsip_Digital'].includes(status);
+    const analisisDate = new Date(date.getTime() + 1000 * 60 * 60 * 24);
+    logs.push({
+      waktu: isAnalisisSelesai ? analisisDate.toISOString() : "-",
+      tahap: "Analisis",
+      judul: isAnalisisSelesai ? "Analisis Kerusakan Selesai" : isSurveiActive ? "Analisis Sedang Berjalan" : "Analisis Kerusakan",
+      deskripsi: isAnalisisSelesai
+        ? "Penginputan detail kerusakan komponen dan perhitungan persentase kerusakan akhir telah selesai."
+        : isSurveiActive
+        ? "Tim Teknis sedang menginput dan menganalisis data kerusakan komponen bangunan."
+        : "Menunggu pelaksanaan survei lapangan.",
+      status: isAnalisisSelesai ? "SELESAI" : (isSurveiActive ? "PROSES" : "PENDING"),
+      petugas: "Tim Teknis Lapangan",
+    });
 
-    // Log 4: Pelaksanaan Analisis
-    const isAnalisisSelesai = ["Selesai_Dianalisis", "Arsip_Digital"].includes(status);
-    const analisisDate = new Date(date.getTime() + 1000 * 60 * 60 * 24); // 1 day later
-    if (isAnalisisSelesai) {
-      logs.push({
-        waktu: analisisDate.toISOString(),
-        tahap: "Analisis",
-        judul: "Penginputan & Analisis Kerusakan",
-        deskripsi: "Tim Teknis telah menginput detail kerusakan komponen (Pondasi, Kolom, Balok, Atap) dan menghitung nilai persentase kerusakan akhir.",
-        status: "SELESAI",
-        petugas: "Tim Teknis Lapangan",
-      });
-    } else if (isSurveiActive) {
-      logs.push({
-        waktu: "-",
-        tahap: "Analisis",
-        judul: "Peninjauan Fisik Lapangan",
-        deskripsi: "Tim Teknis sedang melakukan inspeksi fisik bangunan langsung di lokasi.",
-        status: "PROSES",
-        petugas: "Tim Teknis Lapangan",
-      });
-    } else {
-      logs.push({
-        waktu: "-",
-        tahap: "Analisis",
-        judul: "Pemeriksaan Visual",
-        deskripsi: "Belum dijadwalkan.",
-        status: "PENDING",
-        petugas: "Tim Teknis",
-      });
-    }
+    // === TAHAP 4: Pengesahan (TTE Berurutan) ===
+    const isPengesahanSelesai = status === 'Arsip_Digital';
+    const isPengesahanActive = status === 'Menunggu_Pengesahan';
+    const pengesahanDate = new Date(date.getTime() + 1000 * 60 * 60 * 25);
 
-    // Log 5: Pengarsipan Digital
-    const isArsipSelesai = status === "Arsip_Digital";
-    const arsipDate = new Date(date.getTime() + 1000 * 60 * 60 * 25); // 25 hours later
-    if (isArsipSelesai) {
-      logs.push({
-        waktu: arsipDate.toISOString(),
-        tahap: "Arsip",
-        judul: "Penerbitan Rekomendasi & Pengarsipan",
-        deskripsi: "Dokumen rekomendasi penanganan PUPR telah diterbitkan secara resmi dan disimpan ke dalam Arsip Digital Negara.",
-        status: "SELESAI",
-        petugas: "Kepala Dinas PUPR / Koordinator",
-      });
-    } else if (isAnalisisSelesai) {
-      logs.push({
-        waktu: "-",
-        tahap: "Arsip",
-        judul: "Finalisasi Laporan Rekomendasi",
-        deskripsi: "Menunggu approval Kepala Dinas untuk penerbitan surat rekomendasi resmi rehabilitasi.",
-        status: "PROSES",
-        petugas: "Kepala Dinas PUPR",
-      });
-    } else {
-      logs.push({
-        waktu: "-",
-        tahap: "Arsip",
-        judul: "Arsip Digital",
-        deskripsi: "Menunggu seluruh tahap analisis teknis lapangan selesai.",
-        status: "PENDING",
-        petugas: "Koordinator",
-      });
-    }
+    // Build TTE progress description
+    const tteRoles = ['Petugas_Survey', 'Tim_Teknis', 'Koordinator', 'Kabid', 'Kadis'];
+    const tteRoleLabels: Record<string, string> = {
+      'Petugas_Survey': 'Petugas Survey',
+      'Tim_Teknis': 'Tim Teknis',
+      'Koordinator': 'Koordinator',
+      'Kabid': 'Kabid',
+      'Kadis': 'Kadis'
+    };
+    const signedRoles = tteRoles.filter(r => tteSignatures[r]);
+    const tteProgress = signedRoles.length > 0
+      ? `TTE terkumpul: ${signedRoles.map(r => tteRoleLabels[r] || r).join(', ')} (${signedRoles.length}/${tteRoles.length}).`
+      : '';
+
+    logs.push({
+      waktu: isPengesahanSelesai ? pengesahanDate.toISOString() : (isPengesahanActive ? new Date().toISOString() : "-"),
+      tahap: "Pengesahan",
+      judul: isPengesahanSelesai ? "Pengesahan Lengkap" : isPengesahanActive ? "Menunggu Tanda Tangan Pejabat" : "Pengesahan Pejabat",
+      deskripsi: isPengesahanSelesai
+        ? `Seluruh pejabat telah menandatangani. ${tteProgress}`
+        : isPengesahanActive
+        ? `Menunggu tanda tangan berurutan: Petugas Survey → Tim Teknis → Koordinator → Kabid → Kadis. ${tteProgress}`
+        : "Menunggu analisis kerusakan selesai.",
+      status: isPengesahanSelesai ? "SELESAI" : isPengesahanActive ? "PROSES" : "PENDING",
+      petugas: isPengesahanActive && signedRoles.length > 0
+        ? `Menunggu: ${tteRoles.filter(r => !tteSignatures[r]).map(r => tteRoleLabels[r] || r).join(', ')}`
+        : "Koordinator → Kabid → Kadis",
+      tteSignatures: isPengesahanActive || isPengesahanSelesai ? tteSignatures : undefined,
+    });
+
+    // === TAHAP 5: Arsip Digital ===
+    const isArsipSelesai = status === 'Arsip_Digital';
+    const arsipDate = new Date(date.getTime() + 1000 * 60 * 60 * 26);
+    logs.push({
+      waktu: isArsipSelesai ? arsipDate.toISOString() : "-",
+      tahap: "Arsip",
+      judul: isArsipSelesai ? "Tersimpan di Arsip Digital" : "Arsip Digital",
+      deskripsi: isArsipSelesai
+        ? "Dokumen rekomendasi penanganan telah diterbitkan resmi dan disimpan di Arsip Digital Negara."
+        : "Menunggu seluruh pengesahan pejabat selesai.",
+      status: isArsipSelesai ? "SELESAI" : (isPengesahanActive || isPengesahanSelesai ? "PROSES" : "PENDING"),
+      petugas: "Sistem Arsip Digital",
+    });
 
     res.json(logs);
   } catch (error) {

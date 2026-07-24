@@ -11,7 +11,7 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { cn, getAuditHeaders } from "../../lib/utils";
 import * as XLSX from "xlsx";
-import { getStatusBadgeClasses, formatStatusText } from "../../lib/statusUtils";
+import { getStatusBadgeClasses, formatStatusText, normalizeStatus } from "../../lib/statusUtils";
 import { COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI } from "../../types";
 
 // Replace with a dummy function for replaceTemplatePlaceholders since it's probably defined in the file
@@ -184,13 +184,13 @@ export default function DisposisiDetailModal({
                       </span>
                     </div>
   
-                    {/* Revert / Update Status Selector in Drawer */}
+                    {/* Revert / Update Status Permohonan (5 Tahap) */}
                     <div className="flex flex-col gap-2 pt-3 border-t border-slate-100">
                       <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                         Ubah / Revert Status Permohonan:
                       </label>
                       <select
-                        value={selectedAssessment.status || 'Menunggu_Validasi'}
+                        value={normalizeStatus(selectedAssessment.status) || 'Menunggu_Validasi'}
                         onChange={(e) => {
                           const newStatus = e.target.value;
                           setAssessments(assessments.map(a => a.id === selectedAssessment.id ? { ...a, status: newStatus } : a));
@@ -208,203 +208,272 @@ export default function DisposisiDetailModal({
                         className="text-xs w-full p-2 border border-slate-200 rounded-lg focus:ring-pu-blue focus:border-pu-blue bg-white font-semibold text-slate-700 cursor-pointer"
                       >
                         <option value="Menunggu_Validasi">Menunggu Validasi</option>
-                        <option value="Verifikasi_Berkas">Verifikasi Berkas</option>
                         <option value="Survei_Lapangan">Survei Lapangan</option>
                         <option value="Selesai_Dianalisis">Selesai Dianalisis</option>
+                        <option value="Menunggu_Pengesahan">Menunggu Pengesahan</option>
                         <option value="Arsip_Digital">Arsip Digital</option>
                       </select>
                     </div>
   
-                    {/* Kadis: Penerbitan Hasil & Cetak SK */}
-                    {activeRole === "Kadis" && selectedAssessment.status === "Arsip_Digital" && (
-                      <div className="pt-3 border-t border-slate-100 flex flex-col gap-2 mb-2">
-                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3.5 space-y-3.5 mt-1">
-                          <div className="flex items-center gap-2 text-blue-800">
-                            <CheckCircle2 className="w-4 h-4" />
-                            <h4 className="text-[11px] font-bold uppercase tracking-widest">Dokumen Resmi (Telah Disahkan)</h4>
-                          </div>
-                          <p className="text-[10px] text-blue-700 font-medium">
-                            Dokumen ini telah disahkan oleh Kepala Dinas. Anda dapat mengunduh atau mencetak Surat Keputusan Penetapan Kerusakan.
-                          </p>
-                          <button
-                            onClick={() => {
-                              const printWindow = window.open('', '_blank');
-                              if (printWindow) {
-                                let htmlContent: string;
-                                if (suratHasilTemplate && suratHasilTemplate.includes('<')) {
-                                  // Gunakan template dari Pusat Template
-                                  htmlContent = replaceTemplatePlaceholders(suratHasilTemplate, {
-                                    namaInstansiAtas: 'PEMERINTAH KABUPATEN GARUT',
-                                    namaDinas: dinasConfig?.namaDinas || 'Dinas Pekerjaan Umum dan Penataan Ruang',
-                                    alamatDinas: dinasConfig?.alamat || 'Jl. Prof. KH. Cecep Syarifudin No. 117, Garut',
-                                    nomorSurat: `${selectedAssessment.id.split('-')[0].toUpperCase()}/PUPR/${new Date().getFullYear()}`,
-                                    tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-                                    namaSekolah: selectedAssessment.schoolName,
-                                    namaBangunan: selectedAssessment.buildingName,
-                                    totalKerusakan: `${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%`,
-                                    kategoriKerusakan: selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan',
-                                    namaKadis: dispNamaPimpinan || 'Ir. H. Kepala Dinas, M.T.',
-                                    nipKadis: dispNipPimpinan || '19700101 199803 1 004',
-                                  });
-                                } else {
-                                  // Fallback hardcoded
-                                  htmlContent = `
-                                  <html>
-                                    <head>
-                                      <title>Surat Hasil Perhitungan Penilaian Kerusakan</title>
-                                      <style>
-                                        body { font-family: 'Times New Roman', serif; padding: 40px; text-align: center; line-height: 1.6; }
-                                        h1 { font-size: 20px; font-weight: bold; text-transform: uppercase; margin-bottom: 20px; }
-                                        .content { text-align: justify; margin: 40px 0; font-size: 14px; }
-                                        .signature { text-align: right; margin-top: 60px; font-size: 14px; }
-                                      </style>
-                                    </head>
-                                    <body>
-                                      <h1>Pemerintah Kabupaten Garut<br/>${dinasConfig?.namaDinas || 'Dinas Pekerjaan Umum dan Penataan Ruang'}</h1>
-                                      <hr style="border: 2px solid black; margin-bottom: 30px;" />
-                                      <h2><u>SURAT HASIL PERHITUNGAN PENILAIAN KERUSAKAN BANGUNAN</u></h2>
-                                      <p>Nomor: ${selectedAssessment.id.split('-')[0].toUpperCase()}/PUPR/${new Date().getFullYear()}</p>
-                                      <div class="content">
-                                        <p>Berdasarkan hasil survei teknis dan analisis kerusakan pada:</p>
-                                        <table style="width: 100%; text-align: left; margin: 20px 0;">
-                                          <tr><td width="30%">Nama Instansi</td><td>: ${selectedAssessment.schoolName}</td></tr>
-                                          <tr><td>Nama Bangunan</td><td>: ${selectedAssessment.buildingName}</td></tr>
-                                          <tr><td>Total Kerusakan</td><td>: ${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%</td></tr>
-                                          <tr><td>Kategori</td><td>: ${selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan'}</td></tr>
-                                        </table>
-                                        <p>Maka dengan ini ditetapkan tingkat kerusakan bangunan tersebut sah sesuai standar operasional yang berlaku, untuk dapat dipergunakan sebagai dasar penyusunan Rencana Anggaran Biaya (RAB) rehabilitasi.</p>
+                    {/* === PANEL PENGESAHAN BERURUTAN (TTE Sequential) === */}
+                    {(() => {
+                      const normalizedStatus = normalizeStatus(selectedAssessment.status);
+                      const isPengesahan = normalizedStatus === 'Menunggu_Pengesahan';
+                      const isArsip = normalizedStatus === 'Arsip_Digital';
+                      const isSelesaiAnalisis = normalizedStatus === 'Selesai_Dianalisis';
+
+                      // Parse existing TTE signatures
+                      let tteData: any = {};
+                      if (selectedAssessment.tteSignatures) {
+                        try {
+                          tteData = typeof selectedAssessment.tteSignatures === 'string'
+                            ? JSON.parse(selectedAssessment.tteSignatures)
+                            : selectedAssessment.tteSignatures;
+                        } catch (e) {}
+                      }
+
+                      // TTE signing order: Petugas_Survey & Tim_Teknis (auto) → Koordinator → Kabid → Kadis
+                      const tteSteps = [
+                        { role: 'Petugas_Survey', label: 'Petugas Survey', auto: true, docType: 'Hasil Penilaian' },
+                        { role: 'Tim_Teknis', label: 'Tim Teknis', auto: true, docType: 'Hasil Penilaian' },
+                        { role: 'Koordinator', label: 'Koordinator', auto: false, docType: 'Hasil Penilaian' },
+                        { role: 'Kabid', label: 'Kepala Bidang', auto: false, docType: 'Hasil Penilaian' },
+                        { role: 'Kadis', label: 'Kepala Dinas', auto: false, docType: 'Surat Jawaban' },
+                      ];
+
+                      const signedCount = tteSteps.filter(s => tteData[s.role]).length;
+                      const totalSteps = tteSteps.length;
+                      const progressPct = totalSteps > 0 ? Math.round((signedCount / totalSteps) * 100) : 0;
+
+                      // Determine which role can sign next (sequential order)
+                      let nextSignerIdx = tteSteps.findIndex(s => !tteData[s.role]);
+
+                      if (!isPengesahan && !isArsip && !isSelesaiAnalisis) return null;
+
+                      return (
+                        <div className="pt-3 border-t border-slate-100 flex flex-col gap-2 mb-2">
+                          <div className={cn(
+                            "border rounded-xl p-4 space-y-4 mt-1",
+                            isArsip ? "bg-blue-50 border-blue-200" : "bg-indigo-50 border-indigo-200"
+                          )}>
+                            {/* Header */}
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className={cn("w-4 h-4", isArsip ? "text-blue-800" : "text-indigo-800")} />
+                              <h4 className={cn("text-[11px] font-bold uppercase tracking-widest", isArsip ? "text-blue-800" : "text-indigo-800")}>
+                                {isArsip ? 'Dokumen Resmi (Telah Disahkan)' : 'Pengesahan Pejabat (TTE Berurutan)'}
+                              </h4>
+                            </div>
+
+                            {/* Progress Bar */}
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                                <span>Progress TTE</span>
+                                <span>{signedCount}/{totalSteps} tanda tangan ({progressPct}%)</span>
+                              </div>
+                              <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className={cn(
+                                    "h-2 rounded-full transition-all duration-700",
+                                    isArsip ? "bg-emerald-500" : "bg-indigo-500"
+                                  )}
+                                  style={{ width: `${progressPct}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* TTE Steps */}
+                            <div className="space-y-2">
+                              {tteSteps.map((step, idx) => {
+                                const isSigned = !!tteData[step.role];
+                                const isNext = idx === nextSignerIdx && !isArsip;
+                                const canSign = isNext && activeRole === step.role && !step.auto;
+                                const signatureData = tteData[step.role];
+
+                                return (
+                                  <div key={step.role} className={cn(
+                                    "flex items-center gap-3 p-2.5 rounded-lg border transition-all",
+                                    isSigned ? "bg-emerald-50/80 border-emerald-200" :
+                                    isNext ? "bg-white border-indigo-300 ring-2 ring-indigo-200 shadow-sm" :
+                                    "bg-white/50 border-slate-200 opacity-50"
+                                  )}>
+                                    {/* Step number & icon */}
+                                    <div className={cn(
+                                      "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 border-2",
+                                      isSigned ? "bg-emerald-500 text-white border-emerald-500" :
+                                      isNext ? "bg-indigo-500 text-white border-indigo-500 animate-pulse" :
+                                      "bg-slate-100 text-slate-400 border-slate-200"
+                                    )}>
+                                      {isSigned ? '✓' : (idx + 1)}
+                                    </div>
+
+                                    {/* Role info */}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className={cn(
+                                          "text-[10px] font-bold uppercase tracking-wider",
+                                          isSigned ? "text-emerald-800" : isNext ? "text-indigo-800" : "text-slate-500"
+                                        )}>
+                                          {step.label}
+                                        </span>
+                                        {step.auto && (
+                                          <span className="text-[8px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200">
+                                            Auto
+                                          </span>
+                                        )}
+                                        <span className="text-[8px] font-medium text-slate-400 uppercase">
+                                          ({step.docType})
+                                        </span>
                                       </div>
-                                      <div class="signature">
-                                        <p>Ditetapkan di Tempat</p>
-                                        <p>Tanggal: ${new Date().toLocaleDateString('id-ID')}</p>
-                                        <br/><br/><br/>
-                                        <p><b><u>${dispNamaPimpinan || 'Ir. H. KEPALA DINAS, M.T.'}</u></b></p>
-                                        <p>NIP. ${dispNipPimpinan || '19700101 199803 1 004'}</p>
-                                       </div>
-                                      <script>window.print();</script>
-                                    </body>
-                                  </html>`;
-                                }
-                                printWindow.document.write(htmlContent);
-                                printWindow.document.close();
-                              }
-                            }}
-                            className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm"
-                          >
-                            <FileText className="w-4 h-4" />
-                            Cetak Surat Hasil Perhitungan
-                          </button>
-                          
-                          {suratHasilDriveLink && (
-                            <a
-                              href={suratHasilDriveLink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm mt-2"
-                            >
-                              <FileText className="w-4 h-4" />
-                              Unduh Template Asli (Word)
-                            </a>
-                          )}
-  
-                          <button
-                            onClick={() => {
-                              if (!selectedAssessment) return;
-                              const wsData = [
-                                ["LAMPIRAN PERHITUNGAN VOLUME KERUSAKAN BANGUNAN"],
-                                [],
-                                ["Nama Sekolah/Instansi", selectedAssessment.schoolName],
-                                ["Nama Bangunan", selectedAssessment.buildingName],
-                                ["Tanggal Penilaian", new Date().toLocaleDateString('id-ID')],
-                                ["Jumlah Lantai", selectedAssessment.finalResult?.category === "1 Lantai" ? 1 : selectedAssessment.finalResult?.category === "2 Lantai" ? 2 : 3],
-                                [],
-                                ["Total Kerusakan", `${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%`],
-                                ["Kategori", selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan'],
-                                [],
-                                ["No", "Komponen", "Bobot (%)", "Klasifikasi Kerusakan", "Volume (%)", "Nilai Kerusakan"]
-                              ];
-  
-                              let no = 1;
-                              selectedAssessment.finalResult?.components?.forEach(comp => {
-                                wsData.push([
-                                  no++,
-                                  comp.name,
-                                  comp.weight,
-                                  comp.classification || "-",
-                                  comp.volumePercentage || 0,
-                                  comp.damageValue || 0
-                                ]);
-                              });
-  
-                              const ws = XLSX.utils.aoa_to_sheet(wsData);
-                              
-                              // Auto-size columns slightly
-                              const wscols = [
-                                {wch: 5},
-                                {wch: 35},
-                                {wch: 12},
-                                {wch: 25},
-                                {wch: 12},
-                                {wch: 15}
-                              ];
-                              ws['!cols'] = wscols;
-  
-                              const wb = XLSX.utils.book_new();
-                              XLSX.utils.book_append_sheet(wb, ws, "Lampiran");
-                              XLSX.writeFile(wb, `Lampiran_Kerusakan_${selectedAssessment.schoolName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
-                            }}
-                            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm mt-2"
-                          >
-                            <Table className="w-4 h-4" />
-                            Cetak Lampiran Perhitungan Excel
-                          </button>
-  
-                          {lampiranExcelDriveLink && (
-                            <a
-                              href={lampiranExcelDriveLink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm mt-2"
-                            >
-                              <Table className="w-4 h-4" />
-                              Unduh Template Asli (Excel)
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    )}
-  
-                    {activeRole === "Kadis" && selectedAssessment.status === "Selesai_Dianalisis" && (
-                      <div className="pt-3 border-t border-slate-100 flex flex-col gap-2 mb-2">
-                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 space-y-3.5 mt-1">
-                          <div className="flex items-center gap-2 text-emerald-800">
-                            <CheckCircle2 className="w-4 h-4" />
-                            <h4 className="text-[11px] font-bold uppercase tracking-widest">Pengesahan Kadis</h4>
+                                      {isSigned && signatureData && (
+                                        <p className="text-[9px] text-emerald-600 font-medium mt-0.5 truncate">
+                                          ✓ {signatureData.name || step.label} — {signatureData.timestamp ? format(new Date(signatureData.timestamp), 'dd MMM yyyy, HH:mm', { locale: id }) : ''}
+                                        </p>
+                                      )}
+                                      {isNext && !isSigned && (
+                                        <p className="text-[9px] text-indigo-600 font-medium mt-0.5">
+                                          {step.auto ? 'Otomatis saat analisis selesai' : 'Menunggu tanda tangan...'}
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    {/* Sign button */}
+                                    {canSign && (
+                                      <button
+                                        onClick={() => {
+                                          if (window.confirm(`Apakah Anda yakin ingin menandatangani sebagai ${step.label}?`)) {
+                                            apiFetch(`/api/assessments/${selectedAssessment.id}/verification`, {
+                                              method: "PUT",
+                                              headers: {
+                                                ...getAuditHeaders(),
+                                                'x-user-role': step.role,
+                                                'x-user-name': localStorage.getItem('activeUserName') || step.label,
+                                              },
+                                              body: JSON.stringify({ verification: {}, isTTE: true })
+                                            }).then(res => res.json()).then(data => {
+                                              if (data.success) {
+                                                const newStatus = data.statusTerakhir || normalizeStatus(selectedAssessment.status);
+                                                const newTte = typeof data.tteSignatures === 'string' ? data.tteSignatures : JSON.stringify(data.tteSignatures);
+                                                setAssessments(assessments.map(a => a.id === selectedAssessment.id ? { ...a, status: newStatus, tteSignatures: newTte } : a));
+                                                setSelectedAssessment(prev => prev ? { ...prev, status: newStatus, tteSignatures: newTte } : null);
+                                                setDispStatus(newStatus);
+                                                alert(`Tanda tangan ${step.label} berhasil diterapkan!`);
+                                              }
+                                            }).catch(err => {
+                                              console.error(err);
+                                              alert('Gagal menerapkan TTE.');
+                                            });
+                                          }
+                                        }}
+                                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[9px] font-bold uppercase tracking-widest shrink-0 transition-all hover:scale-105 active:scale-95 shadow-sm"
+                                      >
+                                        Tandatangani
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Action: Move to Pengesahan (from Selesai_Dianalisis) */}
+                            {isSelesaiAnalisis && !isPengesahan && (
+                              <button
+                                onClick={() => {
+                                  if (window.confirm('Analisis sudah selesai. Lanjutkan ke tahap Pengesahan Pejabat?')) {
+                                    setAssessments(assessments.map(a => a.id === selectedAssessment.id ? { ...a, status: 'Menunggu_Pengesahan' } : a));
+                                    setSelectedAssessment(prev => prev ? { ...prev, status: 'Menunggu_Pengesahan' } : null);
+                                    setDispStatus('Menunggu_Pengesahan');
+                                    apiFetch(`/api/assessments/${selectedAssessment.id}/status`, {
+                                      method: 'PUT',
+                                      headers: getAuditHeaders(),
+                                      body: JSON.stringify({ status: 'Menunggu_Pengesahan' })
+                                    }).then(() => alert('Status berubah ke Menunggu Pengesahan!')).catch(console.error);
+                                  }
+                                }}
+                                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm"
+                              >
+                                <ArrowRight className="w-4 h-4" />
+                                Lanjut ke Pengesahan Pejabat
+                              </button>
+                            )}
+
+                            {/* Cetak Dokumen Resmi (only when Arsip_Digital) */}
+                            {isArsip && (
+                              <div className="space-y-2 pt-2 border-t border-blue-200">
+                                <button
+                                  onClick={() => {
+                                    const printWindow = window.open('', '_blank');
+                                    if (printWindow) {
+                                      let htmlContent: string;
+                                      if (suratHasilTemplate && suratHasilTemplate.includes('<')) {
+                                        htmlContent = replaceTemplatePlaceholders(suratHasilTemplate, {
+                                          namaInstansiAtas: 'PEMERINTAH KABUPATEN GARUT',
+                                          namaDinas: dinasConfig?.namaDinas || 'Dinas Pekerjaan Umum dan Penataan Ruang',
+                                          alamatDinas: dinasConfig?.alamat || 'Jl. Prof. KH. Cecep Syarifudin No. 117, Garut',
+                                          nomorSurat: `${selectedAssessment.id.split('-')[0].toUpperCase()}/PUPR/${new Date().getFullYear()}`,
+                                          tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+                                          namaSekolah: selectedAssessment.schoolName,
+                                          namaBangunan: selectedAssessment.buildingName,
+                                          totalKerusakan: `${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%`,
+                                          kategoriKerusakan: selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan',
+                                          namaKadis: dispNamaPimpinan || 'Ir. H. Kepala Dinas, M.T.',
+                                          nipKadis: dispNipPimpinan || '19700101 199803 1 004',
+                                        });
+                                      } else {
+                                        htmlContent = `<html><head><title>Surat Hasil Perhitungan</title><style>body{font-family:'Times New Roman',serif;padding:40px;text-align:center;line-height:1.6;}h1{font-size:20px;font-weight:bold;text-transform:uppercase;margin-bottom:20px;}.content{text-align:justify;margin:40px 0;font-size:14px;}.signature{text-align:right;margin-top:60px;font-size:14px;}</style></head><body><h1>Pemerintah Kabupaten Garut<br/>${dinasConfig?.namaDinas || 'Dinas Pekerjaan Umum dan Penataan Ruang'}</h1><hr style="border:2px solid black;margin-bottom:30px;"/><h2><u>SURAT HASIL PERHITUNGAN PENILAIAN KERUSAKAN BANGUNAN</u></h2><p>Nomor: ${selectedAssessment.id.split('-')[0].toUpperCase()}/PUPR/${new Date().getFullYear()}</p><div class="content"><p>Berdasarkan hasil survei teknis dan analisis kerusakan pada:</p><table style="width:100%;text-align:left;margin:20px 0;"><tr><td width="30%">Nama Instansi</td><td>: ${selectedAssessment.schoolName}</td></tr><tr><td>Nama Bangunan</td><td>: ${selectedAssessment.buildingName}</td></tr><tr><td>Total Kerusakan</td><td>: ${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%</td></tr><tr><td>Kategori</td><td>: ${selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan'}</td></tr></table><p>Maka dengan ini ditetapkan tingkat kerusakan bangunan tersebut sah sesuai standar operasional yang berlaku.</p></div><div class="signature"><p>Ditetapkan di Tempat</p><p>Tanggal: ${new Date().toLocaleDateString('id-ID')}</p><br/><br/><br/><p><b><u>${dispNamaPimpinan || 'Ir. H. KEPALA DINAS, M.T.'}</u></b></p><p>NIP. ${dispNipPimpinan || '19700101 199803 1 004'}</p></div><script>window.print();</script></body></html>`;
+                                      }
+                                      printWindow.document.write(htmlContent);
+                                      printWindow.document.close();
+                                    }
+                                  }}
+                                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm"
+                                >
+                                  <FileText className="w-4 h-4" />
+                                  Cetak Surat Hasil Perhitungan
+                                </button>
+
+                                {suratHasilDriveLink && (
+                                  <a href={suratHasilDriveLink} target="_blank" rel="noreferrer"
+                                    className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm">
+                                    <FileText className="w-4 h-4" /> Unduh Template Asli (Word)
+                                  </a>
+                                )}
+
+                                <button
+                                  onClick={() => {
+                                    if (!selectedAssessment) return;
+                                    const wsData = [
+                                      ["LAMPIRAN PERHITUNGAN VOLUME KERUSAKAN BANGUNAN"], [],
+                                      ["Nama Sekolah/Instansi", selectedAssessment.schoolName],
+                                      ["Nama Bangunan", selectedAssessment.buildingName],
+                                      ["Tanggal Penilaian", new Date().toLocaleDateString('id-ID')], [],
+                                      ["Total Kerusakan", `${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%`],
+                                      ["Kategori", selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan'], [],
+                                      ["No", "Komponen", "Bobot (%)", "Klasifikasi Kerusakan", "Volume (%)", "Nilai Kerusakan"]
+                                    ];
+                                    const ws = XLSX.utils.aoa_to_sheet(wsData);
+                                    ws['!cols'] = [{wch:5},{wch:35},{wch:12},{wch:25},{wch:12},{wch:15}];
+                                    const wb = XLSX.utils.book_new();
+                                    XLSX.utils.book_append_sheet(wb, ws, "Lampiran");
+                                    XLSX.writeFile(wb, `Lampiran_Kerusakan_${selectedAssessment.schoolName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
+                                  }}
+                                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm"
+                                >
+                                  <Table className="w-4 h-4" />
+                                  Cetak Lampiran Perhitungan Excel
+                                </button>
+
+                                {lampiranExcelDriveLink && (
+                                  <a href={lampiranExcelDriveLink} target="_blank" rel="noreferrer"
+                                    className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm">
+                                    <Table className="w-4 h-4" /> Unduh Template Asli (Excel)
+                                  </a>
+                                )}
+                              </div>
+                            )}
                           </div>
-                          <p className="text-[10px] text-emerald-700 font-medium">
-                            Berkas telah dianalisis (Tim Teknis) & diverifikasi (Kabid). Silakan tandatangani dan terbitkan hasil penilaian resmi.
-                          </p>
-                          <button
-                            onClick={() => {
-                              if (window.confirm("Apakah Anda yakin ingin mengesahkan dan menerbitkan hasil penilaian ini? Status akan berubah menjadi Arsip Digital.")) {
-                                setAssessments(assessments.map(a => a.id === selectedAssessment.id ? { ...a, status: "Arsip_Digital" } : a));
-                                setSelectedAssessment(prev => prev ? { ...prev, status: "Arsip_Digital" } : null);
-                                setDispStatus("Arsip_Digital");
-                                apiFetch(`/api/assessments/${selectedAssessment.id}/status`, {
-                                  method: "PUT",
-                                  headers: getAuditHeaders(),
-                                  body: JSON.stringify({ status: "Arsip_Digital" })
-                                }).then(() => alert("Berhasil menerbitkan dokumen resmi!")).catch(console.error);
-                              }
-                            }}
-                            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm"
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                            Tandatangani & Terbitkan Resmi
-                          </button>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
   
                     {/* Recall / Re-disposisi Section */}
                     <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
@@ -447,9 +516,9 @@ export default function DisposisiDetailModal({
                               className="text-xs w-full p-2 border border-slate-200 rounded-lg focus:ring-rose-500 focus:border-rose-500 bg-white font-semibold text-slate-700"
                             >
                               <option value="Menunggu_Validasi">Menunggu Validasi (Tahap Awal)</option>
-                              <option value="Verifikasi_Berkas">Verifikasi Berkas</option>
                               <option value="Survei_Lapangan">Survei Lapangan</option>
                               <option value="Selesai_Dianalisis">Selesai Dianalisis</option>
+                              <option value="Menunggu_Pengesahan">Menunggu Pengesahan</option>
                             </select>
                           </div>
   

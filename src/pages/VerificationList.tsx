@@ -80,28 +80,33 @@ export default function VerificationList() {
 
   const baseTabs = [
     { id: 'Semua', label: 'Semua' },
-    { id: 'Menunggu_Validasi', label: 'Menunggu Validasi (Tim Teknis)' },
-    { id: 'Menunggu_TTE_Koordinator', label: 'TTE Koordinator' },
-    { id: 'Menunggu_TTE_Kabid', label: 'TTE Kabid' },
-    { id: 'Menunggu_Validasi_Kadis', label: 'Validasi Kadis' },
+    { id: 'Menunggu_Validasi', label: 'Menunggu Validasi' },
     { id: 'Survei_Lapangan', label: 'Survei Lapangan' },
     { id: 'Selesai_Dianalisis', label: 'Selesai Dianalisis' },
+    { id: 'Menunggu_Pengesahan', label: 'Menunggu Pengesahan' },
     { id: 'Arsip_Digital', label: 'Arsip Digital' },
   ];
   
   // Filter tabs based on role for better UX
   const tabs = baseTabs.filter(t => {
     if (t.id === 'Semua') return true;
-    if (activeRole === 'Tim_Teknis') return ['Menunggu_Validasi', 'Survei_Lapangan', 'Selesai_Dianalisis'].includes(t.id);
-    if (activeRole === 'Koordinator') return ['Menunggu_TTE_Koordinator', 'Selesai_Dianalisis'].includes(t.id);
-    if (activeRole === 'Kabid') return ['Menunggu_TTE_Kabid', 'Selesai_Dianalisis'].includes(t.id);
-    if (activeRole === 'Kadis') return ['Menunggu_Validasi_Kadis', 'Arsip_Digital'].includes(t.id);
+    if (activeRole === 'Tim_Teknis' || activeRole === 'Petugas_Survey') return ['Menunggu_Validasi', 'Survei_Lapangan', 'Selesai_Dianalisis'].includes(t.id);
+    if (activeRole === 'Koordinator') return ['Menunggu_Pengesahan', 'Selesai_Dianalisis'].includes(t.id);
+    if (activeRole === 'Kabid') return ['Menunggu_Pengesahan', 'Selesai_Dianalisis'].includes(t.id);
+    if (activeRole === 'Kadis') return ['Menunggu_Pengesahan', 'Arsip_Digital'].includes(t.id);
     return true; // Administrator sees all
   });
 
+  // Normalize statuses for filtering (backward compat with old data)
+  const normalizeStatusLocal = (s: string) => {
+    if (s === 'Verifikasi_Berkas') return 'Menunggu_Validasi';
+    if (s === 'Menunggu_TTE_Koordinator' || s === 'Menunggu_TTE_Kabid' || s === 'Menunggu_Validasi_Kadis') return 'Menunggu_Pengesahan';
+    return s;
+  };
+
   const filteredAssessments = activeTab === 'Semua' 
     ? assessments 
-    : assessments.filter(a => (a.status || 'Menunggu_Validasi') === activeTab);
+    : assessments.filter(a => normalizeStatusLocal(a.status || 'Menunggu_Validasi') === activeTab);
 
   useEffect(() => {
     if (selectedAssessment) {
