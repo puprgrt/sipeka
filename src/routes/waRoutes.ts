@@ -86,11 +86,16 @@ router.get("/media/:jid/:id", async (req, res) => {
 
 router.post("/send", async (req, res) => {
   try {
-    const { jid, text } = req.body;
-    if (!jid || !text) {
-      return res.status(400).json({ error: "jid and text are required" });
+    const { jid, text, fileUrl, fileBase64, fileName, mimetype } = req.body;
+    if (!jid) {
+      return res.status(400).json({ error: "jid is required" });
     }
-    const result = await sendMessage(jid, text);
+    const result = await sendMessage(jid, text || "", {
+      fileUrl,
+      fileBase64,
+      fileName,
+      mimetype
+    });
     res.json({ success: true, result });
   } catch (error: any) {
     res.status(500).json({ error: error.message });

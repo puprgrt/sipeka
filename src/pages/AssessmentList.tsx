@@ -4,6 +4,7 @@ import { useLocation, Link } from "react-router-dom";
 import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI, DAMAGE_MULTIPLIERS } from "../types";
 import EditAssessmentModal from "../components/assessment/EditAssessmentModal";
 import AssessmentDetailModal from "../components/assessment/AssessmentDetailModal";
+import WaSendModal from "../components/WaSendModal";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { getAuditHeaders, getDirectImageUrl, parsePhotos, cn } from "../lib/utils";
@@ -18,7 +19,7 @@ import DocumentPreviewModal from "../components/DocumentPreviewModal";
 import { 
   Eye, Clock, Calendar, Building, MapPin, FileText, 
   CheckCircle2, User, Loader2, ArrowRight, ExternalLink, X, HelpCircle, Edit, Trash2, PlusCircle,
-  Search, Filter, ArrowUpDown, SlidersHorizontal, RefreshCw
+  Search, Filter, ArrowUpDown, SlidersHorizontal, RefreshCw, MessageCircle
 } from "lucide-react";
 import { STATUS_TABS, STATUS_OPTIONS, getStatusBadgeClasses, formatStatusText } from "../lib/statusUtils";
 
@@ -29,6 +30,7 @@ export default function AssessmentList() {
   const [activeTab, setActiveTab] = useState("Semua");
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null | undefined>(null);
+  const [waModalAssessment, setWaModalAssessment] = useState<Assessment | null>(null);
   
   const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
   const [editForm, setEditForm] = useState({
@@ -686,6 +688,14 @@ export default function AssessmentList() {
               <Eye className="w-3 h-3 mr-1" />
               Detail
             </button>
+            <button 
+              onClick={() => setWaModalAssessment(assessment)} 
+              className="inline-flex items-center text-[10px] font-bold uppercase tracking-widest text-emerald-600 hover:text-emerald-900 hover:bg-emerald-50 border border-emerald-200/60 px-2 py-1.5 rounded-lg transition-colors"
+              title="Kirim Pesan & Dokumen WhatsApp"
+            >
+              <MessageCircle className="w-3 h-3 mr-1" />
+              Kirim WA
+            </button>
             {activeRole === "Tim_Teknis" && assessment.status === "Survei_Lapangan" && (
               <Link 
                 to={`/new?edit=${assessment.id}`}
@@ -995,6 +1005,12 @@ export default function AssessmentList() {
               isOpen={!!previewUrl}
               onClose={() => setPreviewUrl(null)}
               documentUrl={previewUrl || null}
+            />
+
+            <WaSendModal
+              isOpen={!!waModalAssessment}
+              onClose={() => setWaModalAssessment(null)}
+              assessment={waModalAssessment}
             />
 
             <div className="bg-white/80 backdrop-blur-sm rounded-xl overflow-hidden shadow-sm">

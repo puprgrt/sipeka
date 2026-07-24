@@ -245,7 +245,7 @@ export const getContacts = async () => {
   return store.contacts;
 };
 
-export const sendMessage = async (jid: string, text: string) => {
+export const sendMessage = async (jid: string, text: string, options?: { fileUrl?: string, fileBase64?: string, fileName?: string, mimetype?: string }) => {
   if (!isConnected || !sock) {
     throw new Error("WhatsApp is not connected");
   }
@@ -255,5 +255,30 @@ export const sendMessage = async (jid: string, text: string) => {
     jid = `${jid}@s.whatsapp.net`;
   }
 
-  return await sock.sendMessage(jid, { text });
+  let messagePayload: any = { text };
+
+  if (options?.fileBase64 || options?.fileUrl) {
+    const mimetype = options.mimetype || "application/pdf";
+    const fileName = options.fileName || "document.pdf";
+    
+    if (options.fileBase64) {
+      // If it's base64 (e.g. data URI), strip the prefix if it exists
+      const base64Data = options.fileBase64.replace(/^data:.*,/, "");
+      messagePayload = {
+        document: Buffer.from(base64Data, "base64"),
+        mimetype,
+        fileName,
+        caption: text
+      };
+    } else if (options.fileUrl) {
+      messagePayload = {
+        document: { url: options.fileUrl },
+        mimetype,
+        fileName,
+        caption: text
+      };
+    }
+  }
+
+  return await sock.sendMessage(jid, messagePayload);
 };
