@@ -68,7 +68,7 @@ export const startWhatsApp = async () => {
       auth: state,
       printQRInTerminal: false,
       logger,
-      browser: Browsers.macOS("Desktop"),
+      browser: Browsers.ubuntu("Chrome"),
       syncFullHistory: false // Don't download all history to save memory/speed
     });
 
