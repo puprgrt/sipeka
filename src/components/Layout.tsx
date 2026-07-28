@@ -498,21 +498,18 @@ export default function Layout() {
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center gap-2 hidden sm:flex">
+          <div className="flex items-center gap-2.5 hidden sm:flex">
             <img 
-              src={appSettings.logoKiri} 
-              alt="Logo Kiri" 
-              className="w-8 h-8 object-contain"
-              referrerPolicy="no-referrer"
+              src="/sipeka-logo.png" 
+              alt="Logo SIPEKA" 
+              className="w-9 h-9 object-contain drop-shadow-sm"
             />
-            <img 
-              src={appSettings.logoKanan} 
-              alt="Logo Kanan" 
-              className="w-8 h-8 object-contain"
-              referrerPolicy="no-referrer"
-            />
+            <div className="flex flex-col">
+              <h1 className="text-lg font-extrabold text-pu-blue dark:text-white tracking-tight uppercase theme-transition leading-none">SI-PEKA</h1>
+              <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 tracking-wider uppercase leading-none">Penilaian Keandalan Bangunan</span>
+            </div>
           </div>
-          <h1 className="text-xl font-extrabold text-pu-blue dark:text-white tracking-tight uppercase theme-transition">SI-PEKA <span className="font-medium text-pu-yellow font-mono text-sm tracking-normal">v1.0</span></h1>
+          <h1 className="text-xl font-extrabold text-pu-blue dark:text-white tracking-tight uppercase theme-transition sm:hidden">SI-PEKA <span className="font-medium text-pu-yellow font-mono text-sm tracking-normal">v1.0</span></h1>
         </div>
         <div className="flex items-center gap-4 sm:gap-6">
           {/* Online/Offline Floating Status Indicator */}
@@ -644,21 +641,27 @@ export default function Layout() {
             "flex flex-col items-center gap-2 bg-white/10 dark:bg-white/5 rounded-xl text-center shrink-0 border border-white/10 dark:border-white/5 theme-transition transition-all duration-300",
             isSidebarCollapsed ? "md:p-1.5 md:mb-2 p-3 mb-3" : "p-3 mb-3"
           )}>
-            <div className={cn("flex items-center transition-all duration-300", isSidebarCollapsed ? "md:flex-col md:gap-1.5 gap-3" : "gap-3")}>
+            {/* SIPEKA App Logo */}
+            <img 
+              src="/sipeka-logo.png" 
+              alt="Logo SIPEKA" 
+              className={cn("object-contain drop-shadow-lg transition-all duration-300", isSidebarCollapsed ? "md:w-10 md:h-10 w-12 h-12" : "w-12 h-12")}
+            />
+            <div className={cn("flex items-center gap-2 transition-all duration-300", isSidebarCollapsed ? "md:hidden" : "")}>
               <img 
                 src={appSettings.logoKiri} 
-                alt="Logo Kiri" 
-                className={cn("object-contain drop-shadow-md transition-all duration-300", isSidebarCollapsed ? "md:w-7 md:h-7 w-9 h-9" : "w-9 h-9")}
+                alt="Logo Garut" 
+                className="w-6 h-6 object-contain opacity-80"
                 referrerPolicy="no-referrer"
               />
               <img 
                 src={appSettings.logoKanan} 
-                alt="Logo Kanan" 
-                className={cn("object-contain drop-shadow-md transition-all duration-300", isSidebarCollapsed ? "md:hidden block w-9 h-9" : "w-9 h-9")}
+                alt="Logo PUPR" 
+                className="w-6 h-6 object-contain opacity-80"
                 referrerPolicy="no-referrer"
               />
             </div>
-            <div className={cn("mt-1 transition-all duration-300", isSidebarCollapsed ? "md:hidden" : "")}>
+            <div className={cn("transition-all duration-300", isSidebarCollapsed ? "md:hidden" : "")}>
               <p className="text-[10px] font-black text-white dark:text-slate-100 uppercase tracking-wider leading-tight theme-transition">PEMKAB GARUT</p>
               <p className="text-[9px] font-medium text-blue-200 dark:text-slate-400 leading-tight theme-transition">Dinas Pekerjaan Umum & Penataan Ruang</p>
             </div>

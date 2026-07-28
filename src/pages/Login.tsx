@@ -365,15 +365,22 @@ export default function Login() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img 
-                src={appSettings.logoKiri} 
-                alt="Logo Kiri" 
-                className="w-10 h-10 object-contain drop-shadow-lg"
+                src="/sipeka-logo.png" 
+                alt="Logo SIPEKA" 
+                className="w-12 h-12 object-contain drop-shadow-lg"
               />
-              <img 
-                src={appSettings.logoKanan} 
-                alt="Logo Kanan" 
-                className="w-10 h-10 object-contain drop-shadow-lg"
-              />
+              <div className="flex items-center gap-1.5">
+                <img 
+                  src={appSettings.logoKiri} 
+                  alt="Logo Garut" 
+                  className="w-7 h-7 object-contain opacity-80"
+                />
+                <img 
+                  src={appSettings.logoKanan} 
+                  alt="Logo PUPR" 
+                  className="w-7 h-7 object-contain opacity-80"
+                />
+              </div>
             </div>
             <span className="bg-white/15 px-2 py-0.5 rounded text-[10px] font-mono text-pu-yellow font-extrabold uppercase tracking-widest">v1.0-PRO</span>
           </div>
@@ -384,7 +391,7 @@ export default function Login() {
               SI-PEKA
             </h1>
             <p className="text-sm font-semibold text-pu-yellow uppercase tracking-widest font-mono">
-              Sistem Penilaian Kerusakan Bangunan
+              Sistem Penilaian Keandalan Bangunan
             </p>
             <p className="text-xs text-slate-300 leading-relaxed">
               Platform inspeksi visual digital terintegrasi untuk pendataan, penilaian mandiri, verifikasi, dan pemetaan tingkat kerusakan bangunan sekolah di Kabupaten Garut berdasarkan standar formulir Kementerian PUPR.

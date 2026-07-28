@@ -117,40 +117,39 @@ export default function LoadingSplash() {
           initial={{ opacity: 0, scale: 0.85 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="relative flex items-center justify-center gap-6 mb-8"
+          className="relative flex flex-col items-center justify-center gap-4 mb-8"
         >
           {/* Animated Orbiting Ring behind Logos */}
-          <div className="absolute w-32 h-32 rounded-full border border-dashed border-white/10 animate-[spin_40s_linear_infinite]" />
-          <div className="absolute w-36 h-36 rounded-full border border-blue-500/5 animate-[spin_20s_linear_infinite_reverse]" />
+          <div className="absolute w-36 h-36 rounded-full border border-dashed border-white/10 animate-[spin_40s_linear_infinite]" />
+          <div className="absolute w-40 h-40 rounded-full border border-blue-500/5 animate-[spin_20s_linear_infinite_reverse]" />
 
-          {/* Garut Regency Emblem */}
+          {/* SIPEKA Main Logo */}
           <motion.div
             animate={{ y: [0, -4, 0] }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="relative z-10 bg-slate-900/60 p-4 rounded-2xl border border-white/5 shadow-xl backdrop-blur-md"
+            className="relative z-10 bg-slate-900/60 p-5 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-md"
           >
+            <img 
+              src="/sipeka-logo.png" 
+              alt="Logo SIPEKA" 
+              className="w-20 h-20 object-contain filter drop-shadow-[0_4px_16px_rgba(30,58,138,0.4)]"
+            />
+          </motion.div>
+
+          {/* Government Logos (smaller, below) */}
+          <div className="flex items-center gap-4 z-10">
             <img 
               src={appSettings.logoKiri} 
-              alt="Logo Kiri" 
-              className="w-14 h-14 object-contain filter drop-shadow-[0_4px_12px_rgba(30,58,138,0.3)]"
+              alt="Logo Kab. Garut" 
+              className="w-8 h-8 object-contain opacity-70 drop-shadow-md"
             />
-          </motion.div>
-
-          {/* Connecting Pulse Line */}
-          <div className="w-4 h-[1px] bg-gradient-to-r from-blue-500/30 to-amber-500/30" />
-
-          {/* PUPR Ministry Emblem */}
-          <motion.div
-            animate={{ y: [0, 4, 0] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-            className="relative z-10 bg-slate-900/60 p-4 rounded-2xl border border-white/5 shadow-xl backdrop-blur-md"
-          >
+            <div className="w-3 h-[1px] bg-gradient-to-r from-blue-500/30 to-amber-500/30" />
             <img 
               src={appSettings.logoKanan} 
-              alt="Logo Kanan" 
-              className="w-14 h-14 object-contain filter drop-shadow-[0_4px_12px_rgba(180,83,9,0.3)]"
+              alt="Logo PUPR" 
+              className="w-8 h-8 object-contain opacity-70 drop-shadow-md"
             />
-          </motion.div>
+          </div>
         </motion.div>
 
         {/* Text Titles */}
@@ -164,7 +163,7 @@ export default function LoadingSplash() {
             SI-PEKA
           </h1>
           <p className="text-xs font-extrabold tracking-[0.2em] text-amber-400 uppercase font-mono">
-            Sistem Penilaian Kerusakan Bangunan
+            Sistem Penilaian Keandalan Bangunan
           </p>
           <div className="flex items-center justify-center gap-1.5 mt-2">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
