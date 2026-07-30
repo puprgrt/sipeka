@@ -9,6 +9,7 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
     "db:seed": "tsx src/db/seed_pupr_components.ts",
+    "db:migrate": "npx drizzle-kit push --config src/db/drizzle.config.ts --force",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

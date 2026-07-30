@@ -48,8 +48,9 @@ Anda tidak bisa menggunakan `localhost` untuk database di *production*. Anda mem
 2. Ubah sementara variabel `DATABASE_URL` dengan *Connection String* database online yang baru didapat.
 3. Buka terminal di VS Code, lalu jalankan perintah migrasi skema Drizzle:
    ```bash
-   npx drizzle-kit push
+   npx drizzle-kit push --config src/db/drizzle.config.ts --force
    ```
+   Jika Anda sudah menambahkan `DATABASE_URL` ke file `.env`, perintah ini akan menggunakan konfigurasi Drizzle di `src/db/drizzle.config.ts` dan melewati prompt interaktif.
 4. *Opsional*: Jika Anda memiliki script _seeder_ untuk data awal, jalankan:
    ```bash
    npm run db:seed

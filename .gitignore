@@ -12,3 +12,4 @@ test_*.js
 test_*.cjs
 *.pem
 wa_auth/
+.vs/
