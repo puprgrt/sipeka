@@ -10,6 +10,16 @@ import { sendPushNotification } from '../utils/firebaseAdmin';
 import { Assessment } from '../types';
 
 
+const parseCustomFields = (raw: string | null | undefined, buildingId: number | null) => {
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Invalid customFields JSON for building ${buildingId ?? 'unknown'}: ${message}`);
+  }
+};
+
 export const get_assessments = async (req: express.Request, res: express.Response) => {
   try {
     const permohonans = await db.select().from(schema.permohonanPenilaian);
