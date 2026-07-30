@@ -530,6 +530,57 @@ export function useAssessmentForm() {
     setHasDraft(false);
   };
 
+  const isPersistablePhotoUrl = (value: any) => {
+    return typeof value === "string" && value.length > 0 && !value.startsWith("data:") && !value.startsWith("blob:");
+  };
+
+  const sanitizeDraftPhotos = (photoArray: any[]) => {
+    if (!Array.isArray(photoArray)) return [];
+    return photoArray.filter(isPersistablePhotoUrl);
+  };
+
+  const sanitizeDraftComponents = (componentArray: any[]) => {
+    if (!Array.isArray(componentArray)) return [];
+    return componentArray.map((comp) => ({
+      ...comp,
+      damageDetails: Array.isArray(comp.damageDetails)
+        ? comp.damageDetails.map((detail: any) => ({
+            ...detail,
+            photos: sanitizeDraftPhotos(detail.photos || []),
+          }))
+        : [],
+    }));
+  };
+
+  const tryPersistDraft = (draftData: any) => {
+    try {
+      localStorage.setItem("assessment_form_draft", JSON.stringify(draftData));
+      setLastSaved(new Date());
+      setSaveStatus("Tersimpan");
+      return true;
+    } catch (err: any) {
+      console.error("Failed saving assessment draft to localStorage", err);
+      if (err instanceof DOMException && err.name === "QuotaExceededError") {
+        const reducedDraft = {
+          ...draftData,
+          photos: [],
+          components: draftData.components ? sanitizeDraftComponents(draftData.components) : [],
+        };
+
+        try {
+          localStorage.setItem("assessment_form_draft", JSON.stringify(reducedDraft));
+          setLastSaved(new Date());
+          setSaveStatus("Tersimpan");
+          return true;
+        } catch (innerErr) {
+          console.error("Failed saving reduced assessment draft", innerErr);
+        }
+      }
+      setSaveStatus("Idle");
+      return false;
+    }
+  };
+
   // Debounced auto-save effect
   useEffect(() => {
     if (!isDirty) return;
@@ -549,16 +600,14 @@ export function useAssessmentForm() {
         buildingArea,
         floorCount,
         coordinates,
-        photos,
+        photos: sanitizeDraftPhotos(photos),
         dynamicValues,
         safetyChecks,
-        components,
+        components: sanitizeDraftComponents(components),
         step,
-        savedAt: new Date().toISOString()
+        savedAt: new Date().toISOString(),
       };
-      localStorage.setItem("assessment_form_draft", JSON.stringify(draftData));
-      setLastSaved(new Date());
-      setSaveStatus("Tersimpan");
+      tryPersistDraft(draftData);
     }, 1500); // 1.5 seconds debounce
 
     return () => clearTimeout(timer);
