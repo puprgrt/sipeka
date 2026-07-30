@@ -28,7 +28,20 @@ export const get_assessments = async (req: express.Request, res: express.Respons
     // Fetch components
     const tahap1 = await db.select().from(schema.penilaianTahap1Keselamatan);
     const tahap2 = await db.select().from(schema.penilaianTahap2Volume);
-    const compData = await db.select().from(schema.assessmentComponentsData);
+    let compData: any[] = [];
+    try {
+      compData = await db.select().from(schema.assessmentComponentsData);
+    } catch (err: any) {
+      // If the relation/table does not exist in the target database, log a warning
+      // and continue with an empty array so the endpoint doesn't crash in runtime.
+      const msg = String(err?.message || err);
+      if (err?.cause?.code === '42P01' || /relation \"assessment_components_data\" does not exist/.test(msg)) {
+        console.warn('Warning: table assessment_components_data does not exist in DB. Continuing with empty component data.');
+        compData = [];
+      } else {
+        throw err;
+      }
+    }
     const mKomponen = await db.select().from(schema.masterKomponen);
     const mKlasifikasi = await db.select().from(schema.masterKlasifikasiKerusakan);
     
@@ -43,11 +56,12 @@ export const get_assessments = async (req: express.Request, res: express.Respons
 
       let parsedCustomFields: any = {};
       try {
-        if (b && b.customFields) {
-          parsedCustomFields = JSON.parse(b.customFields);
-        }
-      } catch (e) {
-        console.warn("Invalid customFields JSON for building", b?.idBangunan, e);
+        parsedCustomFields = parseCustomFields(b?.customFields, b?.idBangunan ?? null);
+      } catch (e: any) {
+        console.error("Invalid customFields JSON for building", b?.idBangunan, e.message || e);
+        // Throw and let the outer try/catch return an appropriate response instead of
+        // returning inside the map (which caused mixed array types and a TS error).
+        throw new Error(`Invalid building customFields format for building ${b?.idBangunan}: ${e.message || e}`);
       }
       
       const pTahap1 = tahap1.filter(t1 => t1.idPermohonan === p.idPermohonan);

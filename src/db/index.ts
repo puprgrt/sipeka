@@ -1,6 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool, PoolClient } from 'pg';
 import * as schema from './schema.ts';
+import { checkTables } from './checkTables';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -122,4 +123,10 @@ pool.on('error', (err) => {
 
 export const db = drizzle(pool, { schema });
 
+// Run a lightweight table-existence check at startup and log missing tables as warnings.
+// This does not modify the database; it only reports missing tables so operators can
+// run migrations (e.g., `npx drizzle-kit push`) or take corrective actions.
+checkTables(pool).catch((err) => {
+  console.warn('Table existence check failed:', err?.message || err);
+});
 

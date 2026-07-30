@@ -116,6 +116,32 @@ Buka URL aplikasi Anda yang baru secara publik, dan uji coba beberapa hal beriku
 1. **Tes Halaman Utama**: Apakah memuat tanpa error putih?
 2. **Tes Login**: Coba klik tombol "Masuk dengan Google". Pastikan popup Google OAuth terbuka tanpa pesan error otorisasi.
 3. **Tes Database**: Buat permohonan baru atau edit pengaturan sistem, lalu pastikan data tersimpan.
+## Important Post-Deployment DB Steps
+
+1. Rotate any credentials that were accidentally committed to the repository. If a real DATABASE_URL was committed, revoke the user/password and create a new one. Do NOT keep production credentials in .env files in the repo; use your hosting provider's Secrets/Environment Variables feature.
+
+2. Run schema migrations in staging before production. If you use drizzle-kit, perform:
+
+   ```bash
+   # set DATABASE_URL to your staging DB
+   npx drizzle-kit push
+   # optional: run seeders
+   npm run db:seed
+   ```
+
+3. Create performance indexes and other post-deploy optimizations on staging first. A helper script is included at `scripts/create_indexes.mjs`. Run it with:
+
+   ```bash
+   # set DATABASE_URL to your staging DB
+   node scripts/create_indexes.mjs
+   ```
+
+   Verify queries and migrate indexes to production during a maintenance window.
+
+4. Add a DB migration run step to your deployment checklist/automation where `DATABASE_URL` for the target environment is injected from secure secrets.
+
+5. Back up production data before running any data-destructive migrations.
+
 4. **Tes AI**: Buka Dasbor AI dan tunggu apakah analisis kerusakan AI dari Gemini muncul. Jika muncul, koneksi ke Google AI Studio berhasil.
 5. **Tes Pencadangan Sistem (Double Upload)**: Buat dokumen "Laporan Penilaian" (PDF) atau "Surat Permohonan" lalu cek *File Manager*. Pastikan daftar dokumen di-load dengan benar (koneksi Database) dan periksa apakah file tersebut masuk ke Google Drive sistem (koneksi Service Account).
 
