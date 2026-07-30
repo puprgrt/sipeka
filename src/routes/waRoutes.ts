@@ -90,6 +90,19 @@ router.post("/send", async (req, res) => {
     if (!jid) {
       return res.status(400).json({ error: "jid is required" });
     }
+
+    const status = getWhatsAppStatus();
+    if (status.status !== "connected") {
+      return res.status(503).json({
+        error: "WhatsApp service is not connected. Please start/verify the WhatsApp connection first.",
+        status,
+      });
+    }
+
+    if (!text && !fileUrl && !fileBase64) {
+      return res.status(400).json({ error: "Either text or file content must be provided." });
+    }
+
     const result = await sendMessage(jid, text || "", {
       fileUrl,
       fileBase64,
@@ -98,7 +111,8 @@ router.post("/send", async (req, res) => {
     });
     res.json({ success: true, result });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error("POST /api/wa/send error", error);
+    res.status(500).json({ error: error.message || "Failed to send WhatsApp message" });
   }
 });
 

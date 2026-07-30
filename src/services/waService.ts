@@ -245,40 +245,57 @@ export const getContacts = async () => {
   return store.contacts;
 };
 
-export const sendMessage = async (jid: string, text: string, options?: { fileUrl?: string, fileBase64?: string, fileName?: string, mimetype?: string }) => {
-  if (!isConnected || !sock) {
-    throw new Error("WhatsApp is not connected");
-  }
-  
-  // Format jid correctly if it's just a number
-  if (!jid.includes("@")) {
-    jid = `${jid}@s.whatsapp.net`;
+const normalizeJid = (jid: string) => {
+  let normalized = jid.trim();
+  if (!normalized) {
+    throw new Error("jid is required");
   }
 
-  let messagePayload: any = { text };
+  if (!normalized.includes("@")) {
+    const digitsOnly = normalized.replace(/[^\d]/g, "");
+    if (!digitsOnly) {
+      throw new Error("jid must contain a valid phone number or WhatsApp ID");
+    }
+    normalized = `${digitsOnly}@s.whatsapp.net`;
+  }
+
+  return normalized;
+};
+
+export const sendMessage = async (jid: string, text: string, options?: { fileUrl?: string, fileBase64?: string, fileName?: string, mimetype?: string }) => {
+  if (!isConnected || !sock) {
+    throw new Error("WhatsApp is not connected. Please link your device first via the WhatsApp Center or call /api/wa/start.");
+  }
+
+  const normalizedJid = normalizeJid(jid);
+  let messagePayload: any = { text: text || "" };
 
   if (options?.fileBase64 || options?.fileUrl) {
     const mimetype = options.mimetype || "application/pdf";
     const fileName = options.fileName || "document.pdf";
     
     if (options.fileBase64) {
-      // If it's base64 (e.g. data URI), strip the prefix if it exists
       const base64Data = options.fileBase64.replace(/^data:.*,/, "");
       messagePayload = {
         document: Buffer.from(base64Data, "base64"),
         mimetype,
         fileName,
-        caption: text
+        caption: text || ""
       };
     } else if (options.fileUrl) {
       messagePayload = {
         document: { url: options.fileUrl },
         mimetype,
         fileName,
-        caption: text
+        caption: text || ""
       };
     }
   }
 
-  return await sock.sendMessage(jid, messagePayload);
+  try {
+    return await sock.sendMessage(normalizedJid, messagePayload);
+  } catch (error: any) {
+    console.error("WA sendMessage failed", { jid: normalizedJid, payload: messagePayload, error });
+    throw new Error(`Failed to send WhatsApp message: ${error?.message || String(error)}`);
+  }
 };
