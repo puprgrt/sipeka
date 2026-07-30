@@ -17,7 +17,8 @@ const createSupabaseStub = () => ({
     signInWithOAuth: async () => ({ error: null }),
     signOut: async () => ({ error: null }),
     updateUser: async () => ({ error: null }),
-    resetPasswordForEmail: async () => ({ error: null })
+    resetPasswordForEmail: async () => ({ error: null }),
+    getSession: async () => ({ data: { session: null }, error: null }),
   }
 });
 

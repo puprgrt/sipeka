@@ -64,10 +64,10 @@ app.use("/api", (req, res, next) => {
   }
 
   const publicPaths = [
-    { method: "GET", path: "/api/health" },
-    { method: "GET", path: "/api/app-settings" },
-    { method: "POST", path: "/api/auth/verify-turnstile" },
-    { method: "GET", regex: /^\/api\/assessments\/[a-zA-Z0-9_-]+\/validate-public$/ },
+    { method: "GET", path: "/health" },
+    { method: "GET", path: "/app-settings" },
+    { method: "POST", path: "/auth/verify-turnstile" },
+    { method: "GET", regex: /^\/assessments\/[a-zA-Z0-9_-]+\/validate-public$/ },
   ];
 
   const isPublic = publicPaths.some(p => {
