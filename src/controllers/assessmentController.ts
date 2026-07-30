@@ -7,7 +7,7 @@ import { initMasterData } from '../utils/masterData';
 import { broadcastNotification } from '../utils/sseManager';
 import { sendPushNotification } from '../utils/firebaseAdmin';
 
-import { Assessment } from '../types';
+import { Assessment, DAMAGE_MULTIPLIERS, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI } from '../types';
 
 
 const parseCustomFields = (raw: string | null | undefined, buildingId: number | null) => {
@@ -167,6 +167,45 @@ export const get_assessments = async (req: express.Request, res: express.Respons
     res.status(500).json({ error: "Failed to fetch assessments" });
   }
 };
+
+// Compute finalResult from components server-side as a fallback when client doesn't provide it
+function computeFinalResultServer(components: any[], floorCount: number | undefined) {
+  if (!Array.isArray(components) || components.length === 0) {
+    return { totalDamagePercentage: 0, category: 'Ringan' };
+  }
+
+  const weights = floorCount === 2 ? COMPONENT_WEIGHTS_2_LANTAI : (floorCount && floorCount >= 3) ? COMPONENT_WEIGHTS_3_LANTAI : COMPONENT_WEIGHTS_1_LANTAI;
+
+  let hasSafetyImpact = false;
+  let totalDamagePercentage = 0;
+
+  for (const comp of components) {
+    const weight = weights[comp.name] || 0;
+    if (weight === 0) continue;
+    if (comp.safetyImpact) hasSafetyImpact = true;
+
+    let componentDamageValue = 0;
+    if (Array.isArray(comp.damageDetails)) {
+      for (const detail of comp.damageDetails) {
+        const multiplier = DAMAGE_MULTIPLIERS[detail.level] || 0;
+        const volumeFraction = (Number(detail.percentage) || 0) / 100;
+        componentDamageValue += volumeFraction * multiplier;
+      }
+    }
+
+    componentDamageValue = Math.min(componentDamageValue, 1.0);
+    totalDamagePercentage += componentDamageValue * weight;
+  }
+
+  let category: 'Ringan' | 'Sedang' | 'Berat' = 'Ringan';
+  if (hasSafetyImpact || totalDamagePercentage > 45) {
+    category = 'Berat';
+  } else if (totalDamagePercentage > 30) {
+    category = 'Sedang';
+  }
+
+  return { totalDamagePercentage, category };
+}
 
 export const post_seed_sample_building = async (req: express.Request, res: express.Response) => {
   try {
@@ -354,11 +393,17 @@ export const post_assessments = async (req: express.Request, res: express.Respon
     };
     const kesimpulan = categoryMap[payload.finalResult.category] || 'Rusak Ringan';
     
+    // Ensure we have a valid finalResult; compute server-side if client omitted or it's zero
+    let finalResultToUse = payload.finalResult;
+    if (!finalResultToUse || typeof finalResultToUse.totalDamagePercentage !== 'number' || finalResultToUse.totalDamagePercentage <= 0) {
+      finalResultToUse = computeFinalResultServer(payload.components || [], payload.floorCount);
+    }
+
     const [permohonan] = await db.insert(schema.permohonanPenilaian).values({
       idBangunan: finalIdBangunan,
-      totalPersentaseKerusakan: payload.finalResult.totalDamagePercentage.toString(),
+      totalPersentaseKerusakan: String(finalResultToUse.totalDamagePercentage),
       kesimpulanAkhir: kesimpulan as any,
-      urlDokumenHasilPdf: payload.photos.length > 0 ? payload.photos[0] : null
+      urlDokumenHasilPdf: payload.photos && payload.photos.length > 0 ? payload.photos[0] : null
     }).returning();
 
     // 4. Insert History Penilaian
@@ -438,6 +483,7 @@ export const post_assessments = async (req: express.Request, res: express.Respon
       ...payload,
       id: permohonan.idPermohonan,
       date: permohonan.tanggalPengajuan.toISOString(),
+      finalResult: finalResultToUse,
       customFields: {
         ...customFieldsObj,
         idBangunan: finalIdBangunan
@@ -1138,11 +1184,18 @@ export const put_assessments_by_id = async (req: express.Request, res: express.R
       })
       .where(eq(schema.profilBangunan.idBangunan, p.idBangunan));
       
-    if (finalResult) {
+    // If client provided finalResult, use it; otherwise compute from components as fallback
+    let finalResultToStore = finalResult;
+    if (!finalResultToStore || typeof finalResultToStore.totalDamagePercentage !== 'number' || finalResultToStore.totalDamagePercentage <= 0) {
+      const compsSource = components || (parsedCustomFields as any).components || [];
+      finalResultToStore = computeFinalResultServer(compsSource, b?.jumlahLantai || (floorCount as any) || 1);
+    }
+
+    if (finalResultToStore) {
       await db.update(schema.permohonanPenilaian)
         .set({
-          totalPersentaseKerusakan: String(finalResult.totalDamagePercentage),
-          kesimpulanAkhir: `Rusak ${finalResult.category}` as any,
+          totalPersentaseKerusakan: String(finalResultToStore.totalDamagePercentage),
+          kesimpulanAkhir: `Rusak ${finalResultToStore.category}` as any,
           urlDokumenHasilPdf: documentLink || p.urlDokumenHasilPdf
         })
         .where(eq(schema.permohonanPenilaian.idPermohonan, id));

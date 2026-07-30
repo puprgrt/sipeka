@@ -15,6 +15,10 @@ export function getDirectImageUrl(url: string | null | undefined): string {
   
   try {
     const trimmedUrl = url.trim();
+    if (trimmedUrl.startsWith('data:') || trimmedUrl.startsWith('blob:')) {
+      return trimmedUrl;
+    }
+
     if (!trimmedUrl.startsWith('http') && trimmedUrl.length > 15 && !trimmedUrl.includes(' ')) {
        return `https://drive.google.com/uc?export=view&id=${trimmedUrl}`;
     }
@@ -34,15 +38,22 @@ export function getDirectImageUrl(url: string | null | undefined): string {
 export function parsePhotos(photos: any): string[] {
   if (!photos) return [];
   let photoArr: string[] = [];
-  
   if (Array.isArray(photos)) {
-    photoArr = photos;
+    photoArr = photos.flatMap(p => typeof p === 'string' ? [p] : []);
   } else if (typeof photos === 'string') {
-    photoArr = photos.split(',');
+    photoArr = [photos];
   }
-  
-  // Flatten in case an array element itself contains comma separated strings
-  photoArr = photoArr.flatMap(p => typeof p === 'string' ? p.split(',') : [p]);
+
+  const splitIfNeeded = (value: string) => {
+    const trimmed = value.trim();
+    if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+      return [trimmed];
+    }
+    return trimmed.split(',').map(item => item.trim()).filter(Boolean);
+  };
+
+  // Flatten in case an array element itself contains comma separated strings.
+  photoArr = photoArr.flatMap(p => typeof p === 'string' ? splitIfNeeded(p) : []);
   
   return photoArr.map(p => getDirectImageUrl(p)).filter(p => p !== '');
 }

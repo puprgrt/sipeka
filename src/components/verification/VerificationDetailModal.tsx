@@ -90,6 +90,12 @@ export default function VerificationDetailModal({
                       </div>
                       <div className="flex items-center gap-2">
                         <button
+                          onClick={() => { setSelectedAssessment(null); navigate('/verifikasi'); }}
+                          className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors border border-slate-200 flex items-center gap-1.5 shadow-sm"
+                        >
+                          Kembali ke Daftar Verifikasi
+                        </button>
+                        <button
                           onClick={() => navigate(`/new?edit=${selectedAssessment.id}&returnTo=/verifikasi`)}
                           className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors border border-amber-200 flex items-center gap-1.5 shadow-sm"
                         >

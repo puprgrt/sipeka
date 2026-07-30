@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { cn } from "../../lib/utils";
+import { cn, parsePhotos } from "../../lib/utils";
 import { getStatusBadgeClasses, formatStatusText } from "../../lib/statusUtils";
 
 interface AssessmentDetailModalProps {
@@ -38,16 +38,7 @@ export default function AssessmentDetailModal({
 }: AssessmentDetailModalProps) {
   if (!selectedAssessment) return null;
 
-  // Helper function ported over
-  const parsePhotos = (photoStr: string | string[]) => {
-    if (!photoStr) return [];
-    if (Array.isArray(photoStr)) return photoStr;
-    try {
-      return JSON.parse(photoStr);
-    } catch {
-      return [photoStr];
-    }
-  };
+  // Use shared utility to normalize arrays, CSV strings, Drive IDs, and inline data URLs
 
   return (
     <AnimatePresence>
@@ -159,6 +150,29 @@ export default function AssessmentDetailModal({
                   </div>
                 </div>
               )}
+                {parsePhotos(selectedAssessment.photos).length > 0 && (
+                  <div className="pt-2">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase mb-3 tracking-wider">Foto Lampiran Penilaian</span>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {parsePhotos(selectedAssessment.photos).map((photo: string, idx: number) => (
+                        <div
+                          key={idx}
+                          onClick={() => setSmartPreviewPhoto(photo)}
+                          className="relative group w-full h-28 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 cursor-pointer"
+                        >
+                          <img
+                            src={photo}
+                            alt={`Foto Penilaian ${idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
+                          <div className="absolute inset-0 bg-slate-900/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <span className="text-white text-[10px] font-semibold bg-slate-900/60 px-2 py-1 rounded">Lihat Foto</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
               {selectedAssessment.components && selectedAssessment.components.length > 0 && (
                 <div className="pt-2">
