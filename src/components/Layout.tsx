@@ -4,7 +4,8 @@ import { LayoutDashboard, FileCheck, FileText, PlusCircle, Map as MapIcon, LogOu
 import ConflictResolutionModal from "./layout/ConflictResolutionModal";
 import { cn } from "../lib/utils";
 import { useEffect, useState, useRef } from "react";
-import { initAuth, googleSignIn, logout } from "../lib/firebaseAuth";
+import { initAuth, googleSignIn, logout, clearUserSession } from "../lib/firebaseAuth";
+import { isDemoLoginAllowed } from "../lib/clientEnv";
 import { User } from "firebase/auth";
 import { motion } from "motion/react";
 import NotificationBell from "./NotificationBell";
@@ -135,17 +136,9 @@ export default function Layout() {
             }
           }
 
-          const headers = {
-            "Content-Type": "application/json",
-            "x-user-email": localStorage.getItem("userEmail") || "admin@sipeka.com",
-            "x-user-name": localStorage.getItem("userName") || "Sistem Admin",
-            "x-user-role": localStorage.getItem("activeRole") || "Administrator",
-          };
-
-          const response = await fetch(editId ? `/api/assessments/${editId}` : "/api/assessments", {
+          const response = await apiFetch(editId ? `/api/assessments/${editId}` : "/api/assessments", {
             method: editId ? "PUT" : "POST",
-            headers,
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
           });
 
           if (response.ok) {
@@ -261,7 +254,7 @@ export default function Layout() {
       },
       () => {
         const isLocalLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-        if (isLocalLoggedIn) {
+        if (isLocalLoggedIn && isDemoLoginAllowed()) {
           const email = localStorage.getItem("userEmail") || "admin@sipeka.com";
           const name = localStorage.getItem("userName") || "Sistem Admin";
           setUser({
@@ -271,6 +264,9 @@ export default function Layout() {
             uid: localStorage.getItem("activeUserId") || "demo_user",
           } as any);
         } else {
+          if (isLocalLoggedIn) {
+            clearUserSession();
+          }
           setUser(null);
         }
         setAuthLoaded(true);
@@ -345,14 +341,21 @@ export default function Layout() {
 
   useEffect(() => {
     if (user) {
-      if (user.email) localStorage.setItem("userEmail", user.email);
-      if (user.displayName) localStorage.setItem("userName", user.displayName || user.email.split("@")[0]);
-      if (user.email) {
+      const userEmail = user.email ?? "";
+
+      if (userEmail) localStorage.setItem("userEmail", userEmail);
+      if (user.displayName) {
+        localStorage.setItem("userName", user.displayName);
+      } else if (userEmail) {
+        localStorage.setItem("userName", userEmail.split("@")[0]);
+      }
+
+      if (userEmail) {
         apiFetch("/api/users")
           .then(res => res.json())
           .then(data => {
             if (Array.isArray(data)) {
-              const dbUser = data.find(u => u.email === user.email);
+              const dbUser = data.find((u: { email?: string | null }) => u.email === userEmail);
               if (dbUser && dbUser.role) {
                 localStorage.setItem("actualRole", dbUser.role);
                 setActualRole(dbUser.role);
@@ -400,8 +403,28 @@ export default function Layout() {
     
     // Get permissions from localStorage or defaults
     const rolePermissions = getRolePermissions();
-    // Default to a fallback if the activeRole is somehow missing, though it shouldn't be
-    const currentRolePerms = rolePermissions[activeRole]?.permissions || {};
+    const roleKey = activeRole as keyof typeof rolePermissions;
+    const currentRolePerms = (roleKey in rolePermissions ? rolePermissions[roleKey].permissions : {
+      dashboard: true,
+      manageUsers: false,
+      survey: false,
+      disposition: false,
+      reports: false,
+      editKamus: false,
+      showMap: true,
+      showSettings: true,
+      aiEngine: false,
+    }) as {
+      dashboard?: boolean;
+      manageUsers?: boolean;
+      survey?: boolean;
+      disposition?: boolean;
+      reports?: boolean;
+      editKamus?: boolean;
+      showMap?: boolean;
+      showSettings?: boolean;
+      aiEngine?: boolean;
+    };
 
     // Dashboard
     if (currentRolePerms.dashboard !== false || activeRole === "Administrator") {

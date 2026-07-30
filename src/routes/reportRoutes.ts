@@ -4,10 +4,12 @@ import * as schema from '../db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
+import { requireRole } from '../middleware/authMiddleware';
+import { REPORT_ROLES } from '../middleware/rolePolicies';
 
 const router = express.Router();
 
-router.get("/api/reports/batch-export", async (req, res) => {
+router.get("/api/reports/batch-export", requireRole(...REPORT_ROLES), async (req, res) => {
   try {
     const format = req.query.format as string || 'excel';
     

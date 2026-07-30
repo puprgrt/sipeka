@@ -668,62 +668,106 @@ export function useAssessmentForm() {
       }
 
       const pengelolaKop = letterConfig?.pengelola;
-      const kopText = pengelolaKop ? `${pengelolaKop.namaInstansiAtas || "PEMERINTAH KABUPATEN GARUT"}\n${pengelolaKop.namaInstansiBawah || schoolName || "UPTD SATUAN PENDIDIKAN"}\n${getParamLabel("address", "Alamat")}: ${pengelolaKop.alamat || address || "Jl. Raya Pembangunan No. 123"}${pengelolaKop.nomorTelepon ? ` | Telp: ${pengelolaKop.nomorTelepon}` : ""}${pengelolaKop.email ? ` | Email: ${pengelolaKop.email}` : ""}\n=========================================\n\n` : "";
-
       const docTitle = `Surat Permohonan Penilaian Kerusakan - ${schoolName || "Instansi"}`;
-      let docContent = "";
-      
-      if (suratPermohonanTemplate && suratPermohonanTemplate.includes("{{")) {
-        // Use dynamic template
-        docContent = replaceTemplatePlaceholders(suratPermohonanTemplate, {
-          namaInstansiAtas: pengelolaKop?.namaInstansiAtas || "PEMERINTAH KABUPATEN GARUT",
-          namaInstansiBawah: pengelolaKop?.namaInstansiBawah || schoolName || "UPTD SATUAN PENDIDIKAN",
-          alamatPemohon: pengelolaKop?.alamat || address || "Jl. Raya Pembangunan No. 123",
-          nomorSurat: letterReferenceNo,
-          tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-          namaSekolah: schoolName,
-          namaBangunan: buildingName,
-          npsn: npsn,
-          luasBangunan: String(buildingArea),
-          jumlahLantai: String(floorCount),
-          alamatBangunan: address,
-          koordinatGps: coordinates ? `${coordinates.lat}, ${coordinates.lng}` : "-",
-          namaPengirim: pengelolaKop?.namaKepala || "Nama Pengirim",
-          jabatanPengirim: pengelolaKop?.jabatan || "Jabatan",
-          nipPengirim: pengelolaKop?.nipKepala || "-"
-        });
-      } else {
-        // Fallback hardcoded
-        docContent = `${kopText}SURAT PERMOHONAN PENILAIAN KERUSAKAN BANGUNAN GEDUNG
-          
-Nomor Surat: ${letterReferenceNo}
-Perihal: Permohonan Penilaian Kerusakan Fisik Bangunan Gedung
-Tanggal: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+      const letterDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      const templateToUse = `SURAT PERMOHONAN
+PENILAIAN KERUSAKAN BANGUNAN GEDUNG
 
-${getParamLabel("schoolName", "Nama Sekolah / Instansi")}: ${schoolName}
-${getParamLabel("buildingName", "Nama Bangunan")}: ${buildingName}
-${getParamLabel("npsn", "NPSN")}: ${npsn}
-${getParamLabel("buildingArea", "Luas Bangunan")}: ${buildingArea} m²
-${getParamLabel("floorCount", "Jumlah Lantai")}: ${floorCount} Lantai
-${getParamLabel("address", "Alamat")}: ${address}
-Koordinat GPS: ${coordinates ? `Latitude: ${coordinates.lat}, Longitude: ${coordinates.lng}` : "-"}
-`;
-      }
+{{namaInstansiAtas}}
+{{namaInstansiBawah}}
+
+{{namaSekolah}}
+{{alamatPemohon}}
+
+------------------------------------------------------------
+
+Garut, {{tanggal}}
+
+Nomor      : {{nomorSurat}}
+Sifat      : Biasa
+Lampiran   : 1 (satu) berkas
+Hal        : Permohonan Penilaian Kerusakan Bangunan Gedung
+            {{namaSekolah}}
+
+Yth.
+Kepala Dinas Pekerjaan Umum dan Penataan Ruang Kabupaten Garut
+Di Garut
+
+Dengan hormat,
+
+Dalam rangka menjamin keselamatan, keamanan, kenyamanan,
+dan keberlanjutan fungsi bangunan gedung pada {{namaInstansiBawah}},
+bersama ini kami mengajukan permohonan Analisis dan Perhitungan
+Kerusakan Bangunan Gedung terhadap bangunan yang berada pada lokasi berikut:
+
+
+1. Identitas Bangunan Gedung:
+Nama Bangunan   : {{namaBangunan}}
+NPSN            : {{npsn}}
+Luas            : {{luasBangunan}} m²
+Jumlah Lantai   : {{jumlahLantai}}
+Alamat Bangunan : {{alamatBangunan}}
+Desa/Kelurahan  :
+Kecamatan       :
+Kabupaten/Kota  : Garut
+Koordinat       : {{koordinatGps}}
+
+Sehubungan dengan data penilaian mandiri yang dilampirkan,
+diperlukan guna mengetahui tingkat kerusakan bangunan secara
+kuantitatif dan kualitatif sesuai ketentuan teknis yang berlaku.
+
+Demikian permohonan ini kami sampaikan. Besar harapan kami agar
+dapat dilakukan pemeriksaan lapangan, analisis teknis, dan
+perhitungan tingkat kerusakan bangunan gedung dimaksud sebagai
+dasar pengambilan kebijakan penanganan serta penyusunan kebutuhan
+anggaran rehabilitasi bangunan.
+
+Atas perhatian dan kerja sama yang baik, kami ucapkan terima kasih.
+
+
+Hormat kami,
+
+
+{{jabatanPengirim}}
+
+BARCODE TTE
+
+{{namaPengirim}}
+NIP. {{nipPengirim}}`;
+
+      const docContent = replaceTemplatePlaceholders(templateToUse, {
+        namaInstansiAtas: pengelolaKop?.namaInstansiAtas || "PEMERINTAH KABUPATEN GARUT",
+        namaInstansiBawah: pengelolaKop?.namaInstansiBawah || schoolName || "UPTD SATUAN PENDIDIKAN",
+        alamatPemohon: pengelolaKop?.alamat || address || "Jl. Raya Pembangunan No. 123",
+        nomorSurat: letterReferenceNo || "-",
+        tanggal: letterDate,
+        namaSekolah: schoolName || "-",
+        namaBangunan: buildingName || "-",
+        npsn: npsn || "-",
+        luasBangunan: String(buildingArea || 0),
+        jumlahLantai: String(floorCount || 0),
+        alamatBangunan: address || "-",
+        koordinatGps: coordinates ? `${coordinates.lat}, ${coordinates.lng}` : "-",
+        namaPengirim: pengelolaKop?.namaKepala || "Nama Pengirim",
+        jabatanPengirim: pengelolaKop?.jabatan || "Jabatan",
+        nipPengirim: pengelolaKop?.nipKepala || "-"
+      });
 
       // Append dynamic custom parameters
       const stdKeys = ["schoolName", "buildingName", "npsn", "address", "buildingArea", "floorCount"];
+      let renderedDocContent = docContent;
       formParams.forEach(p => {
         if (!stdKeys.includes(p.id)) {
           const val = dynamicValues[p.id];
           if (val !== undefined && val !== "") {
-            docContent += `\n${p.label}: ${val}`;
+            renderedDocContent += `\n${p.label}: ${val}`;
           }
         }
       });
 
-      docContent += `\n\nDengan hormat, bersama ini kami sampaikan dokumen permohonan resmi penilaian kondisi fisik bangunan gedung agar kiranya dapat diagendakan survei dan analisis teknis lapangan oleh Tim Teknis Dinas PUPR.\n\nHormat Kami,\nPengelola Bangunan / Pemohon`;
+      renderedDocContent += `\n\nDengan hormat, bersama ini kami sampaikan dokumen permohonan resmi penilaian kondisi fisik bangunan gedung agar kiranya dapat diagendakan survei dan analisis teknis lapangan oleh Tim Teknis Dinas PUPR.\n\nHormat Kami,\nPengelola Bangunan / Pemohon`;
 
-      const link = await createDocument(docTitle, docContent);
+      const link = await createDocument(docTitle, renderedDocContent);
       setGeneratedDocLink(link);
       setIsLetterGenerated(true);
 
@@ -1067,7 +1111,7 @@ Pengelola Bangunan / Pemohon`;
     }
 
     try {
-      const response = await fetch(editId ? `/api/assessments/${editId}` : "/api/assessments", {
+      const response = await apiFetch(editId ? `/api/assessments/${editId}` : "/api/assessments", {
         method: editId ? "PUT" : "POST",
         headers: getAuditHeaders(),
         body: JSON.stringify(payload)

@@ -11,9 +11,9 @@ export async function logAuditTrail(
   details: string
 ) {
   try {
-    const email = req.user?.email || (req.headers["x-user-email"] as string) || "admin@sipeka.com";
-    const name = req.user?.namaLengkap || (req.headers["x-user-name"] as string) || "Sistem Admin";
-    const role = req.user?.role || (req.headers["x-user-role"] as string) || "Administrator";
+    const email = req.user?.email || "system@sipeka.local";
+    const name = req.user?.namaLengkap || "Sistem";
+    const role = req.user?.role || "System";
 
     await db.insert(schema.auditTrails).values({
       idPermohonan,

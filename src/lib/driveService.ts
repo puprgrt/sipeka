@@ -112,22 +112,26 @@ export async function uploadToDrive(file: File, folderName?: string): Promise<st
  */
 export async function makeFilePublic(fileId: string): Promise<void> {
   const token = await getAccessToken();
-  if (!token) throw new Error("Not authenticated");
+  if (!token) return;
 
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      role: 'reader',
-      type: 'anyone'
-    })
-  });
+  try {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        role: 'reader',
+        type: 'anyone'
+      })
+    });
 
-  if (!res.ok) {
-    console.error("Failed to make file public", await res.text());
+    if (!res.ok) {
+      console.warn("Could not make file public", await res.text());
+    }
+  } catch (error) {
+    console.warn("Google Drive permission update skipped", error);
   }
 }
 

@@ -106,6 +106,17 @@ export const penilaianTahap2Volume = pgTable('penilaian_tahap2_volume', {
   nilaiKerusakanKomponen: decimal('nilai_kerusakan_komponen', { precision: 8, scale: 4 }),
 });
 
+// Overall component assessment data (Foto Keseluruhan Komponen)
+export const assessmentComponentsData = pgTable('assessment_components_data', {
+  id: serial('id').primaryKey(),
+  idPermohonan: uuid('id_permohonan').references(() => permohonanPenilaian.idPermohonan).notNull(),
+  idKomponen: integer('id_komponen').references(() => masterKomponen.idKomponen).notNull(),
+  urlFotoKeseluruhan: text('url_foto_keseluruhan'),
+  catatanKomponen: text('catatan_komponen'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 // 3. KELOMPOK DATA ALUR KERJA
 
 export const logDisposisi = pgTable('log_disposisi', {

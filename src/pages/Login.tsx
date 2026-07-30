@@ -3,7 +3,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, Chrome, ArrowRight, Building2, Shield, Activity, Info, UserCheck, CheckCircle2, AlertCircle } from "lucide-react";
 import { motion } from "motion/react";
-import { googleSignIn, initAuth } from "../lib/firebaseAuth";
+import { googleSignIn, initAuth, emailPasswordSignIn, persistUserSession } from "../lib/firebaseAuth";
+import { isDemoLoginAllowed } from "../lib/clientEnv";
+import { syncSessionFromProfile } from "../lib/sessionHelper";
 import { Turnstile } from "@marsidev/react-turnstile";
 
 interface DemoRole {
@@ -127,48 +129,28 @@ export default function Login() {
 
           // Otherwise, process the fresh OAuth redirect login
           setLoading(true);
-          let userRole = "Pengelola_Bangunan"; // Default role
-          let displayName = user.displayName || "Pengguna";
-          let activeUserId = "";
-
-          // Check for users in database
           try {
-            const res = await apiFetch("/api/users");
-            if (res.ok) {
-              const dbUsers = await res.json();
-              if (Array.isArray(dbUsers)) {
-                const dbUser = dbUsers.find((u: any) => u.email?.toLowerCase() === user.email?.toLowerCase());
-                if (dbUser) {
-                  userRole = dbUser.role;
-                  displayName = dbUser.namaLengkap;
-                  activeUserId = String(dbUser.idUser);
-                }
-              }
+            await syncSessionFromProfile(user.email || '', user.displayName);
+            if (user.photoURL) {
+              localStorage.setItem("userPhoto", user.photoURL);
             }
+            setSuccess(`Selamat datang, ${localStorage.getItem("userName") || user.displayName}!`);
+            setTimeout(() => {
+              window.dispatchEvent(new Event("storage"));
+              navigate("/", { replace: true });
+            }, 800);
           } catch (err) {
-            console.warn("Could not query DB users list", err);
+            console.warn("Could not sync profile after OAuth login", err);
+            setError("Akun berhasil masuk tetapi profil belum terdaftar di sistem. Hubungi Administrator.");
+          } finally {
+            setLoading(false);
           }
-
-          setSuccess(`Selamat datang, ${displayName}!`);
-          localStorage.setItem("isLoggedIn", "true");
-          localStorage.setItem("userEmail", user.email || "");
-          localStorage.setItem("userName", displayName);
-          localStorage.setItem("userPhoto", user.photoURL || "");
-          localStorage.setItem("activeRole", userRole);
-          localStorage.setItem("actualRole", userRole);
-          if (activeUserId) {
-            localStorage.setItem("activeUserId", activeUserId);
-          }
-          
-          setTimeout(() => {
-            window.dispatchEvent(new Event("storage"));
-            navigate("/", { replace: true });
-          }, 800);
+          return;
         }
       },
       () => {
         const isLocalLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-        if (isLocalLoggedIn) {
+        if (isLocalLoggedIn && isDemoLoginAllowed()) {
           navigate("/", { replace: true });
         }
       }
@@ -207,62 +189,48 @@ export default function Login() {
         throw new Error("Validasi keamanan gagal. Coba muat ulang halaman.");
       }
 
-      // Validate password for demo
-      if (password !== "password" && password !== "admin123") {
-        throw new Error("Kata sandi salah. (Petunjuk demo: gunakan 'password')");
-      }
-
-      // Check for users in database if possible
-      let dbUserFound = null;
-      try {
-        const res = await apiFetch("/api/users");
-        if (res.ok) {
-          const dbUsers = await res.json();
-          if (Array.isArray(dbUsers)) {
-            dbUserFound = dbUsers.find(u => u.email?.toLowerCase() === email.toLowerCase());
-          }
+      if (isDemoLoginAllowed()) {
+        // Development / demo mode — password hardcoded, no Supabase session required
+        if (password !== "password" && password !== "admin123") {
+          throw new Error("Kata sandi salah. (Petunjuk demo: gunakan 'password')");
         }
-      } catch (err) {
-        console.warn("Could not query DB users list", err);
+
+        const matchedDemo = DEMO_ROLES.find(r => r.email.toLowerCase() === email.toLowerCase());
+        let userRole = "Pengelola_Bangunan";
+        let displayName = email.split("@")[0];
+        let finalEmail = email;
+        let isValidUser = false;
+
+        if (matchedDemo) {
+          userRole = matchedDemo.role;
+          displayName = matchedDemo.name;
+          finalEmail = matchedDemo.email;
+          isValidUser = true;
+        } else if (email.toLowerCase() === "admin@sipeka.com") {
+          userRole = "Administrator";
+          displayName = "Super Admin SI-PEKA";
+          isValidUser = true;
+        }
+
+        if (!isValidUser) {
+          throw new Error("Email tidak terdaftar di sistem demo.");
+        }
+
+        persistUserSession({
+          email: finalEmail,
+          displayName,
+          role: userRole,
+        });
+      } else {
+        // Production — authenticate via Supabase
+        const { user: authUser } = await emailPasswordSignIn(email, password);
+        await syncSessionFromProfile(authUser.email || email, authUser.displayName);
+        if (authUser.photoURL) {
+          localStorage.setItem("userPhoto", authUser.photoURL);
+        }
       }
 
-      const matchedDemo = DEMO_ROLES.find(r => r.email.toLowerCase() === email.toLowerCase());
-      
-      let userRole = "Pengelola_Bangunan";
-      let displayName = email.split("@")[0];
-      let finalEmail = email;
-      let isValidUser = false;
-
-      if (dbUserFound) {
-        userRole = dbUserFound.role;
-        displayName = dbUserFound.namaLengkap;
-        finalEmail = dbUserFound.email;
-        localStorage.setItem("activeUserId", String(dbUserFound.idUser));
-        isValidUser = true;
-      } else if (matchedDemo) {
-        userRole = matchedDemo.role;
-        displayName = matchedDemo.name;
-        finalEmail = matchedDemo.email;
-        isValidUser = true;
-      } else if (email.toLowerCase() === "admin@sipeka.com") {
-        userRole = "Administrator";
-        displayName = "Super Admin SI-PEKA";
-        isValidUser = true;
-      }
-
-      if (!isValidUser) {
-        throw new Error("Email tidak terdaftar di sistem.");
-      }
-
-      // Save to localStorage
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("userEmail", finalEmail);
-      localStorage.setItem("userName", displayName);
-      localStorage.setItem("activeRole", userRole);
-      localStorage.setItem("actualRole", userRole);
-      localStorage.setItem("userPhoto", "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150");
-
-      setSuccess("Autentikasi berhasil! Mengalihkan ke Dasbor...");
+      setSuccess(`Autentikasi berhasil! Mengalihkan ke Dasbor...`);
       setTimeout(() => {
         window.dispatchEvent(new Event("storage"));
         navigate("/", { replace: true });
@@ -305,6 +273,11 @@ export default function Login() {
   };
 
   const handleDemoLogin = async (demo: DemoRole) => {
+    if (!isDemoLoginAllowed()) {
+      setError("Mode simulasi tidak tersedia di lingkungan production.");
+      return;
+    }
+
     setError(null);
     setSuccess(null);
     setLoading(true);
@@ -327,12 +300,12 @@ export default function Login() {
         console.warn("Profile fetch skipped, using default config", e);
       }
 
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("userEmail", demo.email);
-      localStorage.setItem("userName", demo.name);
-      localStorage.setItem("activeRole", demo.role);
-      localStorage.setItem("actualRole", demo.role);
-      localStorage.setItem("userPhoto", "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150");
+      persistUserSession({
+        email: demo.email,
+        displayName: demo.name,
+        role: demo.role,
+        photoURL: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+      });
 
       setSuccess(`Masuk sebagai Simulasi: ${demo.name}`);
       setTimeout(() => {

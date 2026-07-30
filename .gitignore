@@ -11,4 +11,4 @@ firebase-applet-config.json
 test_*.js
 test_*.cjs
 *.pem
-*.key
+wa_auth/

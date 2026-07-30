@@ -3,6 +3,8 @@ import { db } from '../db';
 import * as schema from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { initMasterData } from '../utils/masterData';
+import { requireRole } from '../middleware/authMiddleware';
+import { ADMIN_ROLES, MASTER_DATA_ROLES } from '../middleware/rolePolicies';
 
 const router = express.Router();
 
@@ -18,7 +20,7 @@ router.get("/api/components", async (req, res) => {
 });
 
 
-router.put("/api/components/reorder", async (req, res) => {
+router.put("/api/components/reorder", requireRole(...MASTER_DATA_ROLES), async (req, res) => {
   try {
     const { components } = req.body;
     if (!components || !Array.isArray(components)) {
@@ -36,7 +38,7 @@ router.put("/api/components/reorder", async (req, res) => {
   }
 });
 
-router.post("/api/components", async (req, res) => {
+router.post("/api/components", requireRole(...MASTER_DATA_ROLES), async (req, res) => {
   try {
     const { kategoriKomponen, namaKomponen, satuan, bobotFormA, bobotFormB, bobotFormC, tooltipText, tooltipImage } = req.body;
     const [newComp] = await db.insert(schema.masterKomponen).values({
@@ -56,7 +58,7 @@ router.post("/api/components", async (req, res) => {
   }
 });
 
-router.put("/api/components/:id", async (req, res) => {
+router.put("/api/components/:id", requireRole(...MASTER_DATA_ROLES), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { kategoriKomponen, namaKomponen, satuan, bobotFormA, bobotFormB, bobotFormC, tooltipText, tooltipImage } = req.body;
@@ -82,7 +84,7 @@ router.put("/api/components/:id", async (req, res) => {
   }
 });
 
-router.delete("/api/components/:id", async (req, res) => {
+router.delete("/api/components/:id", requireRole(...MASTER_DATA_ROLES), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     
@@ -137,7 +139,7 @@ router.get("/api/katalog", async (req, res) => {
   }
 });
 
-router.post("/api/katalog", async (req, res) => {
+router.post("/api/katalog", requireRole(...MASTER_DATA_ROLES), async (req, res) => {
   try {
     const { idKomponen, idKlasifikasi, deskripsiPupr, urlFotoContoh } = req.body;
     const [newKatalog] = await db.insert(schema.masterKatalogVisual).values({
@@ -153,7 +155,7 @@ router.post("/api/katalog", async (req, res) => {
   }
 });
 
-router.put("/api/katalog/:id", async (req, res) => {
+router.put("/api/katalog/:id", requireRole(...MASTER_DATA_ROLES), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { idKomponen, idKlasifikasi, deskripsiPupr, urlFotoContoh } = req.body;
@@ -173,7 +175,7 @@ router.put("/api/katalog/:id", async (req, res) => {
   }
 });
 
-router.delete("/api/katalog/:id", async (req, res) => {
+router.delete("/api/katalog/:id", requireRole(...MASTER_DATA_ROLES), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     await db.delete(schema.masterKatalogVisual)
@@ -221,7 +223,7 @@ router.get("/api/dinas", async (req, res) => {
   }
 });
 
-router.put("/api/dinas", async (req, res) => {
+router.put("/api/dinas", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const payload = req.body;
     let data = await db.select().from(schema.pengaturanDinas).limit(1);

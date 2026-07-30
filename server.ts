@@ -30,7 +30,8 @@ const PORT = 3000;
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-import { verifyToken } from "./src/middleware/authMiddleware";
+import { verifyToken, requireRole } from "./src/middleware/authMiddleware";
+import { STAFF_ROLES, REPORT_ROLES, ADMIN_ROLES } from "./src/middleware/rolePolicies";
 
 // --- Health Check ---
 app.get("/api/health", async (req, res) => {
@@ -57,11 +58,16 @@ app.get("/api/health", async (req, res) => {
 
 // --- Auth Middleware (Global API guard) ---
 app.use("/api", (req, res, next) => {
+  // EventSource cannot send Authorization headers — accept token via query string
+  if (req.path === "/notifications/stream" && req.query.token && !req.headers.authorization) {
+    req.headers.authorization = `Bearer ${String(req.query.token)}`;
+  }
+
   const publicPaths = [
     { method: "GET", path: "/api/health" },
     { method: "GET", path: "/api/app-settings" },
     { method: "POST", path: "/api/auth/verify-turnstile" },
-    { method: "GET", regex: /^\/api\/assessments\/[a-zA-Z0-9_-]+$/ }
+    { method: "GET", regex: /^\/api\/assessments\/[a-zA-Z0-9_-]+\/validate-public$/ },
   ];
 
   const isPublic = publicPaths.some(p => {
@@ -75,14 +81,6 @@ app.use("/api", (req, res, next) => {
     return next();
   }
 
-  // Allow webhooks/SSE to bypass JWT if needed, or handle them via specific auth?
-  // Stream uses SSE, which might be hard to pass Bearer token in EventSource.
-  // We'll skip stream auth if it's tricky, but better to protect it. We can pass token in URL.
-  // Actually, let's keep stream public or pass token in query param.
-  if (req.path === "/notifications/stream") {
-     return next(); 
-  }
-
   return verifyToken(req, res, next);
 });
 
@@ -91,7 +89,7 @@ app.use("/api/gemini", aiRoutes);
 app.use("/api/wa", waRoutes);
 app.use(assessmentRoutes);
 
-app.get("/api/audit-trails", async (req, res) => {
+app.get("/api/audit-trails", requireRole(...STAFF_ROLES), async (req, res) => {
   try {
     const trails = await db.select().from(schema.auditTrails);
     const permohonans = await db.select().from(schema.permohonanPenilaian);
@@ -122,7 +120,7 @@ app.get("/api/audit-trails", async (req, res) => {
 });
 
 // --- Dashboard Stats Endpoint ---
-app.get("/api/dashboard/stats", async (req, res) => {
+app.get("/api/dashboard/stats", requireRole(...STAFF_ROLES), async (req, res) => {
   try {
     const permohonans = await db.select().from(schema.permohonanPenilaian);
     const buildings = await db.select().from(schema.profilBangunan);

@@ -1,4 +1,5 @@
 import { apiFetch } from "../lib/api";
+import { supabase } from "../lib/supabaseClient";
 import { useEffect, useState, useRef } from "react";
 import { Bell, Check, MailOpen, AlertCircle, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -32,58 +33,65 @@ export default function NotificationBell() {
       if (activeUserId) {
         url += `&userId=${encodeURIComponent(activeUserId)}`;
       }
-      const res = await fetch(url);
+      const res = await apiFetch(url);
       if (res.ok) {
         const data = await res.json();
         setNotifications(data);
       }
-    } catch (err: any) {
+    } catch {
       // Ignore errors (e.g. network error during dev server restart) to prevent UI overlays
     }
   };
 
   // Setup SSE stream and fallback polling
   useEffect(() => {
+    let eventSource: EventSource | null = null;
+    let cancelled = false;
+
     fetchNotifications();
 
-    // 1. Live SSE push connection
-    let url = `/api/notifications/stream?role=${encodeURIComponent(activeRole)}`;
-    if (activeUserId) {
-      url += `&userId=${encodeURIComponent(activeUserId)}`;
-    }
-    const eventSource = new EventSource(url);
+    async function connectStream() {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (cancelled || !token) return;
 
-    eventSource.onmessage = (event) => {
-      if (event.data === "connected") return;
-      try {
-        const newNotif: Notification = JSON.parse(event.data);
-        
-        setNotifications(prev => {
-          // Avoid duplicate entries
-          if (prev.some(n => n.idNotification === newNotif.idNotification)) {
-            return prev;
-          }
-
-          // Trigger audio chime alert if configured
-          const audioAlertEnabled = localStorage.getItem("playNotificationSound") !== "false";
-          if (audioAlertEnabled) {
-            try {
-              const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-84.wav");
-              audio.volume = 0.5;
-              audio.play();
-            } catch (err) {
-              console.warn("Could not play audio alert:", err);
-            }
-          }
-
-          return [newNotif, ...prev];
-        });
-      } catch (err) {
-        console.error("Error parsing SSE message:", err);
+      let url = `/api/notifications/stream?role=${encodeURIComponent(activeRole)}&token=${encodeURIComponent(token)}`;
+      if (activeUserId) {
+        url += `&userId=${encodeURIComponent(activeUserId)}`;
       }
-    };
 
-    // 2. Poll as fallback every 30 seconds
+      eventSource = new EventSource(url);
+
+      eventSource.onmessage = (event) => {
+        if (event.data === "connected") return;
+        try {
+          const newNotif: Notification = JSON.parse(event.data);
+
+          setNotifications(prev => {
+            if (prev.some(n => n.idNotification === newNotif.idNotification)) {
+              return prev;
+            }
+
+            const audioAlertEnabled = localStorage.getItem("playNotificationSound") !== "false";
+            if (audioAlertEnabled) {
+              try {
+                const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-84.wav");
+                audio.volume = 0.5;
+                audio.play();
+              } catch (err) {
+                console.warn("Could not play audio alert:", err);
+              }
+            }
+
+            return [newNotif, ...prev];
+          });
+        } catch (err) {
+          console.error("Error parsing SSE message:", err);
+        }
+      };
+    }
+
+    connectStream();
     const interval = setInterval(fetchNotifications, 30000);
 
     const handleStorageChange = () => {
@@ -92,7 +100,8 @@ export default function NotificationBell() {
     window.addEventListener("storage", handleStorageChange);
 
     return () => {
-      eventSource.close();
+      cancelled = true;
+      eventSource?.close();
       clearInterval(interval);
       window.removeEventListener("storage", handleStorageChange);
     };

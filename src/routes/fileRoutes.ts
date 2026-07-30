@@ -19,8 +19,7 @@ export const MOCK_FILES = [
 
 router.get("/api/files", async (req: Request, res: Response) => {
   try {
-    const role = req.query.role as string;
-    const userIdStr = req.query.userId as string;
+    const role = (req.user?.role || req.query.role) as string;
     
     // Fetch real files from database
     const dbFiles = await db.select().from(schema.dokumenDigital);
@@ -41,6 +40,8 @@ router.get("/api/files", async (req: Request, res: Response) => {
           console.error("Failed to generate signed url for", f.urlR2);
         }
       }
+
+      const accessRole = ["Administrator", "Kadis", "Kabid", "Koordinator", "Tim_Teknis", "Operator", "Pengelola_Bangunan"];
       
       return {
         id: f.idDokumen,
@@ -49,14 +50,22 @@ router.get("/api/files", async (req: Request, res: Response) => {
         size: f.sizeBytes,
         updatedAt: f.createdAt,
         author: u ? u.namaLengkap : "Unknown",
-        folderId: null, // For now, put in root
-        accessRole: ["Administrator", "Kadis", "Kabid", "Koordinator", "Tim_Teknis", "Operator", "Pengelola_Bangunan"],
+        folderId: null,
+        accessRole,
         previewUrl: previewUrl,
+        ownerId: f.idUser,
       };
     }));
+
+    const visibleFiles = mappedFiles.filter(f => {
+      if (role === "Administrator") return true;
+      if (f.ownerId === req.user?.idUser) return true;
+      return f.accessRole.includes(role);
+    });
     
-    // Combine with mock folders for structure
-    res.json([...MOCK_FILES, ...mappedFiles]);
+    const visibleFolders = MOCK_FILES.filter(f => !role || f.accessRole.includes(role));
+    
+    res.json([...visibleFolders, ...visibleFiles]);
   } catch (error) {
     console.error("GET /api/files error:", error);
     res.status(500).json({ error: "Failed to fetch files" });
@@ -64,15 +73,25 @@ router.get("/api/files", async (req: Request, res: Response) => {
 });
 
 import { uploadToR2, getSignedUrlFromR2 } from "../lib/r2Service";
+import { requireRole } from "../middleware/authMiddleware";
+import { STAFF_ROLES } from "../middleware/rolePolicies";
 
 // Endpoint to backup file to system drive and save metadata to DB
-router.post("/api/drive/backup", upload.single("file"), async (req: Request, res: Response): Promise<any> => {
+router.post("/api/drive/backup", requireRole(...STAFF_ROLES, 'Pengelola_Bangunan'), upload.single("file"), async (req: Request, res: Response): Promise<any> => {
   try {
     const file = (req as any).file;
     const { idUser, tipeDokumen, urlGdriveUser, namaFile } = req.body;
 
-    if (!idUser || !namaFile) {
+    const resolvedIdUser = idUser ? Number(idUser) : req.user?.idUser ?? null;
+    const resolvedNamaFile = namaFile || file?.originalname || `backup-${Date.now()}`;
+
+    if (!resolvedIdUser || !resolvedNamaFile) {
       return res.status(400).json({ error: "Missing required fields: idUser, namaFile" });
+    }
+
+    const isAdmin = req.user?.role === 'Administrator';
+    if (!isAdmin && resolvedIdUser !== req.user?.idUser) {
+      return res.status(403).json({ error: "Forbidden: Cannot upload files for another user" });
     }
 
     let urlGdriveSistem = null;
@@ -96,8 +115,8 @@ router.post("/api/drive/backup", upload.single("file"), async (req: Request, res
 
     // Insert to DB
     const newDoc = await db.insert(schema.dokumenDigital).values({
-      idUser: parseInt(idUser),
-      namaFile: namaFile,
+      idUser: resolvedIdUser,
+      namaFile: resolvedNamaFile,
       urlGdriveUser: urlGdriveUser || null,
       urlGdriveSistem: urlGdriveSistem,
       urlR2: urlR2,
@@ -115,7 +134,10 @@ router.post("/api/drive/backup", upload.single("file"), async (req: Request, res
     res.json({ success: true, document: { ...newDoc[0], previewUrl: publicUrl } });
   } catch (error: any) {
     console.error("POST /api/drive/backup error:", error);
-    res.status(500).json({ error: "Failed to backup file", details: error.message });
+    res.status(500).json({
+      error: "Failed to backup file",
+      details: error?.message || "Unknown error"
+    });
   }
 });
 

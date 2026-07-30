@@ -79,20 +79,72 @@ export const getAccessToken = async (): Promise<string | null> => {
   return cachedAccessToken;
 };
 
+export interface PersistedSession {
+  email: string;
+  displayName: string;
+  role: string;
+  userId?: string;
+  photoURL?: string;
+}
+
+export function persistUserSession(session: PersistedSession): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('isLoggedIn', 'true');
+  localStorage.setItem('userEmail', session.email);
+  localStorage.setItem('userName', session.displayName);
+  localStorage.setItem('activeRole', session.role);
+  localStorage.setItem('actualRole', session.role);
+  localStorage.setItem(
+    'userPhoto',
+    session.photoURL || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150'
+  );
+  if (session.userId) {
+    localStorage.setItem('activeUserId', session.userId);
+  }
+}
+
+export function clearUserSession(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('firebase_google_access_token');
+  localStorage.removeItem('isLoggedIn');
+  localStorage.removeItem('userEmail');
+  localStorage.removeItem('userName');
+  localStorage.removeItem('userPhoto');
+  localStorage.removeItem('activeRole');
+  localStorage.removeItem('actualRole');
+  localStorage.removeItem('activeUserId');
+}
+
+export const emailPasswordSignIn = async (email: string, password: string): Promise<{ user: any; accessToken: string }> => {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error || !data.session || !data.user) {
+    throw new Error(error?.message || 'Email atau kata sandi salah.');
+  }
+
+  if (data.session.provider_token) {
+    cachedAccessToken = data.session.provider_token;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('firebase_google_access_token', cachedAccessToken);
+    }
+  }
+
+  const formattedUser = {
+    uid: data.user.id,
+    email: data.user.email,
+    displayName:
+      data.user.user_metadata?.full_name ||
+      data.user.user_metadata?.name ||
+      data.user.email?.split('@')[0],
+    photoURL: data.user.user_metadata?.avatar_url || data.user.user_metadata?.picture || '',
+  };
+
+  return { user: formattedUser, accessToken: data.session.access_token };
+};
+
 export const logout = async () => {
   await supabase.auth.signOut();
   cachedAccessToken = null;
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('firebase_google_access_token');
-    // Also clear other SIPEKA custom local storage items
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("userName");
-    localStorage.removeItem("userPhoto");
-    localStorage.removeItem("activeRole");
-    localStorage.removeItem("actualRole");
-    localStorage.removeItem("activeUserId");
-  }
+  clearUserSession();
 };
 
 // Mock functions to prevent imports from breaking in other files

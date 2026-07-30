@@ -5,6 +5,7 @@ import { readAppSettingsFile, writeAppSettingsFile, readLetterParamsFile, writeL
 
 
 import { requireRole } from '../middleware/authMiddleware';
+import { ADMIN_ROLES } from '../middleware/rolePolicies';
 
 const router = express.Router();
 
@@ -29,7 +30,7 @@ router.get("/api/pengaturan-surat", async (req, res) => {
   res.json(params);
 });
 
-router.put("/api/pengaturan-surat", async (req, res) => {
+router.put("/api/pengaturan-surat", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const { sistem, pengelola } = req.body;
     const current = await readLetterParamsFile();
@@ -56,7 +57,7 @@ router.get("/api/ai-settings", async (req, res) => {
   res.json(params);
 });
 
-router.put("/api/ai-settings", async (req, res) => {
+router.put("/api/ai-settings", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const updated = req.body;
     
@@ -86,7 +87,7 @@ router.get("/api/document-templates", async (req, res) => {
   }
 });
 
-router.put("/api/document-templates", async (req, res) => {
+router.put("/api/document-templates", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const templates = req.body;
     await writeDocumentTemplates(templates);
@@ -98,7 +99,7 @@ router.put("/api/document-templates", async (req, res) => {
   }
 });
 
-router.put("/api/document-templates/:id", async (req, res) => {
+router.put("/api/document-templates/:id", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const { id } = req.params;
     const { kontenHtml, driveLink } = req.body;
@@ -115,7 +116,7 @@ router.put("/api/document-templates/:id", async (req, res) => {
   }
 });
 
-router.post("/api/document-templates/:id/reset", async (req, res) => {
+router.post("/api/document-templates/:id/reset", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const { id } = req.params;
     const { getDefaultTemplates } = await import('../utils/templateUtils');

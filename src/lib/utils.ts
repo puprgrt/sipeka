@@ -5,13 +5,9 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function getAuditHeaders() {
-  return {
-    "Content-Type": "application/json",
-    "x-user-email": localStorage.getItem("userEmail") || "admin@sipeka.com",
-    "x-user-name": localStorage.getItem("userName") || "Sistem Admin",
-    "x-user-role": localStorage.getItem("activeRole") || "Administrator",
-  };
+/** @deprecated Use apiFetch instead — audit identity is derived from JWT on the server */
+export function getAuditHeaders(): Record<string, string> {
+  return { "Content-Type": "application/json" };
 }
 
 export function getDirectImageUrl(url: string | null | undefined): string {

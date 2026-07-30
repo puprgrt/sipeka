@@ -6,9 +6,12 @@ import { id } from "date-fns/locale";
 import { cn } from "../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  FileText, Inbox, Send, Eye, FileCheck, FileDown, Search, X, Calendar, Building, MapPin, Layers, ExternalLink, Printer, CheckCircle
+  FileText, Inbox, Send, Eye, FileCheck, FileDown, Search, X, Calendar, Building, MapPin, Layers, ExternalLink, Printer, CheckCircle, RefreshCw, Loader2
 } from "lucide-react";
 import DocumentPreviewModal from "../components/DocumentPreviewModal";
+import { createDocument } from "../lib/docsService";
+import { getAccessToken } from "../lib/firebaseAuth";
+import { buildSuratPermohonanContent } from "../utils/suratDocumentBuilder";
 
 export default function SuratReports() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -17,6 +20,8 @@ export default function SuratReports() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAssessment, setSelectedAssessment] = useState<Assessment | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [letterConfig, setLetterConfig] = useState<any>(null);
+  const [updatingDocumentId, setUpdatingDocumentId] = useState<string | null>(null);
 
   const fetchAssessments = () => {
     apiFetch("/api/assessments")
@@ -32,9 +37,86 @@ export default function SuratReports() {
 
   useEffect(() => {
     fetchAssessments();
+    apiFetch("/api/pengaturan-surat")
+      .then(res => res.json())
+      .then(data => setLetterConfig(data))
+      .catch(err => console.error("Failed to load letter config", err));
+
     const intervalId = setInterval(fetchAssessments, 10000); // Polling every 10s for realtime updates
     return () => clearInterval(intervalId);
   }, []);
+
+  const handleUpdateDocument = async (assessment: Assessment) => {
+    try {
+      setUpdatingDocumentId(assessment.id);
+      const token = await getAccessToken();
+      if (!token) {
+        alert("Silakan login ulang dengan Google untuk memperbarui dokumen surat.");
+        return;
+      }
+
+      const docTitle = `Surat Permohonan Penilaian Kerusakan - ${assessment.schoolName || "Instansi"}`;
+      const letterReferenceNo = assessment.customFields?.nomorSurat || assessment.customFields?.letterReferenceNo || assessment.id.substring(0, 8).toUpperCase();
+      const content = buildSuratPermohonanContent({
+        schoolName: assessment.schoolName,
+        buildingName: assessment.buildingName,
+        npsn: assessment.npsn,
+        address: assessment.address,
+        buildingArea: assessment.buildingArea,
+        floorCount: assessment.floorCount,
+        coordinates: assessment.coordinates,
+        letterReferenceNo,
+        tanggal: format(new Date(), "dd MMMM yyyy", { locale: id }),
+        letterConfig
+      });
+
+      const newDocLink = await createDocument(docTitle, content);
+      const exportedLink = newDocLink.replace(/\/edit$/, "/export?format=pdf");
+
+      const payload = {
+        schoolName: assessment.schoolName,
+        buildingName: assessment.buildingName,
+        npsn: assessment.npsn,
+        address: assessment.address,
+        buildingArea: assessment.buildingArea,
+        floorCount: assessment.floorCount,
+        coordinates: assessment.coordinates,
+        components: assessment.components || [],
+        photos: assessment.photos || [],
+        finalResult: assessment.finalResult || { totalDamagePercentage: 0, category: "Ringan" },
+        documentLink: exportedLink,
+        customFields: {
+          ...(assessment.customFields || {}),
+          documentLink: newDocLink,
+          letterReferenceNo,
+          updatedAt: new Date().toISOString()
+        }
+      };
+
+      await apiFetch(`/api/assessments/${assessment.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      setAssessments(prev => prev.map(item =>
+        item.id === assessment.id
+          ? { ...item, documentLink: exportedLink, customFields: { ...(item.customFields || {}), documentLink: newDocLink, letterReferenceNo, updatedAt: new Date().toISOString() } }
+          : item
+      ));
+
+      if (selectedAssessment?.id === assessment.id) {
+        setSelectedAssessment(prev => prev ? {...prev, documentLink: exportedLink, customFields: { ...(prev.customFields || {}), documentLink: newDocLink, letterReferenceNo, updatedAt: new Date().toISOString() }} : prev);
+      }
+
+      alert("Dokumen surat berhasil diperbarui dengan format terbaru.");
+    } catch (error) {
+      console.error("Failed to update surat document", error);
+      alert("Gagal memperbarui dokumen surat. Silakan coba lagi.");
+    } finally {
+      setUpdatingDocumentId(null);
+    }
+  };
 
   const filteredData = assessments.filter(a => {
     const isMasuk = a.status === 'Menunggu_Validasi';
@@ -188,6 +270,14 @@ export default function SuratReports() {
                                   <FileDown className="w-4 h-4" />
                                 </a>
                               )}
+                              <button
+                                onClick={() => handleUpdateDocument(assessment)}
+                                disabled={updatingDocumentId === assessment.id}
+                                className="p-2 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors disabled:opacity-60"
+                                title="Perbarui Dokumen dengan Format Terbaru"
+                              >
+                                {updatingDocumentId === assessment.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                              </button>
                               <button 
                                 onClick={() => setSelectedAssessment(assessment)}
                                 className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
@@ -262,12 +352,21 @@ export default function SuratReports() {
                     <div className="text-xs text-slate-500 font-semibold uppercase">Dokumen Surat</div>
                     <div className="col-span-2">
                       {selectedAssessment.customFields?.documentLink ? (
-                        <button 
-                          onClick={() => setPreviewUrl(selectedAssessment.customFields.documentLink)}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-xs font-bold hover:bg-rose-100 transition-colors"
-                        >
-                          <FileText className="w-4 h-4" /> Buka Preview Surat
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button 
+                            onClick={() => setPreviewUrl(selectedAssessment.customFields.documentLink)}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-xs font-bold hover:bg-rose-100 transition-colors"
+                          >
+                            <FileText className="w-4 h-4" /> Buka Preview Surat
+                          </button>
+                          <button
+                            onClick={() => handleUpdateDocument(selectedAssessment)}
+                            disabled={updatingDocumentId === selectedAssessment.id}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-600 rounded-lg text-xs font-bold hover:bg-amber-100 transition-colors disabled:opacity-60"
+                          >
+                            {updatingDocumentId === selectedAssessment.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Perbarui Dokumen
+                          </button>
+                        </div>
                       ) : (
                         <span className="text-xs italic text-slate-400">Tidak ada dokumen PDF terlampir.</span>
                       )}

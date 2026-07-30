@@ -5,6 +5,8 @@ import { eq, ne, and } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { initMasterData } from '../utils/masterData';
 import { getDbConfig, setDbConfig } from '../utils/configHelper';
+import { requireRole } from '../middleware/authMiddleware';
+import { ADMIN_ROLES, ADMIN_OPERATOR_ROLES } from '../middleware/rolePolicies';
 
 const router = express.Router();
 
@@ -13,6 +15,9 @@ router.post("/api/users/fcm-token", async (req, res) => {
     const { uid, token } = req.body;
     if (!uid || !token) {
       return res.status(400).json({ error: "UID and token are required." });
+    }
+    if (req.user?.supabaseId && req.user.supabaseId !== uid) {
+      return res.status(403).json({ error: "Forbidden: Cannot update FCM token for another user." });
     }
     await db.update(schema.users).set({ fcmToken: token }).where(eq(schema.users.uid, uid));
     res.json({ success: true });
@@ -29,7 +34,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SECRET_KEY || ''
 );
 
-router.get("/api/users", async (req, res) => {
+router.get("/api/users", requireRole(...ADMIN_OPERATOR_ROLES), async (req, res) => {
   try {
     await initMasterData();
 
@@ -69,7 +74,7 @@ router.get("/api/users", async (req, res) => {
   }
 });
 
-router.post("/api/users", async (req, res) => {
+router.post("/api/users", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const { namaLengkap, email, role, kontakWhatsapp } = req.body;
     const uid = "user_" + uuidv4();
@@ -87,7 +92,7 @@ router.post("/api/users", async (req, res) => {
   }
 });
 
-router.put("/api/users/:id", async (req, res) => {
+router.put("/api/users/:id", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { namaLengkap, email, role, kontakWhatsapp } = req.body;
@@ -107,7 +112,7 @@ router.put("/api/users/:id", async (req, res) => {
   }
 });
 
-router.delete("/api/users/:id", async (req, res) => {
+router.delete("/api/users/:id", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) {
@@ -197,7 +202,7 @@ router.get("/api/building-parameters", async (req, res) => {
 });
 
 
-router.put("/api/building-parameters/reorder", async (req, res) => {
+router.put("/api/building-parameters/reorder", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const { parameters } = req.body;
     if (!parameters || !Array.isArray(parameters)) {
@@ -215,7 +220,7 @@ router.put("/api/building-parameters/reorder", async (req, res) => {
   }
 });
 
-router.post("/api/building-parameters", async (req, res) => {
+router.post("/api/building-parameters", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const { label, type, placeholder, required, enabled, showInPermohonan, showInPenilaian } = req.body;
     const params = await readParamsFile();
@@ -242,7 +247,7 @@ router.post("/api/building-parameters", async (req, res) => {
   }
 });
 
-router.put("/api/building-parameters/:id", async (req, res) => {
+router.put("/api/building-parameters/:id", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const id = req.params.id;
     const { label, type, placeholder, required, enabled, showInPermohonan, showInPenilaian } = req.body;
@@ -272,7 +277,7 @@ router.put("/api/building-parameters/:id", async (req, res) => {
   }
 });
 
-router.delete("/api/building-parameters/:id", async (req, res) => {
+router.delete("/api/building-parameters/:id", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const id = req.params.id;
     const params = await readParamsFile();
@@ -311,7 +316,7 @@ router.get("/api/profile-parameters", async (req, res) => {
 });
 
 
-router.put("/api/profile-parameters/reorder", async (req, res) => {
+router.put("/api/profile-parameters/reorder", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const { parameters } = req.body;
     if (!parameters || !Array.isArray(parameters)) {
@@ -326,7 +331,7 @@ router.put("/api/profile-parameters/reorder", async (req, res) => {
   }
 });
 
-router.post("/api/profile-parameters", async (req, res) => {
+router.post("/api/profile-parameters", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const { label, type, placeholder, required, enabled } = req.body;
     const params = await readProfileParamsFile();
@@ -351,7 +356,7 @@ router.post("/api/profile-parameters", async (req, res) => {
   }
 });
 
-router.put("/api/profile-parameters/:id", async (req, res) => {
+router.put("/api/profile-parameters/:id", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const id = req.params.id;
     const { label, type, placeholder, required, enabled } = req.body;
@@ -379,7 +384,7 @@ router.put("/api/profile-parameters/:id", async (req, res) => {
   }
 });
 
-router.delete("/api/profile-parameters/:id", async (req, res) => {
+router.delete("/api/profile-parameters/:id", requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const id = req.params.id;
     const params = await readProfileParamsFile();
@@ -403,6 +408,12 @@ router.get("/api/profile", async (req, res) => {
     const email = req.query.email as string;
     if (!email) {
       return res.status(400).json({ error: "Email query param is required" });
+    }
+
+    const isAdmin = req.user?.role === 'Administrator';
+    const requesterEmail = req.user?.email?.toLowerCase();
+    if (!isAdmin && requesterEmail !== email.toLowerCase()) {
+      return res.status(403).json({ error: "Forbidden: Cannot access another user's profile" });
     }
 
     // Find user in pg DB
@@ -451,6 +462,14 @@ router.put("/api/profile", async (req, res) => {
       return res.status(400).json({ error: "Email is required" });
     }
 
+    const isAdmin = req.user?.role === 'Administrator';
+    const requesterEmail = req.user?.email?.toLowerCase();
+    if (!isAdmin && requesterEmail !== email.toLowerCase()) {
+      return res.status(403).json({ error: "Forbidden: Cannot update another user's profile" });
+    }
+
+    const roleToSet = isAdmin ? role : undefined;
+
     // Update main fields in PG DB
     let dbUser = (await db.select().from(schema.users).where(eq(schema.users.email, email)).limit(1))[0];
     if (dbUser) {
@@ -458,17 +477,20 @@ router.put("/api/profile", async (req, res) => {
         .set({
           namaLengkap: namaLengkap || dbUser.namaLengkap,
           kontakWhatsapp: kontakWhatsapp !== undefined ? kontakWhatsapp : dbUser.kontakWhatsapp,
-          role: role || dbUser.role
+          ...(roleToSet ? { role: roleToSet } : {}),
         })
         .where(eq(schema.users.email, email));
     } else {
-      // Auto create if missing
+      if (!isAdmin) {
+        return res.status(403).json({ error: "Forbidden: Cannot create profile for another user" });
+      }
+      // Auto create if missing (admin only)
       const uid = "user_" + uuidv4();
       const [newUser] = await db.insert(schema.users).values({
         uid,
         namaLengkap: namaLengkap || email.split("@")[0],
         email: email,
-        role: role || "Pengelola_Bangunan",
+        role: roleToSet || "Pengelola_Bangunan",
         kontakWhatsapp: kontakWhatsapp || ""
       }).returning();
       dbUser = newUser;

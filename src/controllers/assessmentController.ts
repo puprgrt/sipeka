@@ -18,6 +18,7 @@ export const get_assessments = async (req: express.Request, res: express.Respons
     // Fetch components
     const tahap1 = await db.select().from(schema.penilaianTahap1Keselamatan);
     const tahap2 = await db.select().from(schema.penilaianTahap2Volume);
+    const compData = await db.select().from(schema.assessmentComponentsData);
     const mKomponen = await db.select().from(schema.masterKomponen);
     const mKlasifikasi = await db.select().from(schema.masterKlasifikasiKerusakan);
     
@@ -39,6 +40,7 @@ export const get_assessments = async (req: express.Request, res: express.Respons
       
       const pTahap1 = tahap1.filter(t1 => t1.idPermohonan === p.idPermohonan);
       const pTahap2 = tahap2.filter(t2 => t2.idPermohonan === p.idPermohonan);
+      const pCompData = compData.filter(cd => cd.idPermohonan === p.idPermohonan);
       
       // Merge components
       const componentsMap = new Map<number, any>();
@@ -90,6 +92,14 @@ export const get_assessments = async (req: express.Request, res: express.Respons
              }
          }
       }
+      
+      // Override component photos with data from assessment_components_data table (Foto Keseluruhan Komponen)
+      for (const cd of pCompData) {
+        const comp = componentsMap.get(cd.idKomponen);
+        if (comp && cd.urlFotoKeseluruhan) {
+          comp.photo = cd.urlFotoKeseluruhan;
+        }
+      }
 
       return {
         id: p.idPermohonan,
@@ -119,7 +129,13 @@ export const get_assessments = async (req: express.Request, res: express.Respons
         customFields: { ...parsedCustomFields, idBangunan: b?.idBangunan, floorPlanImage: b?.urlDenahBangunan || parsedCustomFields.floorPlanImage }
       };
     });
-    res.json(assessments);
+
+    let filteredAssessments = assessments;
+    if (req.user?.role === 'Pengelola_Bangunan' && req.user.idUser) {
+      filteredAssessments = assessments.filter(a => a.idUserPengelola === req.user!.idUser);
+    }
+
+    res.json(filteredAssessments);
   } catch (error) {
     console.error("Error fetching assessments:", error);
     res.status(500).json({ error: "Failed to fetch assessments" });
@@ -347,6 +363,22 @@ export const post_assessments = async (req: express.Request, res: express.Respon
         
         if (!idKomponen) continue;
         
+        // Save overall component photo to dedicated table (Foto Keseluruhan Komponen)
+        if (comp.photo) {
+          try {
+            await db.insert(schema.assessmentComponentsData).values({
+              idPermohonan: permohonan.idPermohonan,
+              idKomponen,
+              urlFotoKeseluruhan: comp.photo
+            }).onConflictDoUpdate({
+              target: [schema.assessmentComponentsData.idPermohonan, schema.assessmentComponentsData.idKomponen],
+              set: { urlFotoKeseluruhan: comp.photo, updatedAt: new Date() }
+            });
+          } catch (e) {
+            console.warn(`Failed to save component photo for komponen ${idKomponen}:`, e);
+          }
+        }
+        
         if (comp.safetyImpact) {
           await db.insert(schema.penilaianTahap1Keselamatan).values({
             idPermohonan: permohonan.idPermohonan,
@@ -424,6 +456,7 @@ export const get_assessments_by_id = async (req: express.Request, res: express.R
 
     const t1Data = await db.select().from(schema.penilaianTahap1Keselamatan).where(eq(schema.penilaianTahap1Keselamatan.idPermohonan, id));
     const t2Data = await db.select().from(schema.penilaianTahap2Volume).where(eq(schema.penilaianTahap2Volume.idPermohonan, id));
+    const compDataRecords = await db.select().from(schema.assessmentComponentsData).where(eq(schema.assessmentComponentsData.idPermohonan, id));
     const mKomponen = await db.select().from(schema.masterKomponen);
     const mKlasifikasi = await db.select().from(schema.masterKlasifikasiKerusakan);
 
@@ -476,6 +509,18 @@ export const get_assessments_by_id = async (req: express.Request, res: express.R
             }
         }
     }
+    
+    // Override component photos with data from assessment_components_data table (Foto Keseluruhan Komponen)
+    for (const compData of compDataRecords) {
+        const comp = componentsMap.get(compData.idKomponen);
+        if (comp && compData.urlFotoKeseluruhan) {
+            comp.photo = compData.urlFotoKeseluruhan;
+        }
+    }
+
+    if (req.user?.role === 'Pengelola_Bangunan' && b && b.idUserPengelola !== req.user.idUser) {
+      return res.status(403).json({ error: 'Forbidden: Anda tidak memiliki akses ke permohonan ini' });
+    }
 
     res.json({
       id: p.idPermohonan,
@@ -509,9 +554,39 @@ export const get_assessments_by_id = async (req: express.Request, res: express.R
   }
 };
 
+/** Public endpoint for QR/document validation — returns minimal non-sensitive fields only */
+export const get_assessments_validate_public = async (req: express.Request, res: express.Response) => {
+  try {
+    const id = req.params.id;
+    const [p] = await db.select().from(schema.permohonanPenilaian).where(eq(schema.permohonanPenilaian.idPermohonan, id)).limit(1);
+    if (!p) return res.status(404).json({ error: "Dokumen tidak ditemukan" });
+
+    const [b] = await db.select().from(schema.profilBangunan).where(eq(schema.profilBangunan.idBangunan, p.idBangunan)).limit(1);
+
+    res.json({
+      id: p.idPermohonan,
+      schoolName: b?.namaSekolahInstansi || "Unknown",
+      buildingName: b?.namaMassaBangunan || "Unknown",
+      date: p.tanggalPengajuan.toISOString(),
+      status: p.statusTerakhir,
+      finalResult: {
+        totalDamagePercentage: p.totalPersentaseKerusakan ? Number(p.totalPersentaseKerusakan) : 0,
+        category: (p.kesimpulanAkhir?.replace('Rusak ', '') as any) || "Ringan",
+      },
+      tteSignatures: p.tteSignatures,
+    });
+  } catch (error) {
+    console.error("GET assessment validate-public error", error);
+    res.status(500).json({ error: "Failed to validate document" });
+  }
+};
+
 export const get_buildings = async (req: express.Request, res: express.Response) => {
   try {
-    const buildings = await db.select().from(schema.profilBangunan);
+    let buildings = await db.select().from(schema.profilBangunan);
+    if (req.user?.role === 'Pengelola_Bangunan' && req.user.idUser) {
+      buildings = buildings.filter(b => b.idUserPengelola === req.user!.idUser);
+    }
     const results = buildings.map(b => {
       let parsedCustomFields = {};
       try {

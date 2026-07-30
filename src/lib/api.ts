@@ -1,5 +1,15 @@
 import { supabase } from "./supabaseClient";
-import { getAuditHeaders } from "./utils";
+
+function shouldUseJsonContentType(body: BodyInit | null | undefined): boolean {
+  if (body == null) return false;
+
+  return !(body instanceof FormData)
+    && !(body instanceof Blob)
+    && !(body instanceof ArrayBuffer)
+    && !ArrayBuffer.isView(body)
+    && !(body instanceof URLSearchParams)
+    && !(typeof ReadableStream !== "undefined" && body instanceof ReadableStream);
+}
 
 export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -9,14 +19,13 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
   if (session?.access_token) {
     headers.set('Authorization', `Bearer ${session.access_token}`);
   }
-  
-  // Also include the old audit headers temporarily for backward compatibility
-  // until all endpoints strictly rely on req.user
-  const auditHeaders = getAuditHeaders();
-  for (const [key, value] of Object.entries(auditHeaders)) {
-    if (!headers.has(key)) {
-      headers.set(key, value);
-    }
+
+  const hasExplicitContentType = headers.has("Content-Type") || headers.has("content-type");
+  if (shouldUseJsonContentType(init?.body) && !hasExplicitContentType) {
+    headers.set("Content-Type", "application/json");
+  } else if (!shouldUseJsonContentType(init?.body)) {
+    headers.delete("Content-Type");
+    headers.delete("content-type");
   }
 
   const newInit: RequestInit = {
