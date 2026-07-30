@@ -36,7 +36,9 @@ export const get_assessments = async (req: express.Request, res: express.Respons
         if (b && b.customFields) {
           parsedCustomFields = JSON.parse(b.customFields);
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn("Invalid customFields JSON for building", b?.idBangunan, e);
+      }
       
       const pTahap1 = tahap1.filter(t1 => t1.idPermohonan === p.idPermohonan);
       const pTahap2 = tahap2.filter(t2 => t2.idPermohonan === p.idPermohonan);
