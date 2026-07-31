@@ -140,4 +140,16 @@ router.post("/api/document-templates/:id/reset", requireRole(...ADMIN_ROLES), as
   }
 });
 
+router.post("/api/document-templates/reset-all", requireRole(...ADMIN_ROLES), async (req, res) => {
+  try {
+    const { getDefaultTemplates } = await import('../utils/templateUtils');
+    const defaults = getDefaultTemplates();
+    await writeDocumentTemplates(defaults);
+    res.json(defaults);
+  } catch (error) {
+    console.error("POST reset-all templates error", error);
+    res.status(500).json({ error: "Failed to reset all templates" });
+  }
+});
+
 export default router;

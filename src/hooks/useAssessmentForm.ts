@@ -5,7 +5,7 @@ import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COM
 import { MapPin, Camera, Save, AlertCircle, X, CloudUpload, HelpCircle, Printer, Info, CheckCircle, FileText as FileTextIcon, Loader2, Building, Check, ClipboardList, Send, Paintbrush, Plus, Minus } from "lucide-react";
 import { cn, getAuditHeaders } from "../lib/utils";
 import { addOfflineAssessment, getOfflineAssessments, deleteOfflineAssessment } from "../lib/indexedDbQueue";
-import { replaceTemplatePlaceholders } from "../utils/templateUtils";
+import { replaceTemplatePlaceholders, DEFAULT_TEMPLATE_SURAT_PERMOHONAN } from "../utils/templateUtils";
 import { uploadToDrive } from "../lib/driveService";
 import { getAccessToken, googleSignIn, initAuth } from "../lib/firebaseAuth";
 import { createDocument } from "../lib/docsService";
@@ -719,70 +719,7 @@ export function useAssessmentForm() {
       const pengelolaKop = letterConfig?.pengelola;
       const docTitle = `Surat Permohonan Penilaian Kerusakan - ${schoolName || "Instansi"}`;
       const letterDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-      const templateToUse = suratPermohonanTemplate || `SURAT PERMOHONAN
-PENILAIAN KERUSAKAN BANGUNAN GEDUNG
-
-{{namaInstansiAtas}}
-{{namaInstansiBawah}}
-
-{{namaSekolah}}
-{{alamatPemohon}}
-
-------------------------------------------------------------
-
-Garut, {{tanggal}}
-
-Nomor      : {{nomorSurat}}
-Sifat      : Biasa
-Lampiran   : 1 (satu) berkas
-Hal        : Permohonan Penilaian Kerusakan Bangunan Gedung
-            {{namaSekolah}}
-
-Yth.
-Kepala Dinas Pekerjaan Umum dan Penataan Ruang Kabupaten Garut
-Di Garut
-
-Dengan hormat,
-
-Dalam rangka menjamin keselamatan, keamanan, kenyamanan,
-dan keberlanjutan fungsi bangunan gedung pada {{namaInstansiBawah}},
-bersama ini kami mengajukan permohonan Analisis dan Perhitungan
-Kerusakan Bangunan Gedung terhadap bangunan yang berada pada lokasi berikut:
-
-
-1. Identitas Bangunan Gedung:
-Nama Bangunan   : {{namaBangunan}}
-NPSN            : {{npsn}}
-Luas            : {{luasBangunan}} m²
-Jumlah Lantai   : {{jumlahLantai}}
-Alamat Bangunan : {{alamatBangunan}}
-Desa/Kelurahan  :
-Kecamatan       :
-Kabupaten/Kota  : Garut
-Koordinat       : {{koordinatGps}}
-
-Sehubungan dengan data penilaian mandiri yang dilampirkan,
-diperlukan guna mengetahui tingkat kerusakan bangunan secara
-kuantitatif dan kualitatif sesuai ketentuan teknis yang berlaku.
-
-Demikian permohonan ini kami sampaikan. Besar harapan kami agar
-dapat dilakukan pemeriksaan lapangan, analisis teknis, dan
-perhitungan tingkat kerusakan bangunan gedung dimaksud sebagai
-dasar pengambilan kebijakan penanganan serta penyusunan kebutuhan
-anggaran rehabilitasi bangunan.
-
-Atas perhatian dan kerja sama yang baik, kami ucapkan terima kasih.
-
-
-Hormat kami,
-
-
-{{jabatanPengirim}}
-
-BARCODE TTE
-
-{{namaPengirim}}
-NIP. {{nipPengirim}}`;
+      const templateToUse = suratPermohonanTemplate || DEFAULT_TEMPLATE_SURAT_PERMOHONAN;
 
       const docContent = replaceTemplatePlaceholders(templateToUse, {
         namaInstansiAtas: pengelolaKop?.namaInstansiAtas || "PEMERINTAH KABUPATEN GARUT",
@@ -929,44 +866,24 @@ NIP. {{nipPengirim}}`;
           const docTitle = `Surat Permohonan Penilaian Kerusakan - ${schoolName}`;
           let docContent = "";
           
-          if (suratPermohonanTemplate) {
-            docContent = replaceTemplatePlaceholders(suratPermohonanTemplate, {
-              namaInstansiAtas: letterConfig?.pengelola?.namaInstansiAtas || "PEMERINTAH KABUPATEN GARUT",
-              namaInstansiBawah: letterConfig?.pengelola?.namaInstansiBawah || schoolName || "UPTD SATUAN PENDIDIKAN",
-              alamatPemohon: letterConfig?.pengelola?.alamat || address || "Jl. Raya Pembangunan No. 123",
-              nomorSurat: letterReferenceNo,
-              tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-              namaSekolah: schoolName,
-              namaBangunan: buildingName,
-              npsn: npsn,
-              luasBangunan: String(buildingArea),
-              jumlahLantai: String(floorCount),
-              alamatBangunan: address,
-              koordinatGps: coordinates ? `${coordinates.lat}, ${coordinates.lng}` : "-",
-              namaPengirim: letterConfig?.pengelola?.namaKepala || "Nama Pengirim",
-              jabatanPengirim: letterConfig?.pengelola?.jabatan || "Jabatan",
-              nipPengirim: letterConfig?.pengelola?.nipKepala || "-"
-            });
-          } else {
-            docContent = `SURAT PERMOHONAN PENILAIAN KERUSAKAN BANGUNAN KEDINASAN
-            
-Nomor Surat: ${letterReferenceNo}
-Perihal: Permohonan Penilaian Kerusakan Fisik Bangunan Gedung
-Tanggal: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-
-${getParamLabel("schoolName", "Nama Sekolah / Instansi")}: ${schoolName}
-${getParamLabel("buildingName", "Nama Bangunan")}: ${buildingName}
-${getParamLabel("npsn", "NPSN")}: ${npsn}
-${getParamLabel("buildingArea", "Luas Bangunan")}: ${buildingArea} m²
-${getParamLabel("floorCount", "Jumlah Lantai")}: ${floorCount} Lantai
-${getParamLabel("address", "Alamat")}: ${address}
-Koordinat GPS: ${coordinates ? `Latitude: ${coordinates.lat}, Longitude: ${coordinates.lng}` : "-"}
-
-Dengan hormat, bersama ini kami sampaikan dokumen permohonan resmi penilaian kondisi fisik bangunan gedung agar kiranya dapat diagendakan survei dan analisis teknis lapangan oleh Tim Teknis Dinas PUPR.
-
-Hormat Kami,
-Pengelola Bangunan / Pemohon`;
-          }
+          const templateToUse = suratPermohonanTemplate || DEFAULT_TEMPLATE_SURAT_PERMOHONAN;
+          docContent = replaceTemplatePlaceholders(templateToUse, {
+            namaInstansiAtas: letterConfig?.pengelola?.namaInstansiAtas || "PEMERINTAH KABUPATEN GARUT",
+            namaInstansiBawah: letterConfig?.pengelola?.namaInstansiBawah || schoolName || "UPTD SATUAN PENDIDIKAN",
+            alamatPemohon: letterConfig?.pengelola?.alamat || address || "Jl. Raya Pembangunan No. 123",
+            nomorSurat: letterReferenceNo,
+            tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+            namaSekolah: schoolName,
+            namaBangunan: buildingName,
+            npsn: npsn,
+            luasBangunan: String(buildingArea),
+            jumlahLantai: String(floorCount),
+            alamatBangunan: address,
+            koordinatGps: coordinates ? `${coordinates.lat}, ${coordinates.lng}` : "-",
+            namaPengirim: letterConfig?.pengelola?.namaKepala || "Nama Pengirim",
+            jabatanPengirim: letterConfig?.pengelola?.jabatan || "Jabatan",
+            nipPengirim: letterConfig?.pengelola?.nipKepala || "-"
+          });
           
           let docContentWithParams = docContent;
           const stdKeys = ["schoolName", "buildingName", "npsn", "address", "buildingArea", "floorCount"];

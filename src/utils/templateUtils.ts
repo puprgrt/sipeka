@@ -70,12 +70,34 @@ export const PLACEHOLDERS_LEMBAR_DISPOSISI: PlaceholderInfo[] = [
 
 export const PLACEHOLDERS_LAMPIRAN_XLSX: PlaceholderInfo[] = [
   { key: "namaSekolah", label: "Nama Sekolah/Instansi", contoh: "SDN 1 Tarogong Kidul" },
+  { key: "npsn", label: "NPSN", contoh: "20211234" },
   { key: "namaBangunan", label: "Nama Bangunan", contoh: "Gedung Utama Lantai 1" },
+  { key: "luasBangunan", label: "Luas Bangunan (m²)", contoh: "450" },
+  { key: "jumlahLantai", label: "Jumlah Lantai", contoh: "1" },
+  { key: "alamatBangunan", label: "Alamat Bangunan", contoh: "Jl. Raya Samarang No. 10, Garut" },
   { key: "tanggal", label: "Tanggal Penilaian", contoh: "14 Juli 2026" },
-  { key: "jumlahLantai", label: "Jumlah Lantai", contoh: "2" },
   { key: "totalKerusakan", label: "Total Kerusakan (%)", contoh: "35.50" },
   { key: "kategoriKerusakan", label: "Kategori Kerusakan", contoh: "Rusak Sedang" },
+  { key: "namaTimSurvei1", label: "Tim Survei 1 (Nama)", contoh: "Enjang Wahyudin, ST" },
+  { key: "nipTimSurvei1", label: "Tim Survei 1 (NIP)", contoh: "199112182019031011" },
+  { key: "namaTimSurvei2", label: "Tim Survei 2 (Nama)", contoh: "Haris Nugraha" },
+  { key: "nipTimSurvei2", label: "Tim Survei 2 (NIP)", contoh: "197703292025211012" },
+  { key: "namaTimSurvei3", label: "Tim Survei 3 (Nama)", contoh: "Nendi Supriadi" },
+  { key: "nipTimSurvei3", label: "Tim Survei 3 (NIP)", contoh: "198302022025211069" },
 ];
+
+export const OFFICIAL_SPREADSHEET_TEMPLATES = {
+  TIPE_A: "https://docs.google.com/spreadsheets/d/1pe2d-T7KzkGqIrXq6bUYoevYI3alXxosT5RBTljvIiE/edit?gid=756257354#gid=756257354",
+  TIPE_B: "https://docs.google.com/spreadsheets/d/1sTjY-dIEJI7cDezMpVnb25mcbyHcNrRBe7AFZarz7IA/edit?gid=1536163214#gid=1536163214",
+  TIPE_C: "https://docs.google.com/spreadsheets/d/1bza5jDXLNYtOTyjEsju8e4cv0rZTskBjxsqewIh4dhk/edit?gid=506421235#gid=506421235",
+};
+
+export function getOfficialSpreadsheetTemplateUrl(floorCount: number = 1): string {
+  if (floorCount === 1) return OFFICIAL_SPREADSHEET_TEMPLATES.TIPE_A;
+  if (floorCount === 2) return OFFICIAL_SPREADSHEET_TEMPLATES.TIPE_B;
+  return OFFICIAL_SPREADSHEET_TEMPLATES.TIPE_C;
+}
+
 
 
 // ========================
@@ -86,40 +108,33 @@ export const DEFAULT_TEMPLATE_SURAT_PERMOHONAN = `<html>
 <head>
   <title>Surat Permohonan Penilaian Kerusakan</title>
   <style>
-    body { font-family: 'Arial', sans-serif; padding: 40px; line-height: 1.5; font-size: 14px; }
-    .kop { display: flex; align-items: center; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 20px; }
-    .kop-logo { width: 80px; height: auto; margin-right: 20px; }
-    .kop-text { flex: 1; text-align: center; }
-    .kop-text h1 { font-size: 16px; margin: 0; font-weight: bold; }
-    .kop-text h2 { font-size: 14px; margin: 0; font-weight: bold; }
-    .kop-text p { font-size: 12px; margin: 0; }
-    .date-right { text-align: right; margin-bottom: 20px; }
-    .meta-table { width: 100%; margin-bottom: 20px; border: none; }
-    .meta-table td { vertical-align: top; padding: 2px; }
-    .meta-table td:nth-child(1) { width: 80px; }
-    .meta-table td:nth-child(2) { width: 10px; }
+    body { font-family: 'Arial', sans-serif; padding: 40px 50px; line-height: 1.5; font-size: 13px; color: #000; }
+    .header-left { margin-bottom: 25px; line-height: 1.4; }
+    .header-left div { font-weight: normal; }
+    .date-right { text-align: right; margin-bottom: 25px; }
+    .meta-table { width: 100%; margin-bottom: 25px; border-collapse: collapse; }
+    .meta-table td { vertical-align: top; padding: 3px 0; font-size: 13px; }
+    .meta-table td:nth-child(1) { width: 90px; }
+    .meta-table td:nth-child(2) { width: 15px; }
+    .recipient { margin-bottom: 25px; line-height: 1.4; }
     .content { text-align: justify; }
-    .content-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-    .content-table td { border: 1px solid black; padding: 5px 8px; }
-    .content-table td:nth-child(1) { width: 40%; }
-    .content-table td:nth-child(2) { width: 5%; text-align: center; border-right: none; }
-    .content-table td:nth-child(3) { border-left: none; }
-    .signature { float: right; text-align: center; margin-top: 40px; width: 250px; }
-    .signature p { margin: 2px 0; }
-    .barcode { margin: 40px 0; color: #555; }
+    .content p { margin: 12px 0; }
+    .identity-table { width: 100%; border-collapse: collapse; margin: 10px 0 15px 20px; }
+    .identity-table td { padding: 4px 0; vertical-align: top; font-size: 13px; }
+    .identity-table td:nth-child(1) { width: 160px; }
+    .identity-table td:nth-child(2) { width: 15px; }
+    .signature { float: right; text-align: center; margin-top: 40px; width: 260px; }
+    .signature p { margin: 3px 0; }
     .clear { clear: both; }
-    @media print { body { padding: 20px; } }
+    @media print { body { padding: 25px; } }
   </style>
 </head>
 <body>
-  <div class="kop">
-    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Lambang_Kabupaten_Garut.png/400px-Lambang_Kabupaten_Garut.png" alt="Logo" class="kop-logo" />
-    <div class="kop-text">
-      <h1>{{namaInstansiAtas}}</h1>
-      <h1>{{namaInstansiBawah}}</h1>
-      <h2>{{namaSekolah}}</h2>
-      <p>{{alamatPemohon}}</p>
-    </div>
+  <div class="header-left">
+    <div>{{namaInstansiAtas}}</div>
+    <div>{{namaInstansiBawah}}</div>
+    <div>{{namaSekolah}}</div>
+    <div>{{alamatPemohon}}</div>
   </div>
 
   <div class="date-right">
@@ -139,54 +154,51 @@ export const DEFAULT_TEMPLATE_SURAT_PERMOHONAN = `<html>
     <tr>
       <td>Hal</td><td>:</td>
       <td>
-        Permohonan Penilaian<br/>
-        Kerusakan Bangunan Gedung<br/>
-        {{namaSekolah}}
+        Permohonan Penilaian Kerusakan Bangunan Gedung {{namaSekolah}}
       </td>
     </tr>
   </table>
 
-  <div class="content">
-    <p>
-      Yth. Kepala Dinas Pekerjaan Umum dan<br/>
-      Penataan Ruang Kabupaten Garut<br/>
-      di<br/>
-      &nbsp;&nbsp;&nbsp;&nbsp;Garut
-    </p>
+  <div class="recipient">
+    <p style="margin:0;">Yth. Kepala Dinas Pekerjaan Umum dan Penataan Ruang Kabupaten Garut</p>
+    <p style="margin:0;">di</p>
+    <p style="margin:0;">&nbsp;&nbsp;&nbsp;&nbsp;Garut</p>
+  </div>
 
+  <div class="content">
     <p style="text-indent: 40px;">
       Dalam rangka menjamin keselamatan, keamanan, kenyamanan, dan keberlanjutan fungsi bangunan gedung pada {{namaInstansiBawah}}, bersama ini kami mengajukan permohonan <b>Analisis dan Perhitungan Kerusakan Bangunan Gedung</b> terhadap bangunan yang berada pada lokasi berikut:
     </p>
 
-    <p>1. Identitas Bangunan Gedung:</p>
+    <p style="margin-bottom: 5px;">1. Identitas Bangunan Gedung:</p>
     
-    <table class="content-table">
+    <table class="identity-table">
       <tr>
-        <td>Nama Bangunan</td><td style="border-right: none;">:</td><td style="border-left: none;">{{namaBangunan}}</td>
+        <td>Nama Bangunan</td><td>:</td><td>{{namaBangunan}}</td>
       </tr>
       <tr>
-        <td>NPSN</td><td style="border-right: none;">:</td><td style="border-left: none;">{{npsn}}</td>
+        <td>NPSN</td><td>:</td><td>{{npsn}}</td>
       </tr>
       <tr>
-        <td>Luas</td><td style="border-right: none;">:</td><td style="border-left: none;">{{luasBangunan}} m&sup2;</td>
+        <td>Luas</td><td>:</td><td>{{luasBangunan}} m&sup2;</td>
       </tr>
       <tr>
-        <td>Jumlah Lantai</td><td style="border-right: none;">:</td><td style="border-left: none;">{{jumlahLantai}}</td>
+        <td>Jumlah Lantai</td><td>:</td><td>{{jumlahLantai}}</td>
       </tr>
       <tr>
-        <td>Alamat Bangunan</td><td style="border-right: none;">:</td><td style="border-left: none;">{{alamatBangunan}}</td>
+        <td>Alamat Bangunan</td><td>:</td><td>{{alamatBangunan}}</td>
       </tr>
       <tr>
-        <td>Desa/Kelurahan</td><td style="border-right: none;">:</td><td style="border-left: none;"></td>
+        <td>Desa/Kelurahan</td><td>:</td><td>-</td>
       </tr>
       <tr>
-        <td>Kecamatan</td><td style="border-right: none;">:</td><td style="border-left: none;"></td>
+        <td>Kecamatan</td><td>:</td><td>-</td>
       </tr>
       <tr>
-        <td>Kabupaten/Kota</td><td style="border-right: none;">:</td><td style="border-left: none;">Garut</td>
+        <td>Kabupaten/Kota</td><td>:</td><td>Garut</td>
       </tr>
       <tr>
-        <td>Koordinat</td><td style="border-right: none;">:</td><td style="border-left: none;">{{koordinatGps}}</td>
+        <td>Koordinat</td><td>:</td><td>{{koordinatGps}}</td>
       </tr>
     </table>
 
@@ -203,10 +215,10 @@ export const DEFAULT_TEMPLATE_SURAT_PERMOHONAN = `<html>
 
   <div class="signature">
     <p>{{jabatanPengirim}},</p>
-    <div style="margin: 10px 0;">
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TTE-PERMOHONAN-{{nomorSurat}}" alt="QR TTE" width="80" height="80" />
+    <div style="margin: 15px 0;">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TTE-PERMOHONAN-{{nomorSurat}}" alt="QR TTE" width="90" height="90" />
     </div>
-    <p><u>{{namaPengirim}}</u></p>
+    <p><b><u>{{namaPengirim}}</u></b></p>
     <p>NIP. {{nipPengirim}}</p>
   </div>
   <div class="clear"></div>
@@ -217,52 +229,82 @@ export const DEFAULT_TEMPLATE_SURAT_HASIL = `<html>
 <head>
   <title>Surat Hasil Perhitungan Penilaian Kerusakan</title>
   <style>
-    body { font-family: 'Times New Roman', serif; padding: 40px; line-height: 1.6; }
-    h1 { font-size: 16px; font-weight: bold; text-transform: uppercase; text-align: center; margin-bottom: 5px; }
-    h2 { font-size: 14px; font-weight: bold; text-align: center; margin-bottom: 20px; text-decoration: underline; }
-    .kop { text-align: center; border-bottom: 3px double black; padding-bottom: 10px; margin-bottom: 30px; }
-    .kop h1 { margin: 0; }
-    .kop p { font-size: 11px; margin: 2px 0; }
-    .content { text-align: justify; font-size: 13px; }
-    .content table { width: 100%; margin: 15px 0; border-collapse: collapse; }
-    .content table td { padding: 4px 8px; font-size: 13px; }
-    .content table td:first-child { width: 35%; }
-    .signature { text-align: right; margin-top: 50px; font-size: 13px; }
-    .signature p { margin: 2px 0; }
-    @media print { body { padding: 20px; } }
+    body { font-family: 'Times New Roman', serif; padding: 40px 50px; line-height: 1.5; font-size: 13px; color: #000; }
+    .kop { display: flex; align-items: center; border-bottom: 3px double black; padding-bottom: 12px; margin-bottom: 25px; }
+    .kop-logo { width: 85px; height: auto; margin-right: 20px; }
+    .kop-text { flex: 1; text-align: center; }
+    .kop-text h1 { font-size: 16px; margin: 0; font-weight: bold; text-transform: uppercase; }
+    .kop-text h2 { font-size: 15px; margin: 0; font-weight: bold; text-transform: uppercase; }
+    .kop-text p { font-size: 11px; margin: 3px 0 0 0; }
+    .title-block { text-align: center; margin-bottom: 25px; }
+    .title-block h3 { font-size: 14px; font-weight: bold; text-decoration: underline; margin: 0 0 5px 0; text-transform: uppercase; }
+    .title-block p { font-size: 13px; margin: 0; }
+    .content { text-align: justify; line-height: 1.6; }
+    .content p { margin: 12px 0; }
+    .identity-table { width: 100%; border-collapse: collapse; margin: 15px 0 15px 20px; }
+    .identity-table td { padding: 4px 0; vertical-align: top; font-size: 13px; }
+    .identity-table td:nth-child(1) { width: 200px; }
+    .identity-table td:nth-child(2) { width: 15px; }
+    .signature { float: right; text-align: center; margin-top: 40px; width: 280px; }
+    .signature p { margin: 3px 0; }
+    .clear { clear: both; }
+    @media print { body { padding: 25px; } }
   </style>
 </head>
 <body>
   <div class="kop">
-    <h1>{{namaInstansiAtas}}</h1>
-    <h1>{{namaDinas}}</h1>
-    <p>{{alamatDinas}}</p>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Lambang_Kabupaten_Garut.png/400px-Lambang_Kabupaten_Garut.png" alt="Logo" class="kop-logo" />
+    <div class="kop-text">
+      <h1>{{namaInstansiAtas}}</h1>
+      <h2>{{namaDinas}}</h2>
+      <p>{{alamatDinas}}</p>
+    </div>
   </div>
 
-  <h2>SURAT HASIL PERHITUNGAN PENILAIAN KERUSAKAN BANGUNAN</h2>
-  <p style="text-align:center;">Nomor: {{nomorSurat}}</p>
+  <div class="title-block">
+    <h3>SURAT HASIL PERHITUNGAN PENILAIAN KERUSAKAN BANGUNAN GEDUNG</h3>
+    <p>Nomor: {{nomorSurat}}</p>
+  </div>
 
   <div class="content">
-    <p>Berdasarkan hasil survei teknis dan analisis perhitungan kerusakan yang telah dilaksanakan pada:</p>
-    <table>
-      <tr><td>Nama Instansi</td><td>: {{namaSekolah}}</td></tr>
-      <tr><td>Nama Bangunan</td><td>: {{namaBangunan}}</td></tr>
-      <tr><td>Total Kerusakan</td><td>: {{totalKerusakan}}</td></tr>
-      <tr><td>Kategori</td><td>: {{kategoriKerusakan}}</td></tr>
+    <p style="text-indent: 40px;">
+      Berdasarkan hasil survei teknis lapangan dan analisis perhitungan tingkat kerusakan fisik bangunan gedung yang telah dilaksanakan oleh Tim Teknis Dinas Pekerjaan Umum dan Penataan Ruang Kabupaten Garut terhadap:
+    </p>
+
+    <table class="identity-table">
+      <tr>
+        <td>Nama Instansi / Sekolah</td><td>:</td><td><b>{{namaSekolah}}</b></td>
+      </tr>
+      <tr>
+        <td>Nama Bangunan</td><td>:</td><td><b>{{namaBangunan}}</b></td>
+      </tr>
+      <tr>
+        <td>Total Persentase Kerusakan</td><td>:</td><td><b>{{totalKerusakan}}</b></td>
+      </tr>
+      <tr>
+        <td>Kategori Tingkat Kerusakan</td><td>:</td><td><b>{{kategoriKerusakan}}</b></td>
+      </tr>
     </table>
-    <p>Maka dengan ini ditetapkan hasil perhitungan penilaian tingkat kerusakan bangunan tersebut di atas adalah sah sesuai standar operasional yang berlaku, untuk dapat dipergunakan sebagai dasar penyusunan Rencana Anggaran Biaya (RAB) rehabilitasi.</p>
+
+    <p style="text-indent: 40px;">
+      Maka dengan ini ditetapkan bahwa hasil perhitungan penilaian tingkat kerusakan bangunan gedung tersebut di atas adalah sah dan mengacu pada standar teknis dan regulasi Kementerian Pekerjaan Umum dan Perumahan Rakyat (PUPR), untuk dapat dipergunakan sebagai dasar rekomendasi teknis serta penyusunan Rencana Anggaran Biaya (RAB) rehabilitasi bangunan.
+    </p>
+
+    <p style="text-indent: 40px;">
+      Demikian surat hasil perhitungan penilaian kerusakan ini diterbitkan untuk dipergunakan sebagaimana mestinya.
+    </p>
   </div>
 
   <div class="signature">
-    <p>Ditetapkan di Garut</p>
-    <p>Tanggal: {{tanggal}}</p>
-    <div style="margin: 10px 0;">
-      <img src="{{qrKadis}}" alt="QR TTE" width="80" height="80" onerror="this.style.display='none'" />
+    <p>Ditetapkan di Garut<br/>Tanggal: {{tanggal}}</p>
+    <p style="margin-top: 10px;">Kepala Dinas Pekerjaan Umum dan Penataan Ruang<br/>Kabupaten Garut,</p>
+    <div style="margin: 15px 0;">
+      <img src="{{qrKadis}}" alt="QR TTE" width="90" height="90" onerror="this.src='https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TTE-HASIL-{{nomorSurat}}'" />
     </div>
     <p><b><u>{{namaKadis}}</u></b></p>
     <p>NIP. {{nipKadis}}</p>
   </div>
-  <script>window.print();</script>
+  <div class="clear"></div>
 </body>
 </html>`;
 
@@ -279,17 +321,119 @@ export const DEFAULT_TEMPLATE_LEMBAR_DISPOSISI = `<div class="disposisi-header">
   <tr><td>Perihal</td><td>: {{perihal}}</td></tr>
 </table>`;
 
-export const DEFAULT_TEMPLATE_LAMPIRAN_XLSX = `LAMPIRAN PERHITUNGAN VOLUME KERUSAKAN BANGUNAN
-Nama Sekolah/Instansi: {{namaSekolah}}
-Nama Bangunan: {{namaBangunan}}
-Tanggal Penilaian: {{tanggal}}
-Jumlah Lantai: {{jumlahLantai}}
+export const DEFAULT_TEMPLATE_LAMPIRAN_TIPE_A = `<html>
+<head>
+  <title>Lampiran Hasil Penilaian Kerusakan Bangunan - 1 Lantai (Tipe A)</title>
+  <style>
+    body { font-family: 'Arial', sans-serif; padding: 30px; font-size: 11px; color: #000; }
+    h2 { text-align: center; font-size: 14px; margin-bottom: 5px; text-transform: uppercase; }
+    h3 { text-align: center; font-size: 12px; margin-top: 0; margin-bottom: 20px; text-transform: uppercase; }
+    .meta-table { width: 100%; margin-bottom: 15px; border-collapse: collapse; }
+    .meta-table td { padding: 3px 5px; vertical-align: top; }
+    .meta-table td:nth-child(1) { width: 180px; font-weight: bold; }
+    .meta-table td:nth-child(2) { width: 15px; }
+    .data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    .data-table th, .data-table td { border: 1px solid #333; padding: 6px 4px; text-align: center; }
+    .data-table th { background-color: #1e3a8a; color: white; font-weight: bold; font-size: 10px; }
+    .data-table td.left { text-align: left; }
+    .data-table tr.group-header { background-color: #e2e8f0; font-weight: bold; text-align: left; }
+    .summary-box { border: 2px solid #1e3a8a; padding: 12px; margin-bottom: 25px; background-color: #f8fafc; }
+    .summary-title { font-size: 12px; font-weight: bold; color: #1e3a8a; margin-bottom: 5px; }
+    .signature-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; text-align: center; margin-top: 30px; }
+    .sig-box p { margin: 3px 0; }
+    .sig-space { height: 60px; }
+  </style>
+</head>
+<body>
+  <h2>FORMULIR PENILAIAN KERUSAKAN BANGUNAN (FORMAT ANALISIS PUPR)</h2>
+  <h3>BANGUNAN 1 LANTAI (TIPE A)</h3>
 
-Kolom Tabel:
-No | Komponen | Bobot (%) | Klasifikasi Kerusakan | Volume (%) | Nilai Kerusakan | Foto
+  <table class="meta-table">
+    <tr><td>Nama Sekolah/Instansi</td><td>:</td><td>{{namaSekolah}}</td><td>NPSN</td><td>:</td><td>{{npsn}}</td></tr>
+    <tr><td>Nama Bangunan</td><td>:</td><td>{{namaBangunan}}</td><td>Luas Bangunan</td><td>:</td><td>{{luasBangunan}} m²</td></tr>
+    <tr><td>Alamat Bangunan</td><td>:</td><td>{{alamatBangunan}}</td><td>Jumlah Lantai</td><td>:</td><td>1 Lantai (Tipe A)</td></tr>
+    <tr><td>Tanggal Penilaian</td><td>:</td><td>{{tanggal}}</td><td></td><td></td><td></td></tr>
+  </table>
 
-Total Kerusakan: {{totalKerusakan}}%
-Kategori: {{kategoriKerusakan}}`;
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th rowspan="2">NO</th>
+        <th rowspan="2">SISTEM</th>
+        <th rowspan="2">KOMPONEN</th>
+        <th rowspan="2">SATUAN</th>
+        <th colspan="7">KLASIFIKASI TINGKAT KERUSAKAN</th>
+        <th rowspan="2">TOTAL KERUSAKAN (%)</th>
+        <th rowspan="2">BOBOT FORM A (%)</th>
+        <th rowspan="2">NILAI KERUSAKAN THD MASSA (%)</th>
+      </tr>
+      <tr>
+        <th>Tdk Rusak</th><th>Sangat Ringan</th><th>Ringan</th><th>Sedang</th><th>Berat</th><th>Sangat Berat</th><th>Tdk Sesuai</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="group-header"><td colspan="14">A. STRUKTUR</td></tr>
+      <tr><td>1</td><td>Struktur</td><td class="left">Pondasi & Sloof</td><td>%</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td><td>12.00</td><td>0.00</td></tr>
+      <tr><td>2</td><td>Struktur</td><td class="left">Kolom</td><td>%</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td><td>10.00</td><td>0.00</td></tr>
+      <tr><td>3</td><td>Struktur</td><td class="left">Balok</td><td>%</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td><td>8.00</td><td>0.00</td></tr>
+      <tr><td>4</td><td>Struktur</td><td class="left">Atap</td><td>%</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td><td>7.00</td><td>0.00</td></tr>
+      <tr class="group-header"><td colspan="14">B. ARSITEKTUR</td></tr>
+      <tr><td>5</td><td>Arsitektur</td><td class="left">Dinding / Partisi</td><td>%</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td><td>21.50</td><td>0.00</td></tr>
+      <tr><td>6</td><td>Arsitektur</td><td class="left">Plafond</td><td>%</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td><td>10.00</td><td>0.00</td></tr>
+      <tr><td>7</td><td>Arsitektur</td><td class="left">Lantai</td><td>%</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td><td>14.50</td><td>0.00</td></tr>
+      <tr><td>8</td><td>Arsitektur</td><td class="left">Kusen</td><td>%</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td><td>1.00</td><td>0.00</td></tr>
+      <tr><td>9</td><td>Arsitektur</td><td class="left">Pintu</td><td>%</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td><td>1.50</td><td>0.00</td></tr>
+      <tr><td>10</td><td>Arsitektur</td><td class="left">Jendela</td><td>%</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td><td>2.00</td><td>0.00</td></tr>
+      <tr><td>11</td><td>Arsitektur</td><td class="left">Finishing Plafond</td><td>%</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td><td>3.00</td><td>0.00</td></tr>
+      <tr><td>12</td><td>Arsitektur</td><td class="left">Finishing Dinding</td><td>%</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td><td>4.00</td><td>0.00</td></tr>
+      <tr><td>13</td><td>Arsitektur</td><td class="left">Finishing Kusen & Pintu</td><td>%</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td><td>2.00</td><td>0.00</td></tr>
+      <tr class="group-header"><td colspan="14">C. UTILITAS</td></tr>
+      <tr><td>14</td><td>Utilitas</td><td class="left">Instalasi Listrik</td><td>%</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td><td>1.00</td><td>0.00</td></tr>
+      <tr><td>15</td><td>Utilitas</td><td class="left">Instalasi Air Bersih</td><td>%</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td><td>1.00</td><td>0.00</td></tr>
+      <tr><td>16</td><td>Utilitas</td><td class="left">Drainase Limbah</td><td>%</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>0.00</td><td>1.50</td><td>0.00</td></tr>
+      <tr style="font-weight: bold; background-color: #f1f5f9;">
+        <td colspan="12" style="text-align: right;">TOTAL BOBOT / NILAI KERUSAKAN THD MASSA BANGUNAN</td>
+        <td>100.00%</td>
+        <td>{{totalKerusakan}}%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="summary-box">
+    <div class="summary-title">KESIMPULAN HASIL PENILAIAN KERUSAKAN BANGUNAN</div>
+    <p style="margin: 4px 0; font-size: 13px;">Total Tingkat Kerusakan Bangunan: <b>{{totalKerusakan}}%</b></p>
+    <p style="margin: 4px 0; font-size: 13px;">Klasifikasi Kerusakan: <b>{{kategoriKerusakan}}</b></p>
+  </div>
+
+  <div style="text-align: center; font-weight: bold; margin-bottom: 15px;">TIM SURVEI LAPANGAN / VERIFIKATOR TEKNIS</div>
+  <div class="signature-grid">
+    <div class="sig-box">
+      <p>Petugas Survei 1</p>
+      <div class="sig-space"></div>
+      <p><b><u>{{namaTimSurvei1}}</u></b></p>
+      <p>NIP. {{nipTimSurvei1}}</p>
+    </div>
+    <div class="sig-box">
+      <p>Petugas Survei 2</p>
+      <div class="sig-space"></div>
+      <p><b><u>{{namaTimSurvei2}}</u></b></p>
+      <p>NIP. {{nipTimSurvei2}}</p>
+    </div>
+    <div class="sig-box">
+      <p>Petugas Survei 3</p>
+      <div class="sig-space"></div>
+      <p><b><u>{{namaTimSurvei3}}</u></b></p>
+      <p>NIP. {{nipTimSurvei3}}</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+export const DEFAULT_TEMPLATE_LAMPIRAN_TIPE_B = DEFAULT_TEMPLATE_LAMPIRAN_TIPE_A.replace("BANGUNAN 1 LANTAI (TIPE A)", "BANGUNAN 2 LANTAI (TIPE B)").replace("1 Lantai (Tipe A)", "2 Lantai (Tipe B)").replace("BOBOT FORM A (%)", "BOBOT FORM B (%)");
+
+export const DEFAULT_TEMPLATE_LAMPIRAN_TIPE_C = DEFAULT_TEMPLATE_LAMPIRAN_TIPE_A.replace("BANGUNAN 1 LANTAI (TIPE A)", "BANGUNAN 3 LANTAI ATAU LEBIH (TIPE C)").replace("1 Lantai (Tipe A)", "3 Lantai (Tipe C)").replace("BOBOT FORM A (%)", "BOBOT FORM C (%)");
+
+export const DEFAULT_TEMPLATE_LAMPIRAN_XLSX = DEFAULT_TEMPLATE_LAMPIRAN_TIPE_A;
 
 
 // ========================
@@ -326,13 +470,31 @@ export function getDefaultTemplates(): DocumentTemplate[] {
       driveLink: "https://docs.google.com/document/d/contoh_link_lembar_disposisi/edit",
     },
     {
-      id: "lampiran_perhitungan",
-      nama: "Lampiran Perhitungan (XLSX)",
-      deskripsi: "Template lampiran tabel rincian perhitungan volume kerusakan per komponen (export Excel)",
+      id: "lampiran_tipe_a",
+      nama: "Lampiran Hasil Penilaian (Tipe A - 1 Lantai)",
+      deskripsi: "Template resmi lampiran perhitungan kerusakan bangunan 1 Lantai (Tipe A) sesuai standar PUPR",
       kategori: "lampiran",
-      kontenHtml: DEFAULT_TEMPLATE_LAMPIRAN_XLSX,
+      kontenHtml: DEFAULT_TEMPLATE_LAMPIRAN_TIPE_A,
       placeholders: PLACEHOLDERS_LAMPIRAN_XLSX,
-      driveLink: "https://docs.google.com/spreadsheets/d/contoh_link_lampiran_excel/edit",
+      driveLink: OFFICIAL_SPREADSHEET_TEMPLATES.TIPE_A,
+    },
+    {
+      id: "lampiran_tipe_b",
+      nama: "Lampiran Hasil Penilaian (Tipe B - 2 Lantai)",
+      deskripsi: "Template resmi lampiran perhitungan kerusakan bangunan 2 Lantai (Tipe B) sesuai standar PUPR",
+      kategori: "lampiran",
+      kontenHtml: DEFAULT_TEMPLATE_LAMPIRAN_TIPE_B,
+      placeholders: PLACEHOLDERS_LAMPIRAN_XLSX,
+      driveLink: OFFICIAL_SPREADSHEET_TEMPLATES.TIPE_B,
+    },
+    {
+      id: "lampiran_tipe_c",
+      nama: "Lampiran Hasil Penilaian (Tipe C - 3 Lantai)",
+      deskripsi: "Template resmi lampiran perhitungan kerusakan bangunan 3 Lantai atau lebih (Tipe C) sesuai standar PUPR",
+      kategori: "lampiran",
+      kontenHtml: DEFAULT_TEMPLATE_LAMPIRAN_TIPE_C,
+      placeholders: PLACEHOLDERS_LAMPIRAN_XLSX,
+      driveLink: OFFICIAL_SPREADSHEET_TEMPLATES.TIPE_C,
     },
   ];
 }

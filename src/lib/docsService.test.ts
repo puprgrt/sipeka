@@ -29,7 +29,7 @@ test('createDocument falls back locally without calling Google Docs for an inval
   const result = await (createDocument as any)('Test Document', 'Hello', 'invalid-token');
 
   assert.equal(fetchCalled, false);
-  assert.match(result, /^data:text\/plain/);
+  assert.match(result, /^data:text\/(html|plain)/);
 
   globalThis.fetch = originalFetch;
 });

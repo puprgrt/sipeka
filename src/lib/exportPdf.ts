@@ -59,12 +59,14 @@ export const exportAssessmentToPdf = async (assessment: Assessment, history: any
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   
+  const tipeLantai = assessment.floorCount === 1 ? 'A (1 Lantai)' : assessment.floorCount === 2 ? 'B (2 Lantai)' : 'C (3 Lantai / Lebih)';
   const infoData = [
     ["ID Penilaian", assessment.id, "Tanggal", format(new Date(assessment.date), "dd MMMM yyyy", { locale: idLocale })],
     ["Nama Sekolah/Instansi", assessment.schoolName, "NPSN", assessment.npsn || "-"],
     ["Nama Bangunan", assessment.buildingName, "NUP", assessment.nup || "-"],
     ["Alamat", assessment.address, "Kota/Provinsi", `${assessment.city}, ${assessment.province}`],
-    ["Luas Bangunan", `${assessment.buildingArea} m²`, "Jml Lantai", `${assessment.floorCount}`],
+    ["Luas Bangunan", `${assessment.buildingArea} m²`, "Tipe / Jml Lantai", `Tipe ${tipeLantai}`],
+    ["Standar Formulir PUPR", `Lampiran Tipe ${assessment.floorCount === 1 ? 'A' : assessment.floorCount === 2 ? 'B' : 'C'} (Pusat Template)`, "", ""],
   ];
 
   autoTable(doc, {

@@ -1,4 +1,4 @@
-import { replaceTemplatePlaceholders } from "./templateUtils";
+import { replaceTemplatePlaceholders, DEFAULT_TEMPLATE_SURAT_PERMOHONAN } from "./templateUtils";
 
 export interface SuratPermohonanContentContext {
   schoolName?: string;
@@ -28,67 +28,7 @@ export function buildSuratPermohonanContent(context: SuratPermohonanContentConte
     year: "numeric"
   });
 
-  const templateToUse = context.customTemplate || `SURAT PERMOHONAN
-PENILAIAN KERUSAKAN BANGUNAN GEDUNG
-
-{{namaInstansiAtas}}
-{{namaInstansiBawah}}
-
-{{namaSekolah}}
-{{alamatPemohon}}
-
-------------------------------------------------------------
-
-Garut, {{tanggal}}
-
-Nomor      : {{nomorSurat}}
-Sifat      : Biasa
-Lampiran   : 1 (satu) berkas
-Hal        : Permohonan Penilaian Kerusakan Bangunan Gedung
-            {{namaSekolah}}
-
-Yth.
-Kepala Dinas Pekerjaan Umum dan Penataan Ruang Kabupaten Garut
-Di Garut
-
-Dengan hormat,
-
-Dalam rangka menjamin keselamatan, keamanan, kenyamanan,
-dan keberlanjutan fungsi bangunan gedung pada {{namaInstansiBawah}},
-bersama ini kami mengajukan permohonan Analisis dan Perhitungan
-Kerusakan Bangunan Gedung terhadap bangunan yang berada pada lokasi berikut:
-
-1. Identitas Bangunan Gedung:
-Nama Bangunan   : {{namaBangunan}}
-NPSN            : {{npsn}}
-Luas            : {{luasBangunan}} m²
-Jumlah Lantai   : {{jumlahLantai}}
-Alamat Bangunan : {{alamatBangunan}}
-Desa/Kelurahan  :
-Kecamatan       :
-Kabupaten/Kota  : Garut
-Koordinat       : {{koordinatGps}}
-
-Sehubungan dengan data penilaian mandiri yang dilampirkan,
-diperlukan guna mengetahui tingkat kerusakan bangunan secara
-kuantitatif dan kualitatif sesuai ketentuan teknis yang berlaku.
-
-Demikian permohonan ini kami sampaikan. Besar harapan kami agar
-dapat dilakukan pemeriksaan lapangan, analisis teknis, dan
-perhitungan tingkat kerusakan bangunan gedung dimaksud sebagai
-dasar pengambilan kebijakan penanganan serta penyusunan kebutuhan
-anggaran rehabilitasi bangunan.
-
-Atas perhatian dan kerja sama yang baik, kami ucapkan terima kasih.
-
-Hormat kami,
-
-{{jabatanPengirim}}
- 
-[QR CODE TTE: TTE-PERMOHONAN-{{nomorSurat}}]
- 
-{{namaPengirim}}
-NIP. {{nipPengirim}}`;
+  const templateToUse = context.customTemplate || DEFAULT_TEMPLATE_SURAT_PERMOHONAN;
 
   return replaceTemplatePlaceholders(templateToUse, {
     namaInstansiAtas: context.namaInstansiAtas || pengelolaKop?.namaInstansiAtas || "PEMERINTAH KABUPATEN GARUT",

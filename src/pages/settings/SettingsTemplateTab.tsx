@@ -1,6 +1,6 @@
 import { apiFetch } from "../../lib/api";
 import { useState, useEffect } from "react";
-import { Edit2, Loader2, Save, X, ExternalLink } from "lucide-react";
+import { Edit2, Loader2, Save, X, ExternalLink, RotateCcw } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 interface SettingsTemplateTabProps {
@@ -71,13 +71,31 @@ export default function SettingsTemplateTab({ onToast }: SettingsTemplateTabProp
 
   return (
     <div className="space-y-6">
-      <div className="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/50 shadow-lg overflow-hidden flex flex-col p-6">
+      <div className="bg-white/60 backdrop-blur-lg rounded-2xl border border-white/50 shadow-lg overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between p-6 gap-4">
         <div>
           <h2 className="text-lg font-bold text-slate-800">Pusat Template Dokumen</h2>
           <p className="mt-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">
             Kelola template HTML untuk fitur Export PDF di aplikasi
           </p>
         </div>
+        <button
+          onClick={async () => {
+            if (!window.confirm("Sinkronkan dan muat ulang semua template resmi PUPR (Tipe A, B, C)?")) return;
+            try {
+              const res = await apiFetch("/api/document-templates/reset-all", { method: "POST" });
+              const data = await res.json();
+              setDocTemplates(data);
+              onToast("Semua template berhasil disinkronkan dengan standar resmi PUPR!");
+            } catch (err) {
+              console.error(err);
+              alert("Gagal menyinkronkan template.");
+            }
+          }}
+          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-2 shrink-0"
+        >
+          <RotateCcw className="w-4 h-4" />
+          Sinkronkan Template Resmi PUPR (Tipe A, B, C)
+        </button>
       </div>
 
       {loadingTemplates ? (
@@ -100,9 +118,21 @@ export default function SettingsTemplateTab({ onToast }: SettingsTemplateTabProp
                       </button>
                     </>
                   ) : (
-                    <button onClick={() => { setEditingTemplateId(template.id); setEditingTemplateContent(template.kontenHtml); setEditingTemplateDriveLink(template.driveLink || ""); }} className="px-3 py-1.5 border border-pu-blue text-pu-blue rounded-lg text-xs font-bold hover:bg-blue-50 flex items-center gap-1.5">
-                      <Edit2 className="w-3.5 h-3.5" /> Edit Template
-                    </button>
+                    <>
+                      {template.driveLink && (
+                        <a
+                          href={template.driveLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 border border-emerald-600 text-emerald-600 rounded-lg text-xs font-bold hover:bg-emerald-50 flex items-center gap-1.5"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" /> Buka Template Google Sheets/Docs
+                        </a>
+                      )}
+                      <button onClick={() => { setEditingTemplateId(template.id); setEditingTemplateContent(template.kontenHtml); setEditingTemplateDriveLink(template.driveLink || ""); }} className="px-3 py-1.5 border border-pu-blue text-pu-blue rounded-lg text-xs font-bold hover:bg-blue-50 flex items-center gap-1.5">
+                        <Edit2 className="w-3.5 h-3.5" /> Edit Template
+                      </button>
+                    </>
                   )}
                 </div>
               </div>

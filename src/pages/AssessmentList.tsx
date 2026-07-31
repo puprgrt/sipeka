@@ -294,192 +294,26 @@ export default function AssessmentList() {
     }
     
     try {
-        const spreadsheetId = prompt("Masukkan Spreadsheet ID (kosongkan untuk membuat Spreadsheet baru):");
-        let targetId = spreadsheetId;
-        
-        if (!targetId) {
-            alert("Membuat format spreadsheet baru...");
-            const { createSpreadsheet } = await import("../lib/sheetsService");
-            targetId = await createSpreadsheet(`Format Analisis PUPR - ${assessment.schoolName}`);
-        }
-
         const floorCount = assessment.floorCount || 1;
-        let componentsConfig: any[] = [];
-        try {
-          const res = await apiFetch("/api/components");
-          componentsConfig = await res.json();
-        } catch (error) {
-          console.error("Failed to fetch components config for spreadsheet", error);
-        }
+        const tipe = floorCount === 1 ? 'A' : floorCount === 2 ? 'B' : 'C';
+        const confirmMsg = `Perbarui Format Analisis PUPR untuk ${assessment.schoolName} (${assessment.buildingName})?\n\nSistem akan menggunakan Arsitektur Template Engine v2.0 (menyalin dari Google Drive Resmi Tipe ${tipe}) sehingga 100% format asli, rumus, warna, dan validasi PUPR tetap terjaga.`;
+        if (!confirm(confirmMsg)) return;
 
-        let weights: Record<string, number> = {};
-        let systemMap: Record<string, string> = {};
-        let unitMap: Record<string, string> = {};
+        alert(`Memuat dan menyalin Template Resmi PUPR Tipe ${tipe} dari Google Drive...`);
+        const { generatePuprSpreadsheetFromTemplate } = await import("../lib/spreadsheetTemplateEngine");
+        const res = await generatePuprSpreadsheetFromTemplate(assessment, floorCount, token);
 
-        if (Array.isArray(componentsConfig) && componentsConfig.length > 0) {
-          componentsConfig.forEach((c: any) => {
-            systemMap[c.namaKomponen] = (c.kategoriKomponen || "STRUKTUR").toUpperCase();
-            unitMap[c.namaKomponen] = c.satuan || "%";
-            let weightStr = floorCount === 1 ? c.bobotFormA : floorCount === 2 ? c.bobotFormB : c.bobotFormC;
-            weights[c.namaKomponen] = parseFloat(weightStr || "0");
-          });
-        } else {
-          weights = floorCount === 2 
-            ? COMPONENT_WEIGHTS_2_LANTAI 
-            : floorCount >= 3 
-              ? COMPONENT_WEIGHTS_3_LANTAI 
-              : COMPONENT_WEIGHTS_1_LANTAI;
+        const successMsg = res.copiedFromDrive
+          ? `✅ Format Analisis Tipe ${tipe} berhasil disiapkan menggunakan Google Drive Template Copy (100% format asli PUPR utuh!)\n\nBuka di: ${res.url}`
+          : `✅ Format Analisis Tipe ${tipe} berhasil disiapkan (Referensi Resmi: ${res.templateUsed}).\n\nBuka di: ${res.url}`;
 
-          systemMap = {
-            "Pondasi & Sloof": "STRUKTUR",
-            "Kolom": "STRUKTUR",
-            "Balok": "STRUKTUR",
-            "Plat Lantai": "STRUKTUR",
-            "Tangga": "STRUKTUR",
-            "Atap": "STRUKTUR",
-            "Dinding / Partisi": "ARSITEKTUR",
-            "Plafond": "ARSITEKTUR",
-            "Lantai": "ARSITEKTUR",
-            "Kusen": "ARSITEKTUR",
-            "Pintu": "ARSITEKTUR",
-            "Jendela": "ARSITEKTUR",
-            "Finishing Plafond": "ARSITEKTUR",
-            "Finishing Dinding": "ARSITEKTUR",
-            "Finishing Kusen & Pintu": "ARSITEKTUR",
-            "Instalasi Listrik": "UTILITAS",
-            "Instalasi Air Bersih": "UTILITAS",
-            "Drainase Limbah": "UTILITAS"
-          };
-
-          unitMap = {
-            "Pondasi & Sloof": "Estimasi",
-            "Kolom": "unit",
-            "Balok": "unit",
-            "Plat Lantai": "unit",
-            "Tangga": "unit",
-            "Atap": "%",
-            "Dinding / Partisi": "%",
-            "Plafond": "%",
-            "Lantai": "%",
-            "Kusen": "unit",
-            "Pintu": "unit",
-            "Jendela": "unit",
-            "Finishing Plafond": "%",
-            "Finishing Dinding": "%",
-            "Finishing Kusen & Pintu": "%",
-            "Instalasi Listrik": "Estimasi",
-            "Instalasi Air Bersih": "Estimasi",
-            "Drainase Limbah": "m1"
-          };
-        }
-
-        const headerRows = [
-            ["FORMULIR PENILAIAN KERUSAKAN BANGUNAN (FORMAT ANALISIS PUPR)"],
-            [""],
-            ["Nama Sekolah/Instansi", ":", assessment.schoolName],
-            ["NPSN", ":", assessment.npsn || "-"],
-            ["Nama Bangunan", ":", assessment.buildingName],
-            ["NUP (No Urut Perolehan)", ":", assessment.nup || "-"],
-            ["Alamat", ":", assessment.address],
-            ["Kabupaten/Kota", ":", assessment.city || "Garut", "", "Provinsi", ":", assessment.province || "Jawa Barat"],
-            ["Luas Bangunan", ":", `${assessment.buildingArea} m²`],
-            ["Jumlah Lantai", ":", `${floorCount} Lantai (Tipe ${floorCount === 1 ? 'A' : floorCount === 2 ? 'B' : 'C'})`],
-            [""],
-            ["NO", "SISTEM", "KOMPONEN", "SATUAN", "Tdk Rusak", "Sangat Ringan", "Ringan", "Sedang", "Berat", "Sangat Berat", "Tidak Sesuai", "TOTAL TINGKAT KERUSAKAN (%)", "BOBOT KOMPONEN (%)", "NILAI KERUSAKAN THD MASSA (%)"]
-        ];
-
-        let index = 1;
-        const componentRows = Object.keys(weights).map(name => {
-          const weight = weights[name];
-          const compData = assessment.components?.find(c => c.name === name);
-          
-          const getDetailPct = (lvl: string) => {
-            if (!compData) return 0;
-            const detail = compData.damageDetails?.find(d => d.level === lvl);
-            return detail ? (detail.percentage || 0) : 0;
-          };
-
-          const sangatRingan = getDetailPct("Rusak Sangat Ringan");
-          const ringan = getDetailPct("Rusak Ringan");
-          const sedang = getDetailPct("Rusak Sedang");
-          const berat = getDetailPct("Rusak Berat");
-          const sangatBerat = getDetailPct("Rusak Sangat Berat");
-          const tdkSesuai = getDetailPct("Komponen Tidak Sesuai");
-
-          const isMultipleChoice = compData?.unit === 'Estimasi';
-
-          const formatVal = (val: number) => {
-            if (isMultipleChoice) {
-              return val > 0 ? "1" : "0,00";
-            }
-            return `${val.toFixed(2)}%`;
-          };
-          
-          let componentDamageFraction = 0;
-          compData?.damageDetails?.forEach(detail => {
-            const multiplier = DAMAGE_MULTIPLIERS[detail.level] || 0;
-            const volumeFraction = (detail.percentage || 0) / 100;
-            componentDamageFraction += volumeFraction * multiplier;
-          });
-          componentDamageFraction = Math.min(componentDamageFraction, 1.0);
-          const totalCompDamagePct = componentDamageFraction * 100;
-          
-          // For regular components, tdkRusak is remainder. For multiple choice, read it directly.
-          const tdkRusak = isMultipleChoice ? getDetailPct("Tidak Rusak") : Math.max(0, 100 - totalCompDamagePct);
-          const nilaiKerusakanThdMassa = componentDamageFraction * weight;
-
-          return [
-            index++,
-            systemMap[name] || "STRUKTUR",
-            name,
-            compData?.unit || unitMap[name] || "%",
-            formatVal(tdkRusak),
-            formatVal(sangatRingan),
-            formatVal(ringan),
-            formatVal(sedang),
-            formatVal(berat),
-            formatVal(sangatBerat),
-            formatVal(tdkSesuai),
-            `${totalCompDamagePct.toFixed(2)}%`,
-            `${weight.toFixed(2)}%`,
-            `${nilaiKerusakanThdMassa.toFixed(2)}%`
-          ];
-        });
-
-        const totalDamage = assessment.finalResult?.totalDamagePercentage || 0;
-        const category = assessment.finalResult?.category || "Ringan";
-
-        const footerRows = [
-          [""],
-          ["TOTAL NILAI KERUSAKAN MASSA BANGUNAN / RUANGAN =", "", "", "", "", "", "", "", "", "", "", "", "100.00%", `${totalDamage.toFixed(2)}%`],
-          ["KESIMPULAN TINGKAT KERUSAKAN MASSA BANGUNAN / RUANGAN =", "", "", "", "", "", "", "", "", "", "", "", "", `Rusak ${category}`],
-          [""],
-          ["Kriteria Tingkat Kerusakan:"],
-          ["- Ringan: <= 30.00%"],
-          ["- Sedang: > 30.00% s.d 45.00%"],
-          ["- Berat: > 45.00%"],
-          [""],
-          ["TIM SURVEI LAPANGAN :"],
-          ["1. Enjang Wahyudin, ST", "NIP 199112182019031011", "", "", "Tanda Tangan: ......................................."],
-          ["2. Haris Nugraha", "NIP 197703292025211012", "", "", "Tanda Tangan: ......................................."],
-          ["3. Nendi Supriadi", "NIP 198302022025211069", "", "", "Tanda Tangan: ......................................."]
-        ];
-
-        const allValues = [
-          ...headerRows,
-          ...componentRows,
-          ...footerRows
-        ];
-        
-        await appendToSheet(targetId as string, "Sheet1!A1", allValues);
-        const url = `https://docs.google.com/spreadsheets/d/${targetId}`;
-        if (confirm(`Format Analisis (Tipe ${floorCount === 1 ? 'A' : floorCount === 2 ? 'B' : 'C'}) berhasil disiapkan di Spreadsheet.\nBuka di: ${url}\n\nApakah Anda ingin langsung melihat / mengunduh preview Dokumen PDF Analisis perhitungan ini?`)) {
+        if (confirm(`${successMsg}\n\nApakah Anda ingin langsung melihat / mengunduh preview Dokumen PDF Analisis perhitungan ini?`)) {
           const { exportAssessmentToPdf } = await import("../lib/exportPdf");
           await exportAssessmentToPdf(assessment);
         }
     } catch (err) {
         console.error("Failed to generate format", err);
-        alert("Gagal membuat format analisis.");
+        alert("Gagal membuat format analisis dari template.");
     }
   };
 

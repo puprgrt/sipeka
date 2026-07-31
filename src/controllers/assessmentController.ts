@@ -806,9 +806,14 @@ export const put_assessments_by_id_verification = async (req: express.Request, r
       // When analysis is done (Selesai_Dianalisis), Tim_Teknis & Petugas_Survey auto-TTE
       // → move to Menunggu_Pengesahan for Koordinator → Kabid sequential signing
       // After Kabid signs for Hasil Penilaian → Kadis signs Surat Jawaban → Arsip_Digital
-      if ((role === 'Tim_Teknis' || role === 'Petugas_Survey') && 
-          (currentStatus === 'Menunggu_Validasi' || currentStatus === 'Survei_Lapangan' || currentStatus === 'Selesai_Dianalisis')) {
-        nextStatus = 'Menunggu_Pengesahan';
+      if ((role === 'Tim_Teknis' || role === 'Petugas_Survey')) {
+        if (currentStatus === 'Menunggu_Validasi') {
+          nextStatus = 'Survei_Lapangan';
+        } else if (currentStatus === 'Survei_Lapangan') {
+          nextStatus = 'Selesai_Dianalisis';
+        } else if (currentStatus === 'Selesai_Dianalisis') {
+          nextStatus = 'Menunggu_Pengesahan';
+        }
       } else if (role === 'Koordinator' && currentStatus === 'Menunggu_Pengesahan') {
         // Koordinator signs, still waiting for Kabid
         nextStatus = 'Menunggu_Pengesahan';
@@ -1251,6 +1256,76 @@ export const put_assessments_by_id = async (req: express.Request, res: express.R
           statusTerakhir: newStatus as any
         })
         .where(eq(schema.permohonanPenilaian.idPermohonan, id));
+
+      // Synchronize relational tables (penilaianTahap1Keselamatan, penilaianTahap2Volume, assessmentComponentsData, and historyPenilaian)
+      const compsToSave = components || (parsedCustomFields as any).components;
+      if (compsToSave && Array.isArray(compsToSave) && compsToSave.length > 0) {
+        await db.delete(schema.penilaianTahap1Keselamatan).where(eq(schema.penilaianTahap1Keselamatan.idPermohonan, id));
+        await db.delete(schema.penilaianTahap2Volume).where(eq(schema.penilaianTahap2Volume.idPermohonan, id));
+
+        const mKomponen = await db.select().from(schema.masterKomponen);
+        const mKlasifikasi = await db.select().from(schema.masterKlasifikasiKerusakan);
+
+        for (const comp of compsToSave) {
+          let idKomponen: number | undefined;
+          if (comp.componentId && !isNaN(Number(comp.componentId))) {
+            idKomponen = Number(comp.componentId);
+          } else if (comp.componentName) {
+            const match = mKomponen.find(k => k.namaKomponen.toLowerCase() === comp.componentName.toLowerCase());
+            if (match) idKomponen = match.idKomponen;
+          }
+
+          if (idKomponen) {
+            if (comp.photo) {
+              try {
+                await db.delete(schema.assessmentComponentsData)
+                  .where(and(
+                    eq(schema.assessmentComponentsData.idPermohonan, id),
+                    eq(schema.assessmentComponentsData.idKomponen, idKomponen)
+                  ));
+                await db.insert(schema.assessmentComponentsData).values({
+                  idPermohonan: id,
+                  idKomponen,
+                  urlFotoKeseluruhan: comp.photo
+                });
+              } catch (e) {}
+            }
+
+            if (comp.safetyImpact) {
+              await db.insert(schema.penilaianTahap1Keselamatan).values({
+                idPermohonan: id,
+                idKomponen,
+                indikasiBahaya: true,
+                urlFotoBukti: comp.photo
+              });
+            }
+
+            if (comp.damageDetails && Array.isArray(comp.damageDetails)) {
+              for (const detail of comp.damageDetails) {
+                const klas = mKlasifikasi.find(k => k.namaKlasifikasi === detail.level);
+                if (klas) {
+                  await db.insert(schema.penilaianTahap2Volume).values({
+                    idPermohonan: id,
+                    idKomponen,
+                    idKlasifikasi: klas.idKlasifikasi,
+                    volumeInput: detail.volume ? String(detail.volume) : "0",
+                    volumeInputs: detail.volumeInputs ? JSON.stringify(detail.volumeInputs) : null,
+                    urlFotoBukti: detail.photos && detail.photos.length > 0 ? detail.photos[0] : undefined,
+                    nilaiKerusakanKomponen: String(detail.percentage)
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+
+      await db.update(schema.historyPenilaian)
+        .set({
+          totalPersentaseKerusakan: String(finalResultToStore.totalDamagePercentage),
+          kesimpulanAkhir: `Rusak ${finalResultToStore.category}`
+        })
+        .where(eq(schema.historyPenilaian.idPermohonan, id));
     }
     
     await logAuditTrail(

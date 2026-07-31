@@ -57,3 +57,22 @@ export function parsePhotos(photos: any): string[] {
   
   return photoArr.map(p => getDirectImageUrl(p)).filter(p => p !== '');
 }
+
+/**
+ * Mendapatkan origin aplikasi secara dinamis (mendukung localhost lokal maupun domain produksi apapun)
+ */
+export function getAppOrigin(): string {
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    return window.location.origin;
+  }
+  return import.meta.env?.VITE_APP_URL || "http://localhost:5173";
+}
+
+/**
+ * Membuat URL verifikasi/validasi TTE otomatis sesuai domain tempat aplikasi berjalan
+ */
+export function getValidationUrl(assessmentId?: string): string {
+  const origin = getAppOrigin();
+  return assessmentId ? `${origin}/validasi/${assessmentId}` : `${origin}/validasi`;
+}
+

@@ -11,8 +11,9 @@ function escapeHtml(value: string): string {
 }
 
 function createFallbackDocumentPreview(title: string, content: string): string {
+  const isHtml = /<html|<style|<div|<table|<p\b|<body|<!doctype/i.test(content);
   if (typeof window !== 'undefined' && typeof window.URL !== 'undefined' && typeof window.URL.createObjectURL === 'function') {
-    const html = `<!doctype html>
+    const html = isHtml ? content : `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
@@ -32,7 +33,8 @@ function createFallbackDocumentPreview(title: string, content: string): string {
     return URL.createObjectURL(blob);
   }
 
-  return `data:text/plain;charset=utf-8,${encodeURIComponent(content)}`;
+  const fallbackText = isHtml ? content : `<!doctype html><html><body><h1>${escapeHtml(title)}</h1><pre>${escapeHtml(content)}</pre></body></html>`;
+  return `data:text/html;charset=utf-8,${encodeURIComponent(fallbackText)}`;
 }
 
 function hasUsableGoogleToken(token: string | null | undefined): boolean {
@@ -53,56 +55,47 @@ export async function createDocument(title: string, content: string, accessToken
   }
 
   try {
-    const createRes = await fetch('https://docs.googleapis.com/v1/documents', {
+    const isHtml = /<html|<style|<div|<table|<p\b|<body|<!doctype/i.test(content);
+    const contentType = isHtml ? 'text/html' : 'text/plain';
+
+    const metadata = {
+      name: title,
+      mimeType: 'application/vnd.google-apps.document',
+    };
+
+    const boundary = '-------314159265358979323846264338327950288';
+    const delimiter = `\r\n--${boundary}\r\n`;
+    const closeDelimiter = `\r\n--${boundary}--`;
+
+    const multipartRequestBody =
+      delimiter +
+      'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+      JSON.stringify(metadata) +
+      delimiter +
+      `Content-Type: ${contentType}; charset=UTF-8\r\n\r\n` +
+      content +
+      closeDelimiter;
+
+    const createRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': `multipart/related; boundary=${boundary}`,
       },
-      body: JSON.stringify({
-        title: title
-      })
+      body: multipartRequestBody,
     });
 
     if (!createRes.ok) {
       const errorText = await createRes.text();
-      console.warn(`Google Docs create failed (${createRes.status}), using local preview fallback`, errorText);
+      console.warn(`Google Drive create document failed (${createRes.status}), using local preview fallback`, errorText);
       return createFallbackDocumentPreview(title, content);
     }
 
     const doc = await createRes.json();
-    const docId = doc.documentId;
+    const docId = doc.id;
 
     if (!docId) {
-      throw new Error('Google Docs returned no documentId');
-    }
-
-    if (content) {
-      const updateRes = await fetch(`https://docs.googleapis.com/v1/documents/${docId}:batchUpdate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          requests: [
-            {
-              insertText: {
-                location: {
-                  index: 1,
-                },
-                text: content
-              }
-            }
-          ]
-        })
-      });
-
-      if (!updateRes.ok) {
-        const errorText = await updateRes.text();
-        console.warn(`Google Docs update failed (${updateRes.status}), using local preview fallback`, errorText);
-        return createFallbackDocumentPreview(title, content);
-      }
+      throw new Error('Google Drive returned no id for created document');
     }
 
     await makeFilePublic(docId).catch(console.warn);

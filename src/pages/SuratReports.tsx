@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Assessment } from "../types";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
-import { cn } from "../lib/utils";
+import { cn, getValidationUrl } from "../lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   FileText, Inbox, Send, Eye, FileCheck, FileDown, Search, X, Calendar, Building, MapPin, Layers, ExternalLink, Printer, CheckCircle, RefreshCw, Loader2
@@ -11,7 +11,8 @@ import {
 import DocumentPreviewModal from "../components/DocumentPreviewModal";
 import { createDocument } from "../lib/docsService";
 import { getAccessToken } from "../lib/firebaseAuth";
-import { buildSuratPermohonanContent } from "../utils/suratDocumentBuilder";
+import { generateDocumentFromTemplateEngine, DocumentTemplateData } from "../lib/documentTemplateEngine";
+import { DEFAULT_TEMPLATE_SURAT_PERMOHONAN, DEFAULT_TEMPLATE_SURAT_HASIL } from "../utils/templateUtils";
 
 export default function SuratReports() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -31,7 +32,7 @@ export default function SuratReports() {
           setAssessments(data);
         }
       })
-      .catch(err => console.error(err))
+      .catch(err => console.error("Failed to load assessments", err))
       .finally(() => setLoading(false));
   };
 
@@ -55,22 +56,43 @@ export default function SuratReports() {
         return;
       }
 
-      const docTitle = `Surat Permohonan Penilaian Kerusakan - ${assessment.schoolName || "Instansi"}`;
+      const isKeluar = assessment.status !== 'Menunggu_Validasi';
+      const templateToUse = isKeluar ? DEFAULT_TEMPLATE_SURAT_HASIL : DEFAULT_TEMPLATE_SURAT_PERMOHONAN;
+      const docTitle = `${isKeluar ? 'Surat Hasil' : 'Surat Permohonan'} Penilaian Kerusakan - ${assessment.schoolName || "Instansi"}`;
       const letterReferenceNo = assessment.customFields?.nomorSurat || assessment.customFields?.letterReferenceNo || assessment.id.substring(0, 8).toUpperCase();
-      const content = buildSuratPermohonanContent({
-        schoolName: assessment.schoolName,
-        buildingName: assessment.buildingName,
-        npsn: assessment.npsn,
-        address: assessment.address,
-        buildingArea: assessment.buildingArea,
-        floorCount: assessment.floorCount,
-        coordinates: assessment.coordinates,
-        letterReferenceNo,
+      
+      const templateData: DocumentTemplateData = {
+        id: assessment.id,
+        nama_sekolah: assessment.schoolName,
+        npsn: assessment.npsn || "-",
+        nama_bangunan: assessment.buildingName,
+        nup: assessment.nup || "-",
+        alamat: assessment.address,
+        nomor_surat: letterReferenceNo,
         tanggal: format(new Date(), "dd MMMM yyyy", { locale: id }),
-        letterConfig
-      });
+        kerusakan: assessment.finalResult?.totalDamagePercentage || 0,
+        kategori: assessment.finalResult?.category || "Ringan",
+        luas_bangunan: assessment.buildingArea || 0,
+        jumlah_lantai: assessment.floorCount || 1,
+        koordinat_gps: assessment.coordinates ? `${assessment.coordinates.lat}, ${assessment.coordinates.lng}` : "-",
+        nama_pengirim: letterConfig?.pengelola?.namaKepala || "Nama Pengirim",
+        jabatan_pengirim: letterConfig?.pengelola?.jabatan || "Jabatan",
+        nip_pengirim: letterConfig?.pengelola?.nipKepala || "-",
+        nama_instansi_atas: letterConfig?.pengelola?.namaInstansiAtas || "PEMERINTAH KABUPATEN GARUT",
+        nama_instansi_bawah: letterConfig?.pengelola?.namaInstansiBawah || assessment.schoolName || "UPTD SATUAN PENDIDIKAN",
+        alamat_pemohon: letterConfig?.pengelola?.alamat || assessment.address || "Jl. Raya Pembangunan No. 123",
+        qr_data: getValidationUrl(assessment.id)
+      };
 
-      const newDocLink = await createDocument(docTitle, content);
+      const res = await generateDocumentFromTemplateEngine(
+        docTitle,
+        templateToUse,
+        templateData,
+        undefined,
+        token
+      );
+
+      const newDocLink = res.url;
       const exportedLink = newDocLink.replace(/\/edit$/, "/export?format=pdf");
 
       const payload = {
@@ -109,7 +131,7 @@ export default function SuratReports() {
         setSelectedAssessment(prev => prev ? {...prev, documentLink: exportedLink, customFields: { ...(prev.customFields || {}), documentLink: newDocLink, letterReferenceNo, updatedAt: new Date().toISOString() }} : prev);
       }
 
-      alert("Dokumen surat berhasil diperbarui dengan format terbaru.");
+      alert("✅ Dokumen surat berhasil diperbarui dengan Template Engine v2.0 (termasuk Barcode QR TTE & 100% Mengacu Pengaturan Template)!");
     } catch (error) {
       console.error("Failed to update surat document", error);
       alert("Gagal memperbarui dokumen surat. Silakan coba lagi.");
@@ -147,6 +169,25 @@ export default function SuratReports() {
           <p className="text-slate-500 font-medium mt-1">
             Pantau permohonan yang masuk dan jawaban hasil penilaian yang keluar.
           </p>
+        </div>
+      </div>
+
+      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-2xl p-5 shadow-lg border border-blue-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-blue-500/20 border border-blue-400/30 rounded-2xl shrink-0 mt-0.5">
+            <FileCheck className="w-6 h-6 text-blue-300" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-white">Mesin Template Surat v2.0 (Ready Production)</h2>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500 text-white uppercase tracking-wider">
+                100% Pengaturan Surat
+              </span>
+            </div>
+            <p className="text-xs text-blue-200/90 mt-1 max-w-2xl leading-relaxed">
+              Seluruh surat permohonan dan surat hasil sekarang otomatis mengacu pada template & pengaturan resmi, menggunakan konversi Native Doc dan dilengkapi barcode Tanda Tangan Elektronik (TTE) + Kode QR Verifikasi. Klik tombol perbarui pada tiap baris untuk mengaktifkan format terbaru.
+            </p>
+          </div>
         </div>
       </div>
 

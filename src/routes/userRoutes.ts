@@ -482,10 +482,7 @@ router.put("/api/profile", async (req, res) => {
         })
         .where(eq(schema.users.email, email));
     } else {
-      if (!isAdmin) {
-        return res.status(403).json({ error: "Forbidden: Cannot create profile for another user" });
-      }
-      // Auto create if missing (admin only)
+      // Auto create if missing (admin or own profile)
       const uid = "user_" + uuidv4();
       const [newUser] = await db.insert(schema.users).values({
         uid,
