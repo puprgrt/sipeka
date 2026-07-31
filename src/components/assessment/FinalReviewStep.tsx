@@ -144,8 +144,8 @@ export default function FinalReviewStep({
                         if (sistemComps.length === 0) return null;
                         
                         return sistemComps.map((cData, cIdx) => {
-                          const weight = componentWeights[cData.namaKomponen] || 0;
                           const comp = components.find(c => c.name === cData.namaKomponen);
+                          const weight = (comp?.weight !== undefined && comp?.weight > 0) ? comp.weight : (componentWeights[cData.namaKomponen] || 0);
                           
                           // Get percentages for calculation
                           const pTdkRusak = comp?.damageDetails.find(d => d.level === "Tidak Rusak")?.percentage || 0;

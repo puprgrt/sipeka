@@ -457,6 +457,22 @@ export default function AssessmentDetailModal({
                     </button>
 
                     <button
+                      onClick={async () => {
+                        const { exportAssessmentToPdf } = await import("../../lib/exportPdf");
+                        await exportAssessmentToPdf(selectedAssessment);
+                      }}
+                      className="flex flex-col items-start p-3 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 transition-colors"
+                    >
+                      <span className="text-sky-800 font-bold text-xs uppercase tracking-wider flex items-center gap-1.5">
+                        <FileText className="w-4 h-4" />
+                        Preview PDF Analisis
+                      </span>
+                      <span className="text-sky-600/80 text-[9px] mt-1 text-left leading-relaxed">
+                        Unduh & Preview Dokumen PDF Perhitungan Analisis PUPR.
+                      </span>
+                    </button>
+
+                    <button
                       onClick={() => handleGenerateSuratJawaban(selectedAssessment)}
                       className="flex flex-col items-start p-3 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 transition-colors"
                     >

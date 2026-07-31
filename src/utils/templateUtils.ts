@@ -203,7 +203,9 @@ export const DEFAULT_TEMPLATE_SURAT_PERMOHONAN = `<html>
 
   <div class="signature">
     <p>{{jabatanPengirim}},</p>
-    <p class="barcode">BARCODE TTE</p>
+    <div style="margin: 10px 0;">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=TTE-PERMOHONAN-{{nomorSurat}}" alt="QR TTE" width="80" height="80" />
+    </div>
     <p><u>{{namaPengirim}}</u></p>
     <p>NIP. {{nipPengirim}}</p>
   </div>

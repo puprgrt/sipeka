@@ -719,7 +719,7 @@ export function useAssessmentForm() {
       const pengelolaKop = letterConfig?.pengelola;
       const docTitle = `Surat Permohonan Penilaian Kerusakan - ${schoolName || "Instansi"}`;
       const letterDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-      const templateToUse = `SURAT PERMOHONAN
+      const templateToUse = suratPermohonanTemplate || `SURAT PERMOHONAN
 PENILAIAN KERUSAKAN BANGUNAN GEDUNG
 
 {{namaInstansiAtas}}
@@ -882,7 +882,7 @@ NIP. {{nipPengirim}}`;
     let hasSafetyImpact = false;
 
     components.forEach(comp => {
-      const weight = componentWeights[comp.name] || 0;
+      const weight = ((comp as any).weight !== undefined && Number((comp as any).weight) > 0) ? Number((comp as any).weight) : (componentWeights[comp.name] || 0);
       if (weight === 0) return;
       
       if (comp.safetyImpact) {
@@ -929,7 +929,7 @@ NIP. {{nipPengirim}}`;
           const docTitle = `Surat Permohonan Penilaian Kerusakan - ${schoolName}`;
           let docContent = "";
           
-          if (suratPermohonanTemplate && suratPermohonanTemplate.includes("{{")) {
+          if (suratPermohonanTemplate) {
             docContent = replaceTemplatePlaceholders(suratPermohonanTemplate, {
               namaInstansiAtas: letterConfig?.pengelola?.namaInstansiAtas || "PEMERINTAH KABUPATEN GARUT",
               namaInstansiBawah: letterConfig?.pengelola?.namaInstansiBawah || schoolName || "UPTD SATUAN PENDIDIKAN",
@@ -1199,14 +1199,17 @@ Pengelola Bangunan / Pemohon`;
         newDetails.push({ level, percentage: 0, volume, volumeInputs: volumeInputs || existingDetail?.volumeInputs || [], photos: existingDetail?.photos || [] });
       }
       
-      // Auto-compute Volume Total Komponen = Sum of Volume Kerusakan
-      const totalVolume = newDetails.reduce((sum, d) => sum + (d.volume || 0), 0);
-      comp.totalVolume = totalVolume;
+      // Compute sum of damaged volumes
+      const damagedSum = newDetails.reduce((sum, d) => sum + (d.volume || 0), 0);
+      const effectiveTotalVolume = (comp.totalVolume && comp.totalVolume >= damagedSum) ? comp.totalVolume : damagedSum;
+      if (effectiveTotalVolume > (comp.totalVolume || 0)) {
+        comp.totalVolume = effectiveTotalVolume;
+      }
       
-      // Auto-compute percentages for all levels
+      // Auto-compute percentages for all levels relative to effectiveTotalVolume
       comp.damageDetails = newDetails.map(d => ({
         ...d,
-        percentage: totalVolume > 0 ? Math.min(100, Math.round(((d.volume || 0) / totalVolume) * 100 * 100) / 100) : 0
+        percentage: effectiveTotalVolume > 0 ? Math.min(100, Math.round(((d.volume || 0) / effectiveTotalVolume) * 100 * 100) / 100) : 0
       }));
       
       newComps[compIndex] = comp;
@@ -1218,7 +1221,17 @@ Pengelola Bangunan / Pemohon`;
     setIsDirty(true);
     setComponents(prev => {
       const newComps = [...prev];
-      newComps[compIndex] = { ...newComps[compIndex], [field]: value };
+      const updatedComp = { ...newComps[compIndex], [field]: value };
+      if (field === 'totalVolume') {
+        const numVal = Number(value) || 0;
+        const damagedSum = (updatedComp.damageDetails || []).reduce((sum, d) => sum + (d.volume || 0), 0);
+        const effectiveTotalVolume = numVal >= damagedSum ? numVal : damagedSum;
+        updatedComp.damageDetails = (updatedComp.damageDetails || []).map(d => ({
+          ...d,
+          percentage: effectiveTotalVolume > 0 ? Math.min(100, Math.round(((d.volume || 0) / effectiveTotalVolume) * 100 * 100) / 100) : 0
+        }));
+      }
+      newComps[compIndex] = updatedComp;
       return newComps;
     });
   };

@@ -48,20 +48,27 @@ export const get_assessments = async (req: express.Request, res: express.Respons
     // Map back to Assessment type
     const assessments = permohonans.map(p => {
       const b = profilBangunans.find(pb => pb.idBangunan === p.idBangunan);
-      let coords = null;
-      if (b && b.koordinatGps) {
-        const [lat, lng] = b.koordinatGps.split(',').map(Number);
-        if (!isNaN(lat) && !isNaN(lng)) coords = { lat, lng };
-      }
-
       let parsedCustomFields: any = {};
       try {
         parsedCustomFields = parseCustomFields(b?.customFields, b?.idBangunan ?? null);
       } catch (e: any) {
         console.error("Invalid customFields JSON for building", b?.idBangunan, e.message || e);
-        // Throw and let the outer try/catch return an appropriate response instead of
-        // returning inside the map (which caused mixed array types and a TS error).
         throw new Error(`Invalid building customFields format for building ${b?.idBangunan}: ${e.message || e}`);
+      }
+
+      let coords = null;
+      if (b && b.koordinatGps && b.koordinatGps !== 'unknown') {
+        const parts = b.koordinatGps.split(',');
+        if (parts.length >= 2) {
+          const lat = Number(parts[0]);
+          const lng = Number(parts[1]);
+          if (!isNaN(lat) && !isNaN(lng)) coords = { lat, lng };
+        }
+      }
+      if (!coords && parsedCustomFields?.coordinates?.lat && parsedCustomFields?.coordinates?.lng) {
+        const lat = Number(parsedCustomFields.coordinates.lat);
+        const lng = Number(parsedCustomFields.coordinates.lng);
+        if (!isNaN(lat) && !isNaN(lng)) coords = { lat, lng };
       }
       
       const pTahap1 = tahap1.filter(t1 => t1.idPermohonan === p.idPermohonan);
@@ -150,6 +157,7 @@ export const get_assessments = async (req: express.Request, res: express.Respons
         },
         status: p.statusTerakhir,
         verification: parsedCustomFields.verification || {},
+        safetyChecks: parsedCustomFields.safetyChecks || {},
         disposisiData: p.disposisiData,
         documentLink: parsedCustomFields.documentLink || null,
         customFields: { ...parsedCustomFields, idBangunan: b?.idBangunan, floorPlanImage: b?.urlDenahBangunan || parsedCustomFields.floorPlanImage }
@@ -169,7 +177,7 @@ export const get_assessments = async (req: express.Request, res: express.Respons
 };
 
 // Compute finalResult from components server-side as a fallback when client doesn't provide it
-function computeFinalResultServer(components: any[], floorCount: number | undefined) {
+function computeFinalResultServer(components: any[], floorCount: number | undefined): { totalDamagePercentage: number; category: 'Ringan' | 'Sedang' | 'Berat' } {
   if (!Array.isArray(components) || components.length === 0) {
     return { totalDamagePercentage: 0, category: 'Ringan' };
   }
@@ -513,18 +521,27 @@ export const get_assessments_by_id = async (req: express.Request, res: express.R
 
     const [b] = await db.select().from(schema.profilBangunan).where(eq(schema.profilBangunan.idBangunan, p.idBangunan)).limit(1);
     
-    let coords = null;
-    if (b && b.koordinatGps) {
-      const [lat, lng] = b.koordinatGps.split(',').map(Number);
-      if (!isNaN(lat) && !isNaN(lng)) coords = { lat, lng };
-    }
-
     let parsedCustomFields: any = {};
     try {
       if (b && b.customFields) {
         parsedCustomFields = JSON.parse(b.customFields);
       }
     } catch (e) {}
+
+    let coords = null;
+    if (b && b.koordinatGps && b.koordinatGps !== 'unknown') {
+      const parts = b.koordinatGps.split(',');
+      if (parts.length >= 2) {
+        const lat = Number(parts[0]);
+        const lng = Number(parts[1]);
+        if (!isNaN(lat) && !isNaN(lng)) coords = { lat, lng };
+      }
+    }
+    if (!coords && parsedCustomFields?.coordinates?.lat && parsedCustomFields?.coordinates?.lng) {
+      const lat = Number(parsedCustomFields.coordinates.lat);
+      const lng = Number(parsedCustomFields.coordinates.lng);
+      if (!isNaN(lat) && !isNaN(lng)) coords = { lat, lng };
+    }
 
     const t1Data = await db.select().from(schema.penilaianTahap1Keselamatan).where(eq(schema.penilaianTahap1Keselamatan.idPermohonan, id));
     const t2Data = await db.select().from(schema.penilaianTahap2Volume).where(eq(schema.penilaianTahap2Volume.idPermohonan, id));
@@ -615,6 +632,7 @@ export const get_assessments_by_id = async (req: express.Request, res: express.R
       },
       status: p.statusTerakhir,
       verification: parsedCustomFields.verification || {},
+      safetyChecks: parsedCustomFields.safetyChecks || {},
       disposisiData: p.disposisiData,
       documentLink: parsedCustomFields.documentLink || null,
       tteSignatures: p.tteSignatures,
@@ -664,6 +682,22 @@ export const get_buildings = async (req: express.Request, res: express.Response)
       try {
         if (b.customFields) parsedCustomFields = JSON.parse(b.customFields);
       } catch (e) {}
+
+      let coords = null;
+      if (b.koordinatGps && b.koordinatGps !== 'unknown') {
+        const parts = b.koordinatGps.split(',');
+        if (parts.length >= 2) {
+          const lat = Number(parts[0]);
+          const lng = Number(parts[1]);
+          if (!isNaN(lat) && !isNaN(lng)) coords = { lat, lng };
+        }
+      }
+      if (!coords && (parsedCustomFields as any)?.coordinates?.lat && (parsedCustomFields as any)?.coordinates?.lng) {
+        const lat = Number((parsedCustomFields as any).coordinates.lat);
+        const lng = Number((parsedCustomFields as any).coordinates.lng);
+        if (!isNaN(lat) && !isNaN(lng)) coords = { lat, lng };
+      }
+
       return {
         idBangunan: b.idBangunan,
         idUserPengelola: b.idUserPengelola,
@@ -671,10 +705,7 @@ export const get_buildings = async (req: express.Request, res: express.Response)
         buildingName: b.namaMassaBangunan,
         npsn: b.npsnNup,
         nup: b.npsnNup,
-        coordinates: b.koordinatGps ? {
-          lat: Number(b.koordinatGps.split(',')[0]),
-          lng: Number(b.koordinatGps.split(',')[1])
-        } : null,
+        coordinates: coords,
         buildingArea: b.luasBangunanM2 ? Number(b.luasBangunanM2) : 0,
         floorCount: b.jumlahLantai || 1,
         customFields: parsedCustomFields
@@ -799,6 +830,20 @@ export const put_assessments_by_id_verification = async (req: express.Request, r
           tteSignatures: JSON.stringify(tteSignatures) 
         })
         .where(eq(schema.permohonanPenilaian.idPermohonan, id));
+    } else {
+      // Auto status transitions when verification without TTE is submitted
+      if (verification?.status === "Disetujui" || verification?.verified || verification?.status === "Jadwalkan_Survei") {
+        if (currentStatus === "Menunggu_Validasi") {
+          nextStatus = "Survei_Lapangan";
+        } else if (currentStatus === "Survei_Lapangan") {
+          nextStatus = "Selesai_Dianalisis";
+        }
+      }
+      if (nextStatus !== currentStatus) {
+        await db.update(schema.permohonanPenilaian)
+          .set({ statusTerakhir: nextStatus as any })
+          .where(eq(schema.permohonanPenilaian.idPermohonan, id));
+      }
     }
 
     const isApproved = verification?.status === "Disetujui" || verification?.verified;
@@ -1192,11 +1237,18 @@ export const put_assessments_by_id = async (req: express.Request, res: express.R
     }
 
     if (finalResultToStore) {
+      const currentStatus = normalizeStatusServer(p.statusTerakhir);
+      let newStatus = p.statusTerakhir;
+      if (currentStatus === 'Menunggu_Validasi' || currentStatus === 'Survei_Lapangan') {
+        newStatus = 'Selesai_Dianalisis' as any;
+      }
+
       await db.update(schema.permohonanPenilaian)
         .set({
           totalPersentaseKerusakan: String(finalResultToStore.totalDamagePercentage),
           kesimpulanAkhir: `Rusak ${finalResultToStore.category}` as any,
-          urlDokumenHasilPdf: documentLink || p.urlDokumenHasilPdf
+          urlDokumenHasilPdf: documentLink || p.urlDokumenHasilPdf,
+          statusTerakhir: newStatus as any
         })
         .where(eq(schema.permohonanPenilaian.idPermohonan, id));
     }

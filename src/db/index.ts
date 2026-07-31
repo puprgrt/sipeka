@@ -28,8 +28,9 @@ export const createPool = () => {
     ssl: { rejectUnauthorized: false },
   };
 
-  if (process.env.DATABASE_URL && (process.env.DATABASE_URL.startsWith('postgres://') || process.env.DATABASE_URL.startsWith('postgresql://'))) {
-    poolConfig.connectionString = process.env.DATABASE_URL;
+  const dbUrl = process.env.DATABASE_URL;
+  if (dbUrl && (dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://')) && !dbUrl.includes('user:password@host')) {
+    poolConfig.connectionString = dbUrl;
   } else {
     poolConfig.host = process.env.SQL_HOST;
     poolConfig.user = process.env.SQL_USER;

@@ -404,23 +404,28 @@ export default function DisposisiDetailModal({
                                     const printWindow = window.open('', '_blank');
                                     if (printWindow) {
                                       let htmlContent: string;
-                                      if (suratHasilTemplate && suratHasilTemplate.includes('<')) {
-                                        htmlContent = replaceTemplatePlaceholders(suratHasilTemplate, {
-                                          namaInstansiAtas: 'PEMERINTAH KABUPATEN GARUT',
-                                          namaDinas: dinasConfig?.namaDinas || 'Dinas Pekerjaan Umum dan Penataan Ruang',
-                                          alamatDinas: dinasConfig?.alamat || 'Jl. Prof. KH. Cecep Syarifudin No. 117, Garut',
-                                          nomorSurat: `${selectedAssessment.id.split('-')[0].toUpperCase()}/PUPR/${new Date().getFullYear()}`,
-                                          tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
-                                          namaSekolah: selectedAssessment.schoolName,
-                                          namaBangunan: selectedAssessment.buildingName,
-                                          totalKerusakan: `${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%`,
-                                          kategoriKerusakan: selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan',
-                                          namaKadis: dispNamaPimpinan || 'Ir. H. Kepala Dinas, M.T.',
-                                          nipKadis: dispNipPimpinan || '19700101 199803 1 004',
-                                        });
-                                      } else {
-                                        htmlContent = `<html><head><title>Surat Hasil Perhitungan</title><style>body{font-family:'Times New Roman',serif;padding:40px;text-align:center;line-height:1.6;}h1{font-size:20px;font-weight:bold;text-transform:uppercase;margin-bottom:20px;}.content{text-align:justify;margin:40px 0;font-size:14px;}.signature{text-align:right;margin-top:60px;font-size:14px;}</style></head><body><h1>Pemerintah Kabupaten Garut<br/>${dinasConfig?.namaDinas || 'Dinas Pekerjaan Umum dan Penataan Ruang'}</h1><hr style="border:2px solid black;margin-bottom:30px;"/><h2><u>SURAT HASIL PERHITUNGAN PENILAIAN KERUSAKAN BANGUNAN</u></h2><p>Nomor: ${selectedAssessment.id.split('-')[0].toUpperCase()}/PUPR/${new Date().getFullYear()}</p><div class="content"><p>Berdasarkan hasil survei teknis dan analisis kerusakan pada:</p><table style="width:100%;text-align:left;margin:20px 0;"><tr><td width="30%">Nama Instansi</td><td>: ${selectedAssessment.schoolName}</td></tr><tr><td>Nama Bangunan</td><td>: ${selectedAssessment.buildingName}</td></tr><tr><td>Total Kerusakan</td><td>: ${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%</td></tr><tr><td>Kategori</td><td>: ${selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan'}</td></tr></table><p>Maka dengan ini ditetapkan tingkat kerusakan bangunan tersebut sah sesuai standar operasional yang berlaku.</p></div><div class="signature"><p>Ditetapkan di Tempat</p><p>Tanggal: ${new Date().toLocaleDateString('id-ID')}</p><br/><br/><br/><p><b><u>${dispNamaPimpinan || 'Ir. H. KEPALA DINAS, M.T.'}</u></b></p><p>NIP. ${dispNipPimpinan || '19700101 199803 1 004'}</p></div><script>window.print();</script></body></html>`;
-                                      }
+                                      const tteObj = selectedAssessment.tteSignatures 
+                                          ? (typeof selectedAssessment.tteSignatures === 'string' ? JSON.parse(selectedAssessment.tteSignatures) : selectedAssessment.tteSignatures)
+                                          : {};
+                                        const kadisQr = tteObj['Kadis']?.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=TTE-SIPEKA-KADIS-${selectedAssessment.id}`;
+                                        if (suratHasilTemplate && suratHasilTemplate.includes('<')) {
+                                          htmlContent = replaceTemplatePlaceholders(suratHasilTemplate, {
+                                            namaInstansiAtas: 'PEMERINTAH KABUPATEN GARUT',
+                                            namaDinas: dinasConfig?.namaDinas || 'Dinas Pekerjaan Umum dan Penataan Ruang',
+                                            alamatDinas: dinasConfig?.alamat || 'Jl. Prof. KH. Cecep Syarifudin No. 117, Garut',
+                                            nomorSurat: `${selectedAssessment.id.split('-')[0].toUpperCase()}/PUPR/${new Date().getFullYear()}`,
+                                            tanggal: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+                                            namaSekolah: selectedAssessment.schoolName,
+                                            namaBangunan: selectedAssessment.buildingName,
+                                            totalKerusakan: `${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%`,
+                                            kategoriKerusakan: selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan',
+                                            namaKadis: dispNamaPimpinan || 'Ir. H. Kepala Dinas, M.T.',
+                                            nipKadis: dispNipPimpinan || '19700101 199803 1 004',
+                                            qrKadis: kadisQr,
+                                          });
+                                        } else {
+                                          htmlContent = `<html><head><title>Surat Hasil Perhitungan</title><style>body{font-family:'Times New Roman',serif;padding:40px;text-align:center;line-height:1.6;}h1{font-size:20px;font-weight:bold;text-transform:uppercase;margin-bottom:20px;}.content{text-align:justify;margin:40px 0;font-size:14px;}.signature{text-align:right;margin-top:60px;font-size:14px;}</style></head><body><h1>Pemerintah Kabupaten Garut<br/>${dinasConfig?.namaDinas || 'Dinas Pekerjaan Umum dan Penataan Ruang'}</h1><hr style="border:2px solid black;margin-bottom:30px;"/><h2><u>SURAT HASIL PERHITUNGAN PENILAIAN KERUSAKAN BANGUNAN</u></h2><p>Nomor: ${selectedAssessment.id.split('-')[0].toUpperCase()}/PUPR/${new Date().getFullYear()}</p><div class="content"><p>Berdasarkan hasil survei teknis dan analisis kerusakan pada:</p><table style="width:100%;text-align:left;margin:20px 0;"><tr><td width="30%">Nama Instansi</td><td>: ${selectedAssessment.schoolName}</td></tr><tr><td>Nama Bangunan</td><td>: ${selectedAssessment.buildingName}</td></tr><tr><td>Total Kerusakan</td><td>: ${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%</td></tr><tr><td>Kategori</td><td>: ${selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan'}</td></tr></table><p>Maka dengan ini ditetapkan tingkat kerusakan bangunan tersebut sah sesuai standar operasional yang berlaku.</p></div><div class="signature"><p>Ditetapkan di Tempat</p><p>Tanggal: ${new Date().toLocaleDateString('id-ID')}</p><div style="margin:15px 0;"><img src="${kadisQr}" alt="QR TTE" width="80" height="80" /></div><p><b><u>${dispNamaPimpinan || 'Ir. H. KEPALA DINAS, M.T.'}</u></b></p><p>NIP. ${dispNipPimpinan || '19700101 199803 1 004'}</p></div><script>window.print();</script></body></html>`;
+                                        }            
                                       printWindow.document.write(htmlContent);
                                       printWindow.document.close();
                                     }
@@ -441,20 +446,60 @@ export default function DisposisiDetailModal({
                                 <button
                                   onClick={() => {
                                     if (!selectedAssessment) return;
-                                    const wsData = [
+                                    const header = [
                                       ["LAMPIRAN PERHITUNGAN VOLUME KERUSAKAN BANGUNAN"], [],
                                       ["Nama Sekolah/Instansi", selectedAssessment.schoolName],
                                       ["Nama Bangunan", selectedAssessment.buildingName],
                                       ["Tanggal Penilaian", new Date().toLocaleDateString('id-ID')], [],
                                       ["Total Kerusakan", `${selectedAssessment.finalResult?.totalDamagePercentage?.toFixed(2) || '0.00'}%`],
                                       ["Kategori", selectedAssessment.finalResult?.totalDamagePercentage > 45 ? 'Berat / Kritis' : selectedAssessment.finalResult?.totalDamagePercentage > 30 ? 'Sedang' : 'Ringan'], [],
-                                      ["No", "Komponen", "Bobot (%)", "Klasifikasi Kerusakan", "Volume (%)", "Nilai Kerusakan"]
                                     ];
+
+                                    // Table header
+                                    const tableHeader = [["No", "Komponen", "Bobot (%)", "Klasifikasi Kerusakan", "Volume (m² atau detail)", "% Kerusakan", "Nilai Kerusakan"]];
+
+                                    const rows: any[] = [];
+                                    if (selectedAssessment.components && Array.isArray(selectedAssessment.components)) {
+                                      selectedAssessment.components.forEach((comp: any, idx: number) => {
+                                        const details = comp.damageDetails || [];
+                                        if (details.length === 0) {
+                                          rows.push([idx+1, comp.name || '', comp.weight || '', '-', '-', '-', '-']);
+                                        } else {
+                                          details.forEach((d: any, j: number) => {
+                                            // Prepare a human-readable volume string
+                                            let volStr = '';
+                                            if (d.volumeInputs && typeof d.volumeInputs === 'object') {
+                                              try {
+                                                const inputs = Array.isArray(d.volumeInputs) ? d.volumeInputs : JSON.parse(d.volumeInputs);
+                                                volStr = inputs.map((v: any) => {
+                                                  if (typeof v === 'object') {
+                                                    const cnt = v.count || 0;
+                                                    const len = v.lenCm || v.lengthCm || 0;
+                                                    const wid = v.widCm || v.widthCm || 0;
+                                                    const area = (Number(cnt) * (Number(len)/100) * (Number(wid)/100)).toFixed(3);
+                                                    return `${cnt} × ${len}cm × ${wid}cm = ${area} m²`;
+                                                  }
+                                                  return `${v}`;
+                                                }).join('; ');
+                                              } catch (e) {
+                                                volStr = String(d.volumeInputs);
+                                              }
+                                            } else if (d.volume !== undefined) {
+                                              volStr = `${d.volume} m²`;
+                                            }
+
+                                            rows.push([idx+1, comp.name || '', comp.weight || '', d.level || '-', volStr || '-', d.percentage != null ? `${d.percentage}%` : '-', d.percentage != null ? d.percentage : '-']);
+                                          });
+                                        }
+                                      });
+                                    }
+
+                                    const wsData = [...header, ...tableHeader, ...rows];
                                     const ws = XLSX.utils.aoa_to_sheet(wsData);
-                                    ws['!cols'] = [{wch:5},{wch:35},{wch:12},{wch:25},{wch:12},{wch:15}];
+                                    ws['!cols'] = [{wch:5},{wch:35},{wch:12},{wch:25},{wch:30},{wch:12},{wch:15}];
                                     const wb = XLSX.utils.book_new();
                                     XLSX.utils.book_append_sheet(wb, ws, "Lampiran");
-                                    XLSX.writeFile(wb, `Lampiran_Kerusakan_${selectedAssessment.schoolName.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
+                                    XLSX.writeFile(wb, `Lampiran_Kerusakan_${(selectedAssessment.schoolName || 'report').replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
                                   }}
                                   className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-colors shadow-sm"
                                 >

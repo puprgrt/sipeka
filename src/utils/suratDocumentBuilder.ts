@@ -17,6 +17,7 @@ export interface SuratPermohonanContentContext {
   namaPengirim?: string;
   jabatanPengirim?: string;
   nipPengirim?: string;
+  customTemplate?: string;
 }
 
 export function buildSuratPermohonanContent(context: SuratPermohonanContentContext): string {
@@ -27,7 +28,7 @@ export function buildSuratPermohonanContent(context: SuratPermohonanContentConte
     year: "numeric"
   });
 
-  const templateToUse = `SURAT PERMOHONAN
+  const templateToUse = context.customTemplate || `SURAT PERMOHONAN
 PENILAIAN KERUSAKAN BANGUNAN GEDUNG
 
 {{namaInstansiAtas}}
@@ -83,9 +84,9 @@ Atas perhatian dan kerja sama yang baik, kami ucapkan terima kasih.
 Hormat kami,
 
 {{jabatanPengirim}}
-
-BARCODE TTE
-
+ 
+[QR CODE TTE: TTE-PERMOHONAN-{{nomorSurat}}]
+ 
 {{namaPengirim}}
 NIP. {{nipPengirim}}`;
 

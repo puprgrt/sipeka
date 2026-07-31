@@ -10,7 +10,7 @@ import { id } from "date-fns/locale";
 import { getAuditHeaders, getDirectImageUrl, parsePhotos, cn } from "../lib/utils";
 import { DataTable } from "../components/ui/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
-import { createCalendarEvent } from "../lib/calendarService";
+import { createCalendarEvent, promptSurveyScheduleTimes } from "../lib/calendarService";
 import { appendToSheet } from "../lib/sheetsService";
 import { getAccessToken, googleSignIn } from "../lib/firebaseAuth";
 import { motion, AnimatePresence } from "motion/react";
@@ -224,18 +224,14 @@ export default function AssessmentList() {
     }
     
     try {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(9, 0, 0, 0); // 9:00 AM tomorrow
-        
-        const nextHour = new Date(tomorrow);
-        nextHour.setHours(10, 0, 0, 0);
+        const schedule = promptSurveyScheduleTimes();
+        if (!schedule) return;
         
         const summary = `Survei Lapangan: ${assessment.schoolName} - ${assessment.buildingName}`;
         const description = `Alamat: ${assessment.address}\n\nMohon lakukan pengecekan lapangan untuk memverifikasi laporan kerusakan.`;
         
-        const link = await createCalendarEvent(summary, description, tomorrow, nextHour);
-        alert(`Jadwal survei berhasil dibuat!\nLihat di Calendar: ${link}`);
+        const link = await createCalendarEvent(summary, description, schedule.startTime, schedule.endTime);
+        alert(`Jadwal survei lapangan berhasil dibuat!\nLihat di Google Calendar: ${link}`);
     } catch (err) {
         console.error("Failed to schedule", err);
         alert("Gagal membuat jadwal survei.");
@@ -476,7 +472,11 @@ export default function AssessmentList() {
         ];
         
         await appendToSheet(targetId as string, "Sheet1!A1", allValues);
-        alert(`Format Analisis (Tipe ${floorCount === 1 ? 'A' : floorCount === 2 ? 'B' : 'C'}) berhasil disiapkan di Spreadsheet.\nBuka di: https://docs.google.com/spreadsheets/d/${targetId}`);
+        const url = `https://docs.google.com/spreadsheets/d/${targetId}`;
+        if (confirm(`Format Analisis (Tipe ${floorCount === 1 ? 'A' : floorCount === 2 ? 'B' : 'C'}) berhasil disiapkan di Spreadsheet.\nBuka di: ${url}\n\nApakah Anda ingin langsung melihat / mengunduh preview Dokumen PDF Analisis perhitungan ini?`)) {
+          const { exportAssessmentToPdf } = await import("../lib/exportPdf");
+          await exportAssessmentToPdf(assessment);
+        }
     } catch (err) {
         console.error("Failed to generate format", err);
         alert("Gagal membuat format analisis.");

@@ -4,7 +4,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { db } from "./src/db/index";
 import * as schema from "./src/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, or, and, desc } from "drizzle-orm";
 
 // Centralized modules
 import { getFirebaseAdmin } from "./src/utils/firebaseAdmin";
@@ -27,11 +27,60 @@ getFirebaseAdmin();
 const app = express();
 const PORT = 3000;
 
+import { verifyToken, requireRole } from "./src/middleware/authMiddleware";
+import { STAFF_ROLES, REPORT_ROLES, ADMIN_ROLES } from "./src/middleware/rolePolicies";
+
+// New middleware imports
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import cors from "cors";
+import { createHttpLogger, auditLogger } from "./src/middleware/loggerMiddleware";
+import { errorHandler, asyncHandler } from "./src/middleware/errorHandler";
+import { logger } from "./src/utils/logger";
+
+// --- Security & Middleware Setup ---
+// Enable CORS
+app.use(cors({
+  origin: process.env.APP_URL || "http://localhost:5173",
+  credentials: true,
+  optionsSuccessStatus: 200,
+}));
+
+// Security headers — CSP disabled in dev because Vite HMR needs inline scripts + WebSocket
+const isDev = process.env.NODE_ENV !== "production";
+app.use(helmet({
+  contentSecurityPolicy: isDev ? false : {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      connectSrc: ["'self'", process.env.SUPABASE_URL || ""].filter(Boolean),
+    },
+  },
+  crossOriginEmbedderPolicy: isDev ? false : undefined,
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: "Too many requests from this IP, please try again later.",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use("/api/", limiter);
+
+// Body parsing dengan custom limit
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-import { verifyToken, requireRole } from "./src/middleware/authMiddleware";
-import { STAFF_ROLES, REPORT_ROLES, ADMIN_ROLES } from "./src/middleware/rolePolicies";
+// HTTP Request Logging
+app.use(createHttpLogger());
+
+// Audit Logger (attach user info to request)
+app.use(auditLogger);
 
 // --- Health Check ---
 app.get("/api/health", async (req, res) => {
@@ -89,42 +138,47 @@ app.use("/api/gemini", aiRoutes);
 app.use("/api/wa", waRoutes);
 app.use(assessmentRoutes);
 
-app.get("/api/audit-trails", requireRole(...STAFF_ROLES), async (req, res) => {
-  try {
-    const trails = await db.select().from(schema.auditTrails);
-    const permohonans = await db.select().from(schema.permohonanPenilaian);
-    const profilBangunans = await db.select().from(schema.profilBangunan);
+app.get("/api/audit-trails", requireRole(...STAFF_ROLES), asyncHandler(async (req, res) => {
+    // Optimized: SQL JOIN instead of 3 separate queries + in-memory join
+    const rows = await db
+      .select({
+        idAudit: schema.auditTrails.idAudit,
+        idPermohonan: schema.auditTrails.idPermohonan,
+        userEmail: schema.auditTrails.userEmail,
+        userName: schema.auditTrails.userName,
+        role: schema.auditTrails.role,
+        action: schema.auditTrails.action,
+        details: schema.auditTrails.details,
+        timestamp: schema.auditTrails.timestamp,
+        schoolName: schema.profilBangunan.namaSekolahInstansi,
+        buildingName: schema.profilBangunan.namaMassaBangunan,
+      })
+      .from(schema.auditTrails)
+      .leftJoin(
+        schema.permohonanPenilaian,
+        eq(schema.auditTrails.idPermohonan, schema.permohonanPenilaian.idPermohonan)
+      )
+      .leftJoin(
+        schema.profilBangunan,
+        eq(schema.permohonanPenilaian.idBangunan, schema.profilBangunan.idBangunan)
+      )
+      .orderBy(desc(schema.auditTrails.timestamp));
 
-    const mappedTrails = trails.map(t => {
-      const p = permohonans.find(perm => perm.idPermohonan === t.idPermohonan);
-      const b = p ? profilBangunans.find(pb => pb.idBangunan === p.idBangunan) : null;
-      return {
-        idAudit: t.idAudit,
-        idPermohonan: t.idPermohonan,
-        userEmail: t.userEmail,
-        userName: t.userName,
-        role: t.role,
-        action: t.action,
-        details: t.details,
-        timestamp: t.timestamp.toISOString(),
-        schoolName: b ? b.namaSekolahInstansi : null,
-        buildingName: b ? b.namaMassaBangunan : null,
-      };
-    }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const mappedTrails = rows.map(t => ({
+      ...t,
+      timestamp: t.timestamp.toISOString(),
+      schoolName: t.schoolName ?? null,
+      buildingName: t.buildingName ?? null,
+    }));
 
     res.json(mappedTrails);
-  } catch (error) {
-    console.error("GET audit trails error", error);
-    res.status(500).json({ error: "Failed to fetch audit trails" });
-  }
-});
+}));
 
 // --- Dashboard Stats Endpoint ---
-app.get("/api/dashboard/stats", requireRole(...STAFF_ROLES), async (req, res) => {
-  try {
+app.get("/api/dashboard/stats", requireRole(...STAFF_ROLES), asyncHandler(async (req, res) => {
     const permohonans = await db.select().from(schema.permohonanPenilaian);
     const buildings = await db.select().from(schema.profilBangunan);
-    const users = await db.select().from(schema.users);
+    const usersResult = await db.select().from(schema.users);
 
     // Status breakdown
     const statusCounts: Record<string, number> = {};
@@ -143,7 +197,7 @@ app.get("/api/dashboard/stats", requireRole(...STAFF_ROLES), async (req, res) =>
       return false;
     }).length;
 
-    // Top 5 highest damage
+    // Top 5 highest damage — use SQL JOIN for building names
     const top5Damage = permohonans
       .filter(p => p.totalPersentaseKerusakan)
       .sort((a, b) => Number(b.totalPersentaseKerusakan) - Number(a.totalPersentaseKerusakan))
@@ -169,76 +223,64 @@ app.get("/api/dashboard/stats", requireRole(...STAFF_ROLES), async (req, res) =>
     res.json({
       totalPermohonan: permohonans.length,
       totalBuildings: buildings.length,
-      totalUsers: users.length,
+      totalUsers: usersResult.length,
       statusCounts,
       pendingLongCount: pendingLong,
       top5Damage,
       categoryCounts,
     });
-  } catch (error) {
-    console.error("GET dashboard stats error", error);
-    res.status(500).json({ error: "Failed to fetch dashboard stats" });
-  }
-});
+}));
 
 // --- SSE Notification Stream (uses centralized sseManager) ---
 app.get("/api/notifications/stream", (req, res) => {
   registerSseClient(req, res);
 });
 
-app.get("/api/notifications", async (req, res) => {
-  try {
+app.get("/api/notifications", asyncHandler(async (req, res) => {
     const userId = req.query.userId ? Number(req.query.userId) : null;
     const role = req.query.role ? String(req.query.role) : null;
 
-    const allNotifications = await db.select().from(schema.notifications);
+    // Optimized: filter at DB level instead of fetching all notifications
+    const conditions = [];
+    if (userId) conditions.push(eq(schema.notifications.userId, userId));
+    if (role) conditions.push(eq(schema.notifications.targetRole, role));
 
-    const filtered = allNotifications.filter(n => {
-      if (n.userId && userId && n.userId === userId) {
-        return true;
-      }
-      if (n.targetRole && role && n.targetRole === role) {
-        return true;
-      }
-      return false;
-    });
-
-    filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const filtered = conditions.length > 0
+      ? await db.select().from(schema.notifications)
+          .where(or(...conditions))
+          .orderBy(desc(schema.notifications.createdAt))
+      : [];
 
     res.json(filtered);
-  } catch (error) {
-    console.error("GET notifications error", error);
-    res.status(500).json({ error: "Failed to fetch notifications" });
-  }
-});
+}));
 
-app.put("/api/notifications/:id/read", async (req, res) => {
-  try {
+app.put("/api/notifications/:id/read", asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     await db.update(schema.notifications)
       .set({ isRead: true })
       .where(eq(schema.notifications.idNotification, id));
     res.json({ success: true });
-  } catch (error) {
-    console.error("PUT read notification error", error);
-    res.status(500).json({ error: "Failed to mark notification as read" });
-  }
-});
+}));
 
-app.put("/api/notifications/read-all", async (req, res) => {
-  try {
+app.put("/api/notifications/read-all", asyncHandler(async (req, res) => {
     const userId = req.body.userId ? Number(req.body.userId) : null;
     const role = req.body.role ? String(req.body.role) : null;
 
-    const allNotifications = await db.select().from(schema.notifications).where(eq(schema.notifications.isRead, false));
-    
-    const idsToUpdate = allNotifications
-      .filter(n => {
-        if (n.userId && userId && n.userId === userId) return true;
-        if (n.targetRole && role && n.targetRole === role) return true;
-        return false;
-      })
-      .map(n => n.idNotification);
+    // Optimized: build WHERE clause to filter at DB level
+    const conditions = [eq(schema.notifications.isRead, false)];
+    const userConditions = [];
+    if (userId) userConditions.push(eq(schema.notifications.userId, userId));
+    if (role) userConditions.push(eq(schema.notifications.targetRole, role));
+
+    if (userConditions.length > 0) {
+      conditions.push(or(...userConditions)!);
+    }
+
+    const unreadNotifications = await db.select({ id: schema.notifications.idNotification })
+      .from(schema.notifications)
+      .where(and(...conditions));
+
+    const idsToUpdate = unreadNotifications.map(n => n.id);
 
     if (idsToUpdate.length > 0) {
       await db.update(schema.notifications)
@@ -247,11 +289,7 @@ app.put("/api/notifications/read-all", async (req, res) => {
     }
 
     res.json({ success: true, updatedCount: idsToUpdate.length });
-  } catch (error) {
-    console.error("PUT read all notifications error", error);
-    res.status(500).json({ error: "Failed to mark all notifications as read" });
-  }
-});
+}));
 
 // Master Komponen CRUD
 app.use(referenceRoutes);
@@ -270,6 +308,18 @@ app.use(reportRoutes);
 
 // Auth Routes (Turnstile etc)
 app.use(authRoutes);
+
+// 404 handler
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/")) {
+    res.status(404).json({ error: "API endpoint not found" });
+  } else {
+    next();
+  }
+});
+
+// Error Handler (HARUS di akhir setelah semua routes)
+app.use(errorHandler);
 
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
@@ -290,7 +340,13 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
+    logger.info({
+      event: "server_started",
+      port: PORT,
+      environment: process.env.NODE_ENV,
+      message: `Server running on http://0.0.0.0:${PORT}`,
+    });
+    console.log(`✅ Server running on http://0.0.0.0:${PORT}`);
   });
 }
 

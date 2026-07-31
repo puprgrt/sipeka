@@ -3,6 +3,7 @@ import { supabaseServer } from '../lib/supabaseServer';
 import { db } from '../db';
 import * as schema from '../db/schema';
 import { eq } from 'drizzle-orm';
+import { logger } from '../utils/logger';
 
 export async function verifyToken(req: Request, res: Response, next: NextFunction) {
   try {
@@ -25,23 +26,24 @@ export async function verifyToken(req: Request, res: Response, next: NextFunctio
     // Fetch user details from our local DB to get their role and exact name
     const [localUser] = await db.select().from(schema.users).where(eq(schema.users.email, user.email || '')).limit(1);
     
-    if (!localUser) {
-      // Allow access but without a role (or default to user), though in SIPEKA all users should exist in the local DB
-      return res.status(401).json({ error: 'Unauthorized: User not found in system' });
+    if (localUser) {
+      // Attach local user details to request
+      req.user = {
+        idUser: localUser.idUser,
+        namaLengkap: localUser.namaLengkap,
+        email: localUser.email,
+        role: localUser.role,
+        supabaseId: localUser.uid
+      };
+    } else {
+      // User authenticated via Supabase but not yet in local DB.
+      // Allow them through so /api/profile can auto-create their record.
+      logger.info({ email: user.email }, 'Authenticated user not in local DB — allowing through for auto-registration');
     }
-
-    // Attach local user details to request
-    req.user = {
-      idUser: localUser.idUser,
-      namaLengkap: localUser.namaLengkap,
-      email: localUser.email,
-      role: localUser.role,
-      supabaseId: localUser.uid
-    };
 
     next();
   } catch (err) {
-    console.error('verifyToken middleware error:', err);
+    logger.error({ err }, 'verifyToken middleware error');
     return res.status(500).json({ error: 'Internal Server Error during authentication' });
   }
 }

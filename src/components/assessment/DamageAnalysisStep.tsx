@@ -325,42 +325,169 @@ export default function DamageAnalysisStep({
                                     </button>
                                   </label>
                                   <div className="flex flex-col gap-1 mt-1">
-                                    {(details?.volumeInputs || (details?.volume ? [String(details.volume)] : [""])).map((vInput, vIdx, vArr) => (
-                                      <div key={vIdx} className="flex gap-1 items-center">
-                                        <input 
-                                          type="number" 
-                                          min="0"
-                                          value={vInput}
-                                          onChange={(e) => {
-                                            const newArr = [...vArr];
-                                            newArr[vIdx] = e.target.value;
-                                            const totalDamagedVol = newArr.reduce((sum, val) => sum + (Number(val) || 0), 0);
-                                            const totalVol = comp.totalVolume || 100;
-                                            const pct = totalVol > 0 ? Math.min(100, Math.round(((totalDamagedVol / totalVol) * 100) * 100) / 100) : 0;
-                                            updateComponentDamage(compIndex, level, pct, totalDamagedVol, newArr);
-                                          }}
-                                          placeholder="0"
-                                          className="block w-full rounded border border-slate-200/50 focus:border-pu-blue p-1.5 font-mono text-xs" 
-                                        />
-                                        {vIdx > 0 ? (
-                                          <button 
-                                            type="button" 
-                                            onClick={() => {
-                                              const newArr = vArr.filter((_, i) => i !== vIdx);
-                                              const totalDamagedVol = newArr.reduce((sum, val) => sum + (Number(val) || 0), 0);
-                                              const totalVol = comp.totalVolume || 100;
-                                              const pct = totalVol > 0 ? Math.min(100, Math.round(((totalDamagedVol / totalVol) * 100) * 100) / 100) : 0;
-                                              updateComponentDamage(compIndex, level, pct, totalDamagedVol, newArr);
-                                            }}
-                                            className="p-1 text-rose-500 hover:bg-rose-50 rounded"
-                                          >
-                                            <Minus className="w-3 h-3" />
-                                          </button>
+                                    {(details?.volumeInputs || (details?.volume ? [String(details.volume)] : [""])).map((vInput: any, vIdx: number, vArr: any[]) => {
+                                      // Determine if this component is floor/ceiling/roof to show dimension inputs
+                                      const nameLower = (comp.name || '').toLowerCase();
+                                      const isFloor = nameLower.includes('lantai');
+                                      const isCeil = nameLower.includes('plafon') || nameLower.includes('plafon');
+                                      const isRoof = nameLower.includes('atap') || nameLower.includes('genteng');
+
+                                      // Normalize input to object form used by UI
+                                      const normalized = typeof vInput === 'string' || typeof vInput === 'number'
+                                        ? { mode: 'area', value: Number(vInput) || 0 }
+                                        : { ...vInput };
+
+                                      const computeAreaFromDims = (cnt: number, lenCm: number, widCm: number) => {
+                                        return (Number(cnt || 0) * (Number(lenCm || 0) / 100) * (Number(widCm || 0) / 100));
+                                      };
+
+                                      return (
+                                      <div key={vIdx} className="flex flex-col gap-2 w-full">
+                                        { (isFloor || isCeil || isRoof) ? (
+                                          <div className="grid grid-cols-12 gap-2 items-center">
+                                            <div className="col-span-3">
+                                              <label className="text-[9px] font-bold text-slate-500">Jumlah Rusak</label>
+                                              <input
+                                                type="number"
+                                                min={0}
+                                                value={normalized.count || 0}
+                                                onChange={(e) => {
+                                                  const newArr = [...vArr];
+                                                  const newObj = { ...normalized, count: Number(e.target.value) };
+                                                  newObj.area = computeAreaFromDims(newObj.count, newObj.lenCm || 0, newObj.widCm || 0);
+                                                  newArr[vIdx] = newObj;
+                                                  const totalDamagedVol = newArr.reduce((sum: number, val: any) => sum + (Number(val?.area || val?.value || 0)), 0);
+                                                  const totalVol = comp.totalVolume || 100;
+                                                  const pct = totalVol > 0 ? Math.min(100, Math.round(((totalDamagedVol / totalVol) * 100) * 100) / 100) : 0;
+                                                  updateComponentDamage(compIndex, level, pct, totalDamagedVol, newArr);
+                                                }}
+                                                className="block w-full rounded border border-slate-200/50 focus:border-pu-blue p-1.5 font-mono text-xs"
+                                              />
+                                            </div>
+                                            <div className="col-span-3">
+                                              <label className="text-[9px] font-bold text-slate-500">Panjang (cm)</label>
+                                              <input
+                                                type="number"
+                                                min={0}
+                                                value={normalized.lenCm || ''}
+                                                onChange={(e) => {
+                                                  const newArr = [...vArr];
+                                                  const newObj = { ...normalized, lenCm: Number(e.target.value) };
+                                                  newObj.area = computeAreaFromDims(newObj.count || 0, newObj.lenCm || 0, newObj.widCm || 0);
+                                                  newArr[vIdx] = newObj;
+                                                  const totalDamagedVol = newArr.reduce((sum: number, val: any) => sum + (Number(val?.area || val?.value || 0)), 0);
+                                                  const totalVol = comp.totalVolume || 100;
+                                                  const pct = totalVol > 0 ? Math.min(100, Math.round(((totalDamagedVol / totalVol) * 100) * 100) / 100) : 0;
+                                                  updateComponentDamage(compIndex, level, pct, totalDamagedVol, newArr);
+                                                }}
+                                                className="block w-full rounded border border-slate-200/50 focus:border-pu-blue p-1.5 font-mono text-xs"
+                                              />
+                                            </div>
+                                            <div className="col-span-3">
+                                              <label className="text-[9px] font-bold text-slate-500">Lebar (cm)</label>
+                                              <input
+                                                type="number"
+                                                min={0}
+                                                value={normalized.widCm || ''}
+                                                onChange={(e) => {
+                                                  const newArr = [...vArr];
+                                                  const newObj = { ...normalized, widCm: Number(e.target.value) };
+                                                  newObj.area = computeAreaFromDims(newObj.count || 0, newObj.lenCm || 0, newObj.widCm || 0);
+                                                  newArr[vIdx] = newObj;
+                                                  const totalDamagedVol = newArr.reduce((sum: number, val: any) => sum + (Number(val?.area || val?.value || 0)), 0);
+                                                  const totalVol = comp.totalVolume || 100;
+                                                  const pct = totalVol > 0 ? Math.min(100, Math.round(((totalDamagedVol / totalVol) * 100) * 100) / 100) : 0;
+                                                  updateComponentDamage(compIndex, level, pct, totalDamagedVol, newArr);
+                                                }}
+                                                className="block w-full rounded border border-slate-200/50 focus:border-pu-blue p-1.5 font-mono text-xs"
+                                              />
+                                            </div>
+                                            <div className="col-span-3">
+                                              <label className="text-[9px] font-bold text-slate-500">Area (m²)</label>
+                                              <input
+                                                type="number"
+                                                step="0.001"
+                                                min={0}
+                                                value={Number(normalized.area || normalized.value || 0)}
+                                                onChange={(e) => {
+                                                  const newArr = [...vArr];
+                                                  const newObj = { ...normalized, mode: 'area', value: Number(e.target.value) };
+                                                  newObj.area = Number(e.target.value);
+                                                  newArr[vIdx] = newObj;
+                                                  const totalDamagedVol = newArr.reduce((sum: number, val: any) => sum + (Number(val?.area || val?.value || 0)), 0);
+                                                  const totalVol = comp.totalVolume || 100;
+                                                  const pct = totalVol > 0 ? Math.min(100, Math.round(((totalDamagedVol / totalVol) * 100) * 100) / 100) : 0;
+                                                  updateComponentDamage(compIndex, level, pct, totalDamagedVol, newArr);
+                                                }}
+                                                className="block w-full rounded border border-slate-200/50 focus:border-pu-blue p-1.5 font-mono text-xs"
+                                              />
+                                            </div>
+                                          </div>
                                         ) : (
-                                          <span className="text-[9px] text-slate-400 font-bold truncate max-w-[24px]">{comp.unit || compConfig?.satuan || "m2"}</span>
+                                          // Default numeric fallback for generic components
+                                          <div className="flex gap-1 items-center">
+                                            <input 
+                                              type="number" 
+                                              min="0"
+                                              value={normalized.value || 0}
+                                              onChange={(e) => {
+                                                const newArr = [...vArr];
+                                                newArr[vIdx] = e.target.value;
+                                                const totalDamagedVol = newArr.reduce((sum, val) => sum + (Number(val) || 0), 0);
+                                                const totalVol = comp.totalVolume || 100;
+                                                const pct = totalVol > 0 ? Math.min(100, Math.round(((totalDamagedVol / totalVol) * 100) * 100) / 100) : 0;
+                                                updateComponentDamage(compIndex, level, pct, totalDamagedVol, newArr);
+                                              }}
+                                              placeholder="0"
+                                              className="block w-full rounded border border-slate-200/50 focus:border-pu-blue p-1.5 font-mono text-xs" 
+                                            />
+                                            {vIdx > 0 ? (
+                                              <button 
+                                                type="button" 
+                                                onClick={() => {
+                                                  const newArr = vArr.filter((_, i) => i !== vIdx);
+                                                  const totalDamagedVol = newArr.reduce((sum, val) => sum + (Number(val) || 0), 0);
+                                                  const totalVol = comp.totalVolume || 100;
+                                                  const pct = totalVol > 0 ? Math.min(100, Math.round(((totalDamagedVol / totalVol) * 100) * 100) / 100) : 0;
+                                                  updateComponentDamage(compIndex, level, pct, totalDamagedVol, newArr);
+                                                }}
+                                                className="p-1 text-rose-500 hover:bg-rose-50 rounded"
+                                              >
+                                                <Minus className="w-3 h-3" />
+                                              </button>
+                                            ) : (
+                                              <span className="text-[9px] text-slate-400 font-bold truncate max-w-[24px]">{comp.unit || compConfig?.satuan || "m2"}</span>
+                                            )}
+                                          </div>
+                                        )}
+
+                                        {/* Roof type selector (only for roof comps) */}
+                                        {isRoof && (
+                                          <div className="flex gap-2 items-center mt-1">
+                                            <label className="text-[9px] font-bold text-slate-500">Jenis Genteng</label>
+                                            <select
+                                              value={(normalized.roofType) || 'metal'}
+                                              onChange={(e) => {
+                                                const newArr = [...vArr];
+                                                const newObj = { ...normalized, roofType: e.target.value };
+                                                newArr[vIdx] = newObj;
+                                                const totalDamagedVol = newArr.reduce((sum: number, val: any) => sum + (Number(val?.area || val?.value || 0)), 0);
+                                                const totalVol = comp.totalVolume || 100;
+                                                const pct = totalVol > 0 ? Math.min(100, Math.round(((totalDamagedVol / totalVol) * 100) * 100) / 100) : 0;
+                                                updateComponentDamage(compIndex, level, pct, totalDamagedVol, newArr);
+                                              }}
+                                              className="text-xs p-1 rounded border border-slate-200"
+                                            >
+                                              <option value="metal">Metal</option>
+                                              <option value="palentong">Palentong</option>
+                                              <option value="glazur">Glazur</option>
+                                              <option value="gelombang">Gelombang</option>
+                                            </select>
+                                          </div>
                                         )}
                                       </div>
-                                    ))}
+                                    );
+                                    })}
                                   </div>
                                 </div>
                                 
@@ -447,6 +574,7 @@ export default function DamageAnalysisStep({
                         <div>
                           <p className="text-[10px] font-bold text-blue-800 uppercase tracking-widest">Panduan Menghitung Volume</p>
                           <p className="text-xs text-slate-700 mt-1 whitespace-pre-wrap">{compConfig?.tooltipText || "Tidak ada panduan khusus untuk komponen ini."}</p>
+                          <p className="text-[11px] text-slate-600 mt-2">Unit input: panjang/lebar dalam <b>cm</b>. Area dihitung otomatis dalam <b>m²</b> (area = jumlah × panjang(cm)/100 × lebar(cm)/100). Pastikan semua nilai bernilai non-negatif.</p>
                           {compConfig?.tooltipImage && compConfig.tooltipImage.trim() !== '' && (
                             <div className="mt-3 flex flex-wrap gap-2">
                               {compConfig.tooltipImage.split(',').map((url, idx) => {

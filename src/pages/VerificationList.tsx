@@ -9,7 +9,7 @@ import { cn, getAuditHeaders, parsePhotos } from "../lib/utils";
 import { replaceTemplatePlaceholders } from "../utils/templateUtils";
 import { DataTable } from "../components/ui/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
-import { createCalendarEvent } from "../lib/calendarService";
+import { createCalendarEvent, promptSurveyScheduleTimes } from "../lib/calendarService";
 import SmartPhotoViewer from '../components/SmartPhotoViewer';
 import { appendToSheet } from "../lib/sheetsService";
 import { getAccessToken, googleSignIn } from "../lib/firebaseAuth";
@@ -244,18 +244,14 @@ export default function VerificationList() {
     }
     
     try {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(9, 0, 0, 0); // 9:00 AM tomorrow
-        
-        const nextHour = new Date(tomorrow);
-        nextHour.setHours(10, 0, 0, 0);
+        const schedule = promptSurveyScheduleTimes();
+        if (!schedule) return;
         
         const summary = `Survei Lapangan: ${assessment.schoolName} - ${assessment.buildingName}`;
         const description = `Alamat: ${assessment.address}\n\nMohon lakukan pengecekan lapangan untuk memverifikasi laporan kerusakan.`;
         
-        const link = await createCalendarEvent(summary, description, tomorrow, nextHour);
-        alert(`Jadwal survei berhasil dibuat!\nLihat di Calendar: ${link}`);
+        const link = await createCalendarEvent(summary, description, schedule.startTime, schedule.endTime);
+        alert(`Jadwal survei lapangan berhasil dibuat!\nLihat di Google Calendar: ${link}`);
     } catch (err) {
         console.error("Failed to schedule", err);
         alert("Gagal membuat jadwal survei.");

@@ -411,7 +411,8 @@ router.get("/api/profile", async (req, res) => {
     }
 
     const isAdmin = req.user?.role === 'Administrator';
-    const requesterEmail = req.user?.email?.toLowerCase();
+    // Use req.user email if available, otherwise fall back to supabaseUser email (first-login flow)
+    const requesterEmail = req.user?.email?.toLowerCase() || req.supabaseUser?.email?.toLowerCase();
     if (!isAdmin && requesterEmail !== email.toLowerCase()) {
       return res.status(403).json({ error: "Forbidden: Cannot access another user's profile" });
     }
