@@ -1,27 +1,51 @@
-import { getAccessToken } from './firebaseAuth';
+import { getAccessToken, refreshAccessToken } from './firebaseAuth';
 
 const APP_ROOT_FOLDER_NAME = 'SIPEKA_File_Manager';
+
+async function ensureDriveToken(): Promise<string> {
+  let token = await getAccessToken();
+  if (!token) {
+    token = await refreshAccessToken();
+  }
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+  return token;
+}
+
+async function driveFetch(input: RequestInfo | URL, init: RequestInit = {}, retry = true): Promise<Response> {
+  const token = await ensureDriveToken();
+  const headers = new Headers(init.headers);
+  headers.set('Authorization', `Bearer ${token}`);
+
+  const response = await fetch(input, { ...init, headers });
+  if ((response.status === 401 || response.status === 403) && retry) {
+    const refreshedToken = await refreshAccessToken();
+    if (!refreshedToken) {
+      return response;
+    }
+    headers.set('Authorization', `Bearer ${refreshedToken}`);
+    return await fetch(input, { ...init, headers });
+  }
+
+  return response;
+}
 
 /**
  * Gets or creates the root folder for the SIPEKA application in Google Drive.
  */
-export async function getOrCreateAppRootFolder(token: string): Promise<string> {
+export async function getOrCreateAppRootFolder(): Promise<string> {
   const q = `mimeType='application/vnd.google-apps.folder' and name='${APP_ROOT_FOLDER_NAME}' and trashed=false`;
-  const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  const searchRes = await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`);
   const searchData = await searchRes.json();
   if (searchData.files && searchData.files.length > 0) {
     return searchData.files[0].id;
   }
   
   // Create folder if it doesn't exist
-  const folderRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+  const folderRes = await driveFetch('https://www.googleapis.com/drive/v3/files', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       name: APP_ROOT_FOLDER_NAME,
       mimeType: 'application/vnd.google-apps.folder'
@@ -41,26 +65,21 @@ export async function uploadToDrive(file: File, folderName?: string): Promise<st
   const token = await getAccessToken();
   if (!token) throw new Error("Not authenticated");
 
-  const appRootId = await getOrCreateAppRootFolder(token);
+  const appRootId = await getOrCreateAppRootFolder();
   let folderId: string = appRootId;
 
   if (folderName) {
     // Check if folder exists inside the app root folder
     const q = `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and '${appRootId}' in parents and trashed=false`;
-    const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const searchRes = await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`);
     const searchData = await searchRes.json();
     if (searchData.files && searchData.files.length > 0) {
       folderId = searchData.files[0].id;
     } else {
       // Create folder inside app root
-      const folderRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+      const folderRes = await driveFetch('https://www.googleapis.com/drive/v3/files', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: folderName,
           mimeType: 'application/vnd.google-apps.folder',
@@ -82,11 +101,8 @@ export async function uploadToDrive(file: File, folderName?: string): Promise<st
   form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
   form.append('file', file);
 
-  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+  const res = await driveFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    },
     body: form
   });
 
@@ -112,26 +128,24 @@ export async function uploadToDrive(file: File, folderName?: string): Promise<st
  */
 export async function makeFilePublic(fileId: string): Promise<void> {
   const token = await getAccessToken();
-  if (!token) return;
+  if (!token) throw new Error('Not authenticated');
 
-  try {
-    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        role: 'reader',
-        type: 'anyone'
-      })
-    });
+  const res = await driveFetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      role: 'reader',
+      type: 'anyone'
+    })
+  });
 
-    if (!res.ok) {
-      console.warn("Could not make file public", await res.text());
+  if (!res.ok) {
+    const body = await res.text();
+    console.error('Drive permission update error', res.status, body);
+    if (res.status === 401 || res.status === 403) {
+      throw new Error('Drive auth failed');
     }
-  } catch (error) {
-    console.warn("Google Drive permission update skipped", error);
+    throw new Error('Failed to update Google Drive permissions');
   }
 }
 
@@ -151,15 +165,11 @@ export async function listDriveFiles(folderId?: string | null): Promise<any[]> {
     q += ` and '${folderId}' in parents`;
   } else {
     // Fetch only from SIPEKA root folder
-    const appRootId = await getOrCreateAppRootFolder(token);
+    const appRootId = await getOrCreateAppRootFolder();
     q += ` and '${appRootId}' in parents`;
   }
 
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,size,modifiedTime,owners,webViewLink,webContentLink,hasThumbnail,thumbnailLink)&orderBy=folder,modifiedTime desc`, {
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
-  });
+  const res = await driveFetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,mimeType,size,modifiedTime,owners,webViewLink,webContentLink,hasThumbnail,thumbnailLink)&orderBy=folder,modifiedTime desc`);
 
   if (!res.ok) {
     console.error("Failed to list files from Drive", await res.text());
@@ -180,7 +190,7 @@ export async function uploadFileToDrive(file: File, parentFolderId?: string | nu
   const token = await getAccessToken();
   if (!token) throw new Error("Not authenticated");
 
-  const appRootId = await getOrCreateAppRootFolder(token);
+  const appRootId = await getOrCreateAppRootFolder();
   const parentId = parentFolderId || appRootId;
 
   const metadata = {
@@ -189,12 +199,9 @@ export async function uploadFileToDrive(file: File, parentFolderId?: string | nu
   };
 
   // Step 1: Create file metadata
-  const metaRes = await fetch('https://www.googleapis.com/drive/v3/files?fields=id', {
+  const metaRes = await driveFetch('https://www.googleapis.com/drive/v3/files?fields=id', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(metadata)
   });
 
@@ -208,12 +215,9 @@ export async function uploadFileToDrive(file: File, parentFolderId?: string | nu
   const fileId = metaData.id;
 
   // Step 2: Upload file content
-  const uploadRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media&fields=id,name,mimeType,size,modifiedTime,owners,webViewLink,webContentLink`, {
+  const uploadRes = await driveFetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media&fields=id,name,mimeType,size,modifiedTime,owners,webViewLink,webContentLink`, {
     method: 'PATCH',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': file.type || 'application/octet-stream'
-    },
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
     body: file
   });
 
@@ -241,15 +245,12 @@ export async function createDriveFolder(folderName: string, parentFolderId?: str
   const token = await getAccessToken();
   if (!token) throw new Error("Not authenticated");
 
-  const appRootId = await getOrCreateAppRootFolder(token);
+  const appRootId = await getOrCreateAppRootFolder();
   const parentId = parentFolderId || appRootId;
 
-  const folderRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+  const folderRes = await driveFetch('https://www.googleapis.com/drive/v3/files', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       name: folderName,
       mimeType: 'application/vnd.google-apps.folder',
@@ -273,18 +274,21 @@ export async function createDriveFolder(folderName: string, parentFolderId?: str
  */
 export async function deleteFileFromDrive(fileId: string): Promise<void> {
   const token = await getAccessToken();
-  if (!token) throw new Error("Not authenticated");
+  if (!token) throw new Error('Not authenticated');
 
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
-    method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
+  const res = await driveFetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+    method: 'DELETE'
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    console.error("Drive delete error", text);
+    const body = await res.text();
+    console.error('Drive delete error', res.status, body);
+    if (res.status === 401 || res.status === 403) {
+      throw new Error('Drive auth failed');
+    }
+    if (res.status === 404) {
+      throw new Error('Drive file not found');
+    }
     throw new Error('Failed to delete file from Google Drive');
   }
 }

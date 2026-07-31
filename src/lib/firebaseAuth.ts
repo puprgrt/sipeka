@@ -1,24 +1,48 @@
 import { supabase } from './supabaseClient';
 import type { User } from '@supabase/supabase-js';
 
+const isBrowser = typeof window !== 'undefined';
+
 // Get the token from localStorage if it exists so reloading is persistent
-let cachedAccessToken: string | null = typeof window !== 'undefined' ? localStorage.getItem('firebase_google_access_token') : null;
+let cachedAccessToken: string | null = isBrowser ? localStorage.getItem('firebase_google_access_token') : null;
+
+const storeAccessToken = (token: string | null) => {
+  cachedAccessToken = token;
+  if (!isBrowser) return;
+
+  if (token) {
+    localStorage.setItem('firebase_google_access_token', token);
+  } else {
+    localStorage.removeItem('firebase_google_access_token');
+  }
+};
 
 export const initAuth = (
   onAuthSuccess?: (user: any, token: string) => void,
   onAuthFailure?: () => void
 ) => {
+  const initializeToken = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.provider_token) {
+        storeAccessToken(session.provider_token);
+      } else if (!cachedAccessToken && isBrowser) {
+        cachedAccessToken = localStorage.getItem('firebase_google_access_token');
+      }
+    } catch (error) {
+      console.warn('Failed to initialize Google access token from session', error);
+    }
+  };
+  initializeToken();
+
   const { data: { subscription } } = supabase.auth.onAuthStateChange(
     async (event, session) => {
       if (session && session.user) {
         // Extract provider_token from Supabase session if it exists (for Google APIs)
         if (session.provider_token) {
-          cachedAccessToken = session.provider_token;
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('firebase_google_access_token', cachedAccessToken);
-          }
-        } else if (!cachedAccessToken && typeof window !== 'undefined') {
-           cachedAccessToken = localStorage.getItem('firebase_google_access_token');
+          storeAccessToken(session.provider_token);
+        } else if (!cachedAccessToken && isBrowser) {
+          cachedAccessToken = localStorage.getItem('firebase_google_access_token');
         }
 
         if (onAuthSuccess) {
@@ -32,10 +56,7 @@ export const initAuth = (
           onAuthSuccess(formattedUser, cachedAccessToken || '');
         }
       } else {
-        cachedAccessToken = null;
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('firebase_google_access_token');
-        }
+        storeAccessToken(null);
         if (onAuthFailure) onAuthFailure();
       }
     }
@@ -55,7 +76,9 @@ export const googleSignIn = async (): Promise<{ user: any; accessToken: string }
         scopes: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar.events',
         redirectTo: typeof window !== 'undefined' ? window.location.origin + '/login' : undefined,
         queryParams: {
-          prompt: 'select_account'
+          prompt: 'select_account consent',
+          access_type: 'offline',
+          include_granted_scopes: 'true'
         }
       }
     });
@@ -72,9 +95,29 @@ export const googleSignIn = async (): Promise<{ user: any; accessToken: string }
   }
 };
 
+export const clearAccessToken = (): void => {
+  storeAccessToken(null);
+};
+
+export const refreshAccessToken = async (): Promise<string | null> => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.provider_token) {
+      storeAccessToken(session.provider_token);
+      return session.provider_token;
+    }
+  } catch (error) {
+    console.warn('Failed to refresh Google access token from session', error);
+  }
+  return null;
+};
+
 export const getAccessToken = async (): Promise<string | null> => {
-  if (!cachedAccessToken && typeof window !== 'undefined') {
+  if (!cachedAccessToken && isBrowser) {
     cachedAccessToken = localStorage.getItem('firebase_google_access_token');
+  }
+  if (!cachedAccessToken) {
+    cachedAccessToken = await refreshAccessToken();
   }
   return cachedAccessToken;
 };

@@ -161,7 +161,12 @@ export function useDriveFiles(currentFolder: string | null) {
       setFiles(prev => prev.filter(f => f.id !== fileId));
     } catch (error: any) {
       console.error("Failed to delete file from Drive", error);
-      if (error?.message === "Not authenticated" || error?.message?.includes("authenticated") || fileId.startsWith("mock-")) {
+      if (
+        error?.message === "Not authenticated" ||
+        error?.message === "Drive auth failed" ||
+        error?.message?.includes("authenticated") ||
+        fileId.startsWith("mock-")
+      ) {
         setFiles(prev => prev.filter(f => f.id !== fileId));
         return;
       }
