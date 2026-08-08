@@ -1,6 +1,6 @@
 import { apiFetch } from "../lib/api";
 import { useState, useRef, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Assessment, COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI, DAMAGE_MULTIPLIERS, ComponentAssessment } from "../types";
 import { MapPin, Camera, Save, AlertCircle, X, CloudUpload, HelpCircle, Printer, Info, CheckCircle, FileText as FileTextIcon, Loader2, Building, Check, ClipboardList, Send, Paintbrush, Plus, Minus } from "lucide-react";
 import { cn, getAuditHeaders } from "../lib/utils";
@@ -90,7 +90,9 @@ export function useAssessmentForm() {
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const editId = searchParams.get("edit");
+  const location = useLocation();
+  const params = useParams();
+  const editId = searchParams.get("edit") || params.id;
 
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -327,8 +329,10 @@ export function useAssessmentForm() {
     setAnnotatingContext(null);
   };
 
-  const isPermohonanFlow = activeRole === "Administrator" || activeRole === "Pengelola_Bangunan";
+  const isVerificationEditFlow = location.pathname.includes("verifikasi-edit");
+  const isPermohonanFlow = !isVerificationEditFlow && (activeRole === "Administrator" || activeRole === "Pengelola_Bangunan");
   const permissions = getRolePermissions()[activeRole as keyof ReturnType<typeof getRolePermissions>]?.permissions;
+  const getReturnTo = () => searchParams.get("returnTo") || (isVerificationEditFlow ? "/verifikasi" : "/list");
 
   useEffect(() => {
     apiFetch("/api/building-parameters")
@@ -1043,8 +1047,11 @@ export function useAssessmentForm() {
         localStorage.removeItem("assessment_form_draft");
         setIsDirty(false);
         
-        alert(`⚠️ Koneksi internet terbatas atau tidak terdeteksi.\n\nData penilaian untuk "${schoolName || "Sekolah"}" telah berhasil disimpan secara aman di memori lokal perangkat Anda (IndexedDB).\n\nSistem akan otomatis mensinkronisasikan data ini ke server ketika koneksi internet terhubung kembali.`);
-        const returnTo = searchParams.get("returnTo") || "/list";
+        const offlineMessage = isVerificationEditFlow
+          ? `⚠️ Koneksi internet terbatas atau tidak terdeteksi.\n\nHasil verifikasi untuk "${schoolName || "Sekolah"}" telah berhasil disimpan secara aman sebagai draf laporan perhitungan di perangkat Anda.`
+          : `⚠️ Koneksi internet terbatas atau tidak terdeteksi.\n\nData penilaian untuk "${schoolName || "Sekolah"}" telah berhasil disimpan secara aman di memori lokal perangkat Anda (IndexedDB).\n\nSistem akan otomatis mensinkronisasikan data ini ke server ketika koneksi internet terhubung kembali.`;
+        alert(offlineMessage);
+        const returnTo = getReturnTo();
         navigate(returnTo, { state: { assessmentId: editId || payload.idBangunan } });
       } catch (err) {
         console.error("Failed to save to IndexedDB, fallback to localStorage", err);
@@ -1064,8 +1071,11 @@ export function useAssessmentForm() {
         window.dispatchEvent(new Event("storage"));
         window.dispatchEvent(new Event("offline-assessments-updated"));
         
-        alert(`⚠️ Koneksi internet terbatas atau tidak terdeteksi.\n\nData penilaian untuk "${schoolName || "Sekolah"}" telah berhasil disimpan secara aman di memori lokal perangkat Anda.\n\nSistem akan otomatis mensinkronisasikan data ini ke server ketika koneksi internet terhubung kembali.`);
-        const returnTo = searchParams.get("returnTo") || "/list";
+        const offlineMessage = isVerificationEditFlow
+          ? `⚠️ Koneksi internet terbatas atau tidak terdeteksi.\n\nHasil verifikasi untuk "${schoolName || "Sekolah"}" telah berhasil disimpan secara aman sebagai draf laporan perhitungan di perangkat Anda.`
+          : `⚠️ Koneksi internet terbatas atau tidak terdeteksi.\n\nData penilaian untuk "${schoolName || "Sekolah"}" telah berhasil disimpan secara aman di memori lokal perangkat Anda.\n\nSistem akan otomatis mensinkronisasikan data ini ke server ketika koneksi internet terhubung kembali.`;
+        alert(offlineMessage);
+        const returnTo = getReturnTo();
         navigate(returnTo, { state: { assessmentId: editId || payload.idBangunan } });
       }
     };
@@ -1086,10 +1096,12 @@ export function useAssessmentForm() {
       if (response.ok) {
         localStorage.removeItem("assessment_form_draft");
         setIsDirty(false);
-        if (generatedDocLink) {
+        if (isVerificationEditFlow) {
+          alert(`Hasil verifikasi berhasil disimpan sebagai laporan perhitungan untuk "${schoolName || "Sekolah"}".`);
+        } else if (generatedDocLink) {
             alert(`Permohonan berhasil disimpan!\nDokumen surat permohonan resmi telah berhasil disimpan dalam bentuk PDF dan dikirimkan ke Dinas.`);
         }
-        const returnTo = searchParams.get("returnTo") || "/list";
+        const returnTo = getReturnTo();
         navigate(returnTo, { state: { assessmentId: editId || payload.idBangunan } });
       } else {
         alert("Terjadi kesalahan saat menyimpan data.");
@@ -1391,6 +1403,7 @@ export function useAssessmentForm() {
     restoreDraft,
     discardDraft,
     isPermohonanFlow,
+    isVerificationEditFlow,
     removePhoto,
     hasCriticalDamage,
     SAFETY_QUESTIONS,

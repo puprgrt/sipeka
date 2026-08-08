@@ -131,6 +131,7 @@ export default function AssessmentForm() {
     restoreDraft,
     discardDraft,
     isPermohonanFlow,
+    isVerificationEditFlow,
     removePhoto,
     hasCriticalDamage,
     SAFETY_QUESTIONS,
@@ -147,8 +148,12 @@ export default function AssessmentForm() {
       {/* Page Title & Auto-save Status Indicator */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 px-1 print:hidden">
         <div>
-          <h1 className="text-lg font-extrabold text-slate-800 tracking-tight">Formulir Penilaian Kerusakan</h1>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Dinas Pekerjaan Umum dan Penataan Ruang</p>
+          <h1 className="text-lg font-extrabold text-slate-800 tracking-tight">
+            {isVerificationEditFlow ? "Formulir Verifikasi & Laporan Perhitungan" : "Formulir Penilaian Kerusakan"}
+          </h1>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+            {isVerificationEditFlow ? "Tim Teknis • Simpan hasil verifikasi sebagai laporan perhitungan" : "Dinas Pekerjaan Umum dan Penataan Ruang"}
+          </p>
         </div>
         {saveStatus !== "Idle" && (
           <div className={cn(
@@ -206,18 +211,25 @@ export default function AssessmentForm() {
         className="mb-10 print:hidden bg-white/50 backdrop-blur-lg border border-white/60 p-6 rounded-2xl shadow-md"
       >
         {(() => {
-          const currentSteps = isPermohonanFlow 
+const currentSteps = isVerificationEditFlow
             ? [
-                { num: 1, label: "Data Input", desc: "Informasi Bangunan", icon: ClipboardList },
-                { num: 2, label: "Penilaian", desc: "Kerusakan Fisik", icon: Building },
-                { num: 3, label: "Submission", desc: "Kirim Surat Permohonan", icon: Send }
-              ]
-            : [
                 { num: 1, label: "Informasi", desc: "Data Bangunan", icon: Building },
                 { num: 2, label: "Keselamatan", desc: "Uji Keselamatan", icon: AlertCircle },
                 { num: 3, label: "Penilaian", desc: "Kerusakan Fisik", icon: ClipboardList },
-                { num: 4, label: "Ringkasan", desc: "Kesimpulan", icon: CheckCircle }
-              ];
+                { num: 4, label: "Laporan", desc: "Perhitungan", icon: CheckCircle }
+              ]
+            : isPermohonanFlow 
+              ? [
+                  { num: 1, label: "Data Input", desc: "Informasi Bangunan", icon: ClipboardList },
+                  { num: 2, label: "Penilaian", desc: "Kerusakan Fisik", icon: Building },
+                  { num: 3, label: "Submission", desc: "Kirim Surat Permohonan", icon: Send }
+                ]
+              : [
+                  { num: 1, label: "Informasi", desc: "Data Bangunan", icon: Building },
+                  { num: 2, label: "Keselamatan", desc: "Uji Keselamatan", icon: AlertCircle },
+                  { num: 3, label: "Penilaian", desc: "Kerusakan Fisik", icon: ClipboardList },
+                  { num: 4, label: "Ringkasan", desc: "Kesimpulan", icon: CheckCircle }
+                ];
 
           const progressPercent = ((step - 1) / (currentSteps.length - 1)) * 100;
 
@@ -371,6 +383,7 @@ export default function AssessmentForm() {
       {step === 4 && !isPermohonanFlow && (
         <FinalReviewStep
           calculateFinalResult={calculateFinalResult}
+          isVerificationEditFlow={isVerificationEditFlow}
           schoolName={schoolName}
           buildingName={buildingName}
           getParamLabel={getParamLabel}

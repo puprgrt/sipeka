@@ -16,12 +16,16 @@ import { getAccessToken, googleSignIn } from "../lib/firebaseAuth";
 import { motion, AnimatePresence } from "motion/react";
 import SmartPhotoViewer from '../components/SmartPhotoViewer';
 import DocumentPreviewModal from "../components/DocumentPreviewModal";
+import ActionDialog from "../components/ui/ActionDialog";
 import { 
   Eye, Clock, Calendar, Building, MapPin, FileText, 
   CheckCircle2, User, Loader2, ArrowRight, ExternalLink, X, HelpCircle, Edit, Trash2, PlusCircle,
   Search, Filter, ArrowUpDown, SlidersHorizontal, RefreshCw, MessageCircle
 } from "lucide-react";
 import { STATUS_TABS, STATUS_OPTIONS, getStatusBadgeClasses, formatStatusText } from "../lib/statusUtils";
+import { generateDocumentFromTemplateEngine } from "../lib/documentTemplateEngine";
+import { DEFAULT_TEMPLATE_SURAT_PERMOHONAN, DEFAULT_TEMPLATE_SURAT_HASIL } from "../utils/templateUtils";
+import { getValidationUrl } from "../lib/utils";
 
 export default function AssessmentList() {
   const location = useLocation();
@@ -42,6 +46,19 @@ export default function AssessmentList() {
 
   const [dispositionLogs, setDispositionLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [letterConfig, setLetterConfig] = useState<any>(null);
+  const [updatingDocumentId, setUpdatingDocumentId] = useState<string | null>(null);
+  const [dialogState, setDialogState] = useState<{
+    type: "confirm" | "prompt" | "info";
+    title: string;
+    description: string;
+    inputLabel?: string;
+    inputValue?: string;
+    onConfirm?: (value?: string) => void | Promise<void>;
+    confirmLabel?: string;
+    cancelLabel?: string;
+  } | null>(null);
+  const [dialogInputValue, setDialogInputValue] = useState("");
 
   // Search & advanced filter states
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,14 +94,26 @@ export default function AssessmentList() {
           selectedIds.includes(a.id) ? { ...a, status: bulkStatus } : a
         ));
         setSelectedIds([]);
-        alert(`Berhasil memperbarui status ${selectedIds.length} permohonan ke "${bulkStatus.replace('_', ' ')}"!`);
+        openDialog({
+          type: "info",
+          title: "Status berhasil diperbarui",
+          description: `Berhasil memperbarui status ${selectedIds.length} permohonan ke "${bulkStatus.replace('_', ' ')}".`
+        });
       } else {
         const errData = await res.json();
-        alert(`Gagal memperbarui status secara masal: ${errData.error || "Kesalahan server"}`);
+        openDialog({
+          type: "info",
+          title: "Gagal memperbarui status",
+          description: errData.error || "Kesalahan server saat memperbarui status secara masal."
+        });
       }
     } catch (err) {
       console.error(err);
-      alert("Kesalahan jaringan saat melakukan pembaruan masal.");
+      openDialog({
+        type: "info",
+        title: "Kesalahan jaringan",
+        description: "Terjadi kesalahan jaringan saat melakukan pembaruan masal."
+      });
     } finally {
       setIsUpdatingBulk(false);
     }
@@ -187,6 +216,10 @@ export default function AssessmentList() {
 
   useEffect(() => {
     loadAssessments();
+    apiFetch("/api/pengaturan-surat")
+      .then(res => res.json())
+      .then(data => setLetterConfig(data))
+      .catch(err => console.error("Failed to load letter config", err));
     
     window.addEventListener("assessments-synced", loadAssessments);
     return () => {
@@ -212,6 +245,118 @@ export default function AssessmentList() {
     }
   }, [selectedAssessment, selectedAssessment?.status]);
 
+  const openDialog = (state: NonNullable<typeof dialogState>) => {
+    setDialogInputValue(state.inputValue ?? "");
+    setDialogState(state);
+  };
+
+  const closeDialog = () => {
+    setDialogState(null);
+    setDialogInputValue("");
+  };
+
+  const handleUpdateGeneratedDocument = async (assessment: Assessment) => {
+    try {
+      setUpdatingDocumentId(assessment.id);
+      const token = await getAccessToken();
+      if (!token) {
+        openDialog({
+          type: "info",
+          title: "Perlu login Google",
+          description: "Silakan login ulang dengan Google untuk memperbarui dokumen surat."
+        });
+        return;
+      }
+
+      const isKeluar = assessment.status !== "Menunggu_Validasi";
+      const templateToUse = isKeluar ? DEFAULT_TEMPLATE_SURAT_HASIL : DEFAULT_TEMPLATE_SURAT_PERMOHONAN;
+      const docTitle = `${isKeluar ? "Surat Hasil" : "Surat Permohonan"} Penilaian Kerusakan - ${assessment.schoolName || "Instansi"}`;
+      const letterReferenceNo = assessment.customFields?.nomorSurat || assessment.customFields?.letterReferenceNo || assessment.id.substring(0, 8).toUpperCase();
+
+      const templateData: any = {
+        id: assessment.id,
+        nama_sekolah: assessment.schoolName,
+        npsn: assessment.npsn || "-",
+        nama_bangunan: assessment.buildingName,
+        nup: assessment.nup || "-",
+        alamat: assessment.address,
+        nomor_surat: letterReferenceNo,
+        tanggal: format(new Date(), "dd MMMM yyyy", { locale: id }),
+        kerusakan: assessment.finalResult?.totalDamagePercentage || 0,
+        kategori: assessment.finalResult?.category || "Ringan",
+        luas_bangunan: assessment.buildingArea || 0,
+        jumlah_lantai: assessment.floorCount || 1,
+        koordinat_gps: assessment.coordinates ? `${assessment.coordinates.lat}, ${assessment.coordinates.lng}` : "-",
+        nama_pengirim: letterConfig?.pengelola?.namaKepala || "Nama Pengirim",
+        jabatan_pengirim: letterConfig?.pengelola?.jabatan || "Jabatan",
+        nip_pengirim: letterConfig?.pengelola?.nipKepala || "-",
+        nama_instansi_atas: letterConfig?.pengelola?.namaInstansiAtas || "PEMERINTAH KABUPATEN GARUT",
+        nama_instansi_bawah: letterConfig?.pengelola?.namaInstansiBawah || assessment.schoolName || "UPTD SATUAN PENDIDIKAN",
+        alamat_pemohon: letterConfig?.pengelola?.alamat || assessment.address || "Jl. Raya Pembangunan No. 123",
+        qr_data: getValidationUrl(assessment.id)
+      };
+
+      const res = await generateDocumentFromTemplateEngine(docTitle, templateToUse, templateData, undefined, token);
+      const newDocLink = res.url;
+      const exportedLink = newDocLink.replace(/\/edit$/, "/export?format=pdf");
+
+      const payload = {
+        schoolName: assessment.schoolName,
+        buildingName: assessment.buildingName,
+        npsn: assessment.npsn,
+        address: assessment.address,
+        buildingArea: assessment.buildingArea,
+        floorCount: assessment.floorCount,
+        coordinates: assessment.coordinates,
+        components: assessment.components || [],
+        photos: assessment.photos || [],
+        finalResult: assessment.finalResult || { totalDamagePercentage: 0, category: "Ringan" },
+        documentLink: exportedLink,
+        customFields: {
+          ...(assessment.customFields || {}),
+          documentLink: newDocLink,
+          letterReferenceNo,
+          updatedAt: new Date().toISOString()
+        }
+      };
+
+      await apiFetch(`/api/assessments/${assessment.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      setAssessments(prev => prev.map(item => item.id === assessment.id ? {
+        ...item,
+        documentLink: exportedLink,
+        customFields: { ...(item.customFields || {}), documentLink: newDocLink, letterReferenceNo, updatedAt: new Date().toISOString() }
+      } : item));
+
+      if (selectedAssessment?.id === assessment.id) {
+        setSelectedAssessment(prev => prev ? {
+          ...prev,
+          documentLink: exportedLink,
+          customFields: { ...(prev.customFields || {}), documentLink: newDocLink, letterReferenceNo, updatedAt: new Date().toISOString() }
+        } : prev);
+      }
+
+      openDialog({
+        type: "info",
+        title: "Dokumen berhasil diperbarui",
+        description: "Hasil generate dokumen terbaru telah disimpan dan siap dipakai."
+      });
+    } catch (error) {
+      console.error("Failed to update generated document", error);
+      openDialog({
+        type: "info",
+        title: "Gagal memperbarui dokumen",
+        description: "Silakan coba lagi beberapa saat lagi."
+      });
+    } finally {
+      setUpdatingDocumentId(null);
+    }
+  };
+
   const handleScheduleSurvei = async (assessment: Assessment) => {
     const token = await getAccessToken();
     if (!token) {
@@ -231,10 +376,18 @@ export default function AssessmentList() {
         const description = `Alamat: ${assessment.address}\n\nMohon lakukan pengecekan lapangan untuk memverifikasi laporan kerusakan.`;
         
         const link = await createCalendarEvent(summary, description, schedule.startTime, schedule.endTime);
-        alert(`Jadwal survei lapangan berhasil dibuat!\nLihat di Google Calendar: ${link}`);
+        openDialog({
+          type: "info",
+          title: "Jadwal survei dibuat",
+          description: `Jadwal survei lapangan berhasil dibuat. Lihat di Google Calendar: ${link}`
+        });
     } catch (err) {
         console.error("Failed to schedule", err);
-        alert("Gagal membuat jadwal survei.");
+        openDialog({
+          type: "info",
+          title: "Gagal membuat jadwal",
+          description: "Gagal membuat jadwal survei lapangan."
+        });
     }
   };
 
@@ -249,37 +402,48 @@ export default function AssessmentList() {
         }
     }
     
-    try {
-        // Just use a fixed spreadsheet ID if we had one, but we don't, so let's prompt or error.
-        // For demonstration, we could let the user supply the ID, or we just alert them that they need to create one.
-        const spreadsheetId = prompt("Masukkan Spreadsheet ID untuk menyimpan arsip (kosongkan untuk membuat Spreadsheet baru):");
-        let targetId = spreadsheetId;
-        
-        if (!targetId) {
-            alert("Membuat spreadsheet baru...");
+    openDialog({
+      type: "prompt",
+      title: "Arsip ke Spreadsheet",
+      description: "Masukkan Spreadsheet ID untuk menyimpan arsip. Biarkan kosong untuk membuat Spreadsheet baru.",
+      inputLabel: "Spreadsheet ID",
+      inputValue: "",
+      onConfirm: async (value) => {
+        try {
+          let targetId = (value || "").trim();
+          if (!targetId) {
             const { createSpreadsheet } = await import("../lib/sheetsService");
             targetId = await createSpreadsheet("Arsip Penilaian SI-PEKA");
-            alert(`Spreadsheet baru berhasil dibuat dengan ID: ${targetId}`);
-        }
-        
-        const values = [
+          }
+          
+          const values = [
             [
-                format(new Date(assessment.date), "dd MMM yyyy", { locale: id }),
-                assessment.schoolName,
-                assessment.buildingName,
-                assessment.npsn,
-                assessment.buildingArea.toString(),
-                assessment.finalResult.totalDamagePercentage.toFixed(2) + "%",
-                "Rusak " + assessment.finalResult.category
+              format(new Date(assessment.date), "dd MMM yyyy", { locale: id }),
+              assessment.schoolName,
+              assessment.buildingName,
+              assessment.npsn,
+              assessment.buildingArea.toString(),
+              assessment.finalResult.totalDamagePercentage.toFixed(2) + "%",
+              "Rusak " + assessment.finalResult.category
             ]
-        ];
-        
-        await appendToSheet(targetId as string, "Sheet1!A:G", values);
-        alert(`Data berhasil diarsipkan ke Spreadsheet (ID: ${targetId}).\nBuka di: https://docs.google.com/spreadsheets/d/${targetId}`);
-    } catch (err) {
-        console.error("Failed to archive", err);
-        alert("Gagal mengarsipkan ke Spreadsheet.");
-    }
+          ];
+          
+          await appendToSheet(targetId as string, "Sheet1!A:G", values);
+          openDialog({
+            type: "info",
+            title: "Arsip berhasil dibuat",
+            description: `Data berhasil diarsipkan ke Spreadsheet (ID: ${targetId}).`
+          });
+        } catch (err) {
+          console.error("Failed to archive", err);
+          openDialog({
+            type: "info",
+            title: "Gagal mengarsipkan",
+            description: "Tidak dapat mengarsipkan data ke Spreadsheet."
+          });
+        }
+      }
+    });
   };
 
   const handleGenerateAnalysisFormat = async (assessment: Assessment) => {
@@ -293,32 +457,46 @@ export default function AssessmentList() {
         }
     }
     
-    try {
-        const floorCount = assessment.floorCount || 1;
-        const tipe = floorCount === 1 ? 'A' : floorCount === 2 ? 'B' : 'C';
-        const confirmMsg = `Perbarui Format Analisis PUPR untuk ${assessment.schoolName} (${assessment.buildingName})?\n\nSistem akan menggunakan Arsitektur Template Engine v2.0 (menyalin dari Google Drive Resmi Tipe ${tipe}) sehingga 100% format asli, rumus, warna, dan validasi PUPR tetap terjaga.`;
-        if (!confirm(confirmMsg)) return;
+    const floorCount = assessment.floorCount || 1;
+    const tipe = floorCount === 1 ? 'A' : floorCount === 2 ? 'B' : 'C';
+    const confirmMsg = `Perbarui Format Analisis PUPR untuk ${assessment.schoolName} (${assessment.buildingName})?\n\nSistem akan menggunakan Arsitektur Template Engine v2.0 (menyalin dari Google Drive Resmi Tipe ${tipe}) sehingga 100% format asli, rumus, warna, dan validasi PUPR tetap terjaga.`;
 
-        alert(`Memuat dan menyalin Template Resmi PUPR Tipe ${tipe} dari Google Drive...`);
-        const { generatePuprSpreadsheetFromTemplate } = await import("../lib/spreadsheetTemplateEngine");
-        const res = await generatePuprSpreadsheetFromTemplate(assessment, floorCount, token);
+    openDialog({
+      type: "confirm",
+      title: "Perbarui format analisis",
+      description: confirmMsg,
+      onConfirm: async () => {
+        try {
+          const { generatePuprSpreadsheetFromTemplate } = await import("../lib/spreadsheetTemplateEngine");
+          const res = await generatePuprSpreadsheetFromTemplate(assessment, floorCount, token);
 
-        const successMsg = res.copiedFromDrive
-          ? `✅ Format Analisis Tipe ${tipe} berhasil disiapkan menggunakan Google Drive Template Copy (100% format asli PUPR utuh!)\n\nBuka di: ${res.url}`
-          : `✅ Format Analisis Tipe ${tipe} berhasil disiapkan (Referensi Resmi: ${res.templateUsed}).\n\nBuka di: ${res.url}`;
+          const successMsg = res.copiedFromDrive
+            ? `Format Analisis Tipe ${tipe} berhasil disiapkan menggunakan Google Drive Template Copy (100% format asli PUPR utuh!).`
+            : `Format Analisis Tipe ${tipe} berhasil disiapkan (Referensi Resmi: ${res.templateUsed}).`;
 
-        if (confirm(`${successMsg}\n\nApakah Anda ingin langsung melihat / mengunduh preview Dokumen PDF Analisis perhitungan ini?`)) {
-          const { exportAssessmentToPdf } = await import("../lib/exportPdf");
-          await exportAssessmentToPdf(assessment);
+          openDialog({
+            type: "info",
+            title: "Format analisis siap",
+            description: successMsg
+          });
+        } catch (err) {
+          console.error("Failed to generate format", err);
+          openDialog({
+            type: "info",
+            title: "Gagal membuat format analisis",
+            description: "Gagal membuat format analisis dari template."
+          });
         }
-    } catch (err) {
-        console.error("Failed to generate format", err);
-        alert("Gagal membuat format analisis dari template.");
-    }
+      }
+    });
   };
 
   const handleGenerateSuratJawaban = async (assessment: Assessment) => {
-    alert(`Draft Surat Jawaban (Doc) untuk ${assessment.schoolName} berhasil dibuat!\nDokumen telah tersimpan di sistem arsip digital bidang bangunan.`);
+    openDialog({
+      type: "info",
+      title: "Draft surat jawaban siap",
+      description: `Draft Surat Jawaban (Doc) untuk ${assessment.schoolName} berhasil dibuat. Dokumen telah tersimpan di sistem arsip digital bidang bangunan.`
+    });
   };
 
   const updateStatus = (assessment: Assessment, newStatus: string) => {
@@ -332,24 +510,46 @@ export default function AssessmentList() {
       body: JSON.stringify({ status: newStatus })
     }).catch(err => {
       console.error(err);
-      alert("Gagal memperbarui status");
+      openDialog({
+        type: "info",
+        title: "Gagal memperbarui status",
+        description: "Status tidak dapat diperbarui saat ini."
+      });
     });
   };
 
   const handleDeleteAssessment = async (id: string) => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus permohonan ini secara permanen?")) return;
-    try {
-      const res = await apiFetch(`/api/assessments/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setAssessments(assessments.filter(a => a.id !== id));
-        alert("Permohonan berhasil dihapus");
-      } else {
-        alert("Gagal menghapus permohonan");
+    openDialog({
+      type: "confirm",
+      title: "Hapus permohonan",
+      description: "Apakah Anda yakin ingin menghapus permohonan ini secara permanen?",
+      onConfirm: async () => {
+        try {
+          const res = await apiFetch(`/api/assessments/${id}`, { method: "DELETE" });
+          if (res.ok) {
+            setAssessments(assessments.filter(a => a.id !== id));
+            openDialog({
+              type: "info",
+              title: "Permohonan dihapus",
+              description: "Permohonan berhasil dihapus."
+            });
+          } else {
+            openDialog({
+              type: "info",
+              title: "Gagal menghapus",
+              description: "Gagal menghapus permohonan."
+            });
+          }
+        } catch (error) {
+          console.error(error);
+          openDialog({
+            type: "info",
+            title: "Gagal menghapus",
+            description: "Gagal menghapus permohonan."
+          });
+        }
       }
-    } catch (error) {
-      console.error(error);
-      alert("Gagal menghapus permohonan");
-    }
+    });
   };
 
   const handleEditSave = async () => {
@@ -373,13 +573,25 @@ export default function AssessmentList() {
             : a
         ));
         setEditingAssessment(null);
-        alert("Permohonan berhasil diperbarui");
+        openDialog({
+          type: "info",
+          title: "Permohonan berhasil diperbarui",
+          description: "Data permohonan berhasil disimpan."
+        });
       } else {
-        alert("Gagal memperbarui permohonan");
+        openDialog({
+          type: "info",
+          title: "Gagal memperbarui permohonan",
+          description: "Tidak dapat memperbarui permohonan saat ini."
+        });
       }
     } catch (error) {
       console.error(error);
-      alert("Gagal memperbarui permohonan");
+      openDialog({
+        type: "info",
+        title: "Gagal memperbarui permohonan",
+        description: "Terjadi kesalahan saat memperbarui permohonan."
+      });
     }
   };
 
@@ -496,7 +708,11 @@ export default function AssessmentList() {
                 body: JSON.stringify({ status: newStatus })
               }).catch(err => {
                 console.error(err);
-                alert("Gagal memperbarui status");
+                openDialog({
+                  type: "info",
+                  title: "Gagal memperbarui status",
+                  description: "Status tidak dapat diperbarui saat ini."
+                });
               });
             }}
             className="text-xs border border-slate-200/50 rounded-md focus:ring-pu-blue focus:border-pu-blue shadow-sm bg-white/70 backdrop-blur-sm"
@@ -529,6 +745,15 @@ export default function AssessmentList() {
             >
               <MessageCircle className="w-3 h-3 mr-1" />
               Kirim WA
+            </button>
+            <button
+              onClick={() => handleUpdateGeneratedDocument(assessment)}
+              disabled={updatingDocumentId === assessment.id}
+              className="inline-flex items-center text-[10px] font-bold uppercase tracking-widest text-violet-600 hover:text-violet-800 hover:bg-violet-50 border border-violet-200/60 px-2 py-1.5 rounded-lg transition-colors disabled:opacity-60"
+              title="Perbarui hasil generate dokumen"
+            >
+              {updatingDocumentId === assessment.id ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+              Perbarui
             </button>
             {activeRole === "Tim_Teknis" && assessment.status === "Survei_Lapangan" && (
               <Link 
@@ -864,10 +1089,12 @@ export default function AssessmentList() {
         handleScheduleSurvei={handleScheduleSurvei}
         handleGenerateAnalysisFormat={handleGenerateAnalysisFormat}
         handleGenerateSuratJawaban={handleGenerateSuratJawaban}
+        handleUpdateGeneratedDocument={handleUpdateGeneratedDocument}
         setPreviewUrl={setPreviewUrl}
         loadingLogs={loadingLogs}
         dispositionLogs={dispositionLogs}
         setSmartPreviewPhoto={setSmartPreviewPhoto}
+        updatingDocumentId={updatingDocumentId}
       />
 
       <EditAssessmentModal
@@ -877,6 +1104,31 @@ export default function AssessmentList() {
         setEditForm={setEditForm}
         handleEditSave={handleEditSave}
       />
+
+      {dialogState && (
+        <ActionDialog
+          isOpen={true}
+          onClose={closeDialog}
+          title={dialogState.title}
+          description={dialogState.description}
+          variant={dialogState.type === "info" ? "info" : dialogState.type === "prompt" ? "prompt" : "confirm"}
+          inputLabel={dialogState.inputLabel}
+          inputValue={dialogInputValue}
+          onInputChange={(value) => {
+            setDialogInputValue(value);
+          }}
+          onConfirm={() => {
+            if (dialogState.onConfirm) {
+              void dialogState.onConfirm(dialogInputValue);
+            }
+            if (dialogState.type !== "prompt") {
+              closeDialog();
+            }
+          }}
+          confirmLabel={dialogState.type === "prompt" ? "Simpan" : dialogState.type === "confirm" ? "Lanjutkan" : "Tutup"}
+          cancelLabel={dialogState.type === "info" ? "Tutup" : "Batal"}
+        />
+      )}
 
       {/* Lightbox Modal */}
       {smartPreviewPhoto && (

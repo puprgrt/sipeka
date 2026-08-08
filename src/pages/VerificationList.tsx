@@ -11,6 +11,7 @@ import { DataTable } from "../components/ui/DataTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { createCalendarEvent, promptSurveyScheduleTimes } from "../lib/calendarService";
 import SmartPhotoViewer from '../components/SmartPhotoViewer';
+import ActionDialog from "../components/ui/ActionDialog";
 import { appendToSheet } from "../lib/sheetsService";
 import { getAccessToken, googleSignIn } from "../lib/firebaseAuth";
 import { motion, AnimatePresence } from "motion/react";
@@ -52,6 +53,15 @@ export default function VerificationList() {
   const [aiAnalysisResult, setAiAnalysisResult] = useState<{ score: number, issues: string[] } | null>(null);
   const [isForwarding, setIsForwarding] = useState(false);
   const [componentsConfig, setComponentsConfig] = useState<any[]>([]);
+  const [dialogState, setDialogState] = useState<{
+    type: "confirm" | "prompt" | "info";
+    title: string;
+    description: string;
+    inputLabel?: string;
+    inputValue?: string;
+    onConfirm?: (value?: string) => void | Promise<void>;
+  } | null>(null);
+  const [dialogInputValue, setDialogInputValue] = useState("");
 
   const formatSize = (bytes: number) => {
     if (bytes === 0) return '0 B';
@@ -117,6 +127,16 @@ export default function VerificationList() {
     }
   }, [selectedAssessment]);
 
+  const openDialog = (state: NonNullable<typeof dialogState>) => {
+    setDialogInputValue(state.inputValue ?? "");
+    setDialogState(state);
+  };
+
+  const closeDialog = () => {
+    setDialogState(null);
+    setDialogInputValue("");
+  };
+
   const handleUpdateVerification = (compName: string, status: 'Sesuai' | 'Butuh_Survey' | undefined, comment: string) => {
     setLocalVerification(prev => ({
       ...prev,
@@ -156,14 +176,26 @@ export default function VerificationList() {
           status: data.statusTerakhir || prev.status,
           tteSignatures: data.tteSignatures || prev.tteSignatures
         } : null);
-        alert("Catatan verifikasi komponen dan TTE Otomatis berhasil disimpan!");
+        openDialog({
+          type: "info",
+          title: "Verifikasi berhasil disimpan",
+          description: "Catatan verifikasi komponen dan TTE otomatis berhasil disimpan."
+        });
         setSelectedAssessment(null);
       } else {
-        alert("Gagal menyimpan catatan verifikasi.");
+        openDialog({
+          type: "info",
+          title: "Gagal menyimpan verifikasi",
+          description: "Catatan verifikasi tidak dapat disimpan saat ini."
+        });
       }
     } catch (error) {
       console.error(error);
-      alert("Terjadi kesalahan.");
+      openDialog({
+        type: "info",
+        title: "Kesalahan",
+        description: "Terjadi kesalahan saat menyimpan catatan verifikasi."
+      });
     } finally {
       setSavingVerification(false);
     }
@@ -251,10 +283,18 @@ export default function VerificationList() {
         const description = `Alamat: ${assessment.address}\n\nMohon lakukan pengecekan lapangan untuk memverifikasi laporan kerusakan.`;
         
         const link = await createCalendarEvent(summary, description, schedule.startTime, schedule.endTime);
-        alert(`Jadwal survei lapangan berhasil dibuat!\nLihat di Google Calendar: ${link}`);
+        openDialog({
+          type: "info",
+          title: "Jadwal survei dibuat",
+          description: `Jadwal survei lapangan berhasil dibuat. Lihat di Google Calendar: ${link}`
+        });
     } catch (err) {
         console.error("Failed to schedule", err);
-        alert("Gagal membuat jadwal survei.");
+        openDialog({
+          type: "info",
+          title: "Gagal membuat jadwal",
+          description: "Gagal membuat jadwal survei lapangan."
+        });
     }
   };
 
@@ -298,25 +338,41 @@ export default function VerificationList() {
   
   const handleForwardToKadis = async () => {
     if (!selectedAssessment) return;
-    if (!confirm("Teruskan Berita Acara Pemeriksaan (BAP) ini kepada Kepala Dinas?")) return;
-    setIsForwarding(true);
-    try {
-      const res = await apiFetch(`/api/assessments/${selectedAssessment.id}/status`, {
-        method: "PUT",
-        headers: getAuditHeaders(),
-        body: JSON.stringify({ status: 'Menunggu_Pengesahan' })
-      });
-      if (res.ok) {
-        setAssessments(prev => prev.map(a => a.id === selectedAssessment.id ? { ...a, status: 'Menunggu_Pengesahan' } : a));
-        setSelectedAssessment(prev => prev ? { ...prev, status: 'Menunggu_Pengesahan' } : null);
-        alert("BAP berhasil diteruskan ke Kadis!");
+    openDialog({
+      type: "confirm",
+      title: "Teruskan BAP",
+      description: "Teruskan Berita Acara Pemeriksaan (BAP) ini kepada Kepala Dinas?",
+      onConfirm: async () => {
+        setIsForwarding(true);
+        try {
+          const res = await apiFetch(`/api/assessments/${selectedAssessment.id}/status`, {
+            method: "PUT",
+            headers: getAuditHeaders(),
+            body: JSON.stringify({ status: 'Menunggu_Pengesahan' })
+          });
+          if (res.ok) {
+            setAssessments(prev => prev.map(a => a.id === selectedAssessment.id ? { ...a, status: 'Menunggu_Pengesahan' } : a));
+            setSelectedAssessment(prev => prev ? { ...prev, status: 'Menunggu_Pengesahan' } : null);
+            openDialog({
+              type: "info",
+              title: "BAP berhasil diteruskan",
+              description: "BAP berhasil diteruskan ke Kadis."
+            });
+          }
+        } catch (e) {
+          openDialog({
+            type: "info",
+            title: "Gagal meneruskan",
+            description: "Gagal meneruskan BAP."
+          });
+        } finally {
+          setIsForwarding(false);
+        }
       }
-    } catch (e) {
-      alert("Gagal meneruskan BAP");
-    } finally {
-      setIsForwarding(false);
-    }
+    });
+    return;
   };
+
   
   const handleArchiveToSheets = async (assessment: Assessment) => {
     const token = await getAccessToken();
@@ -329,37 +385,48 @@ export default function VerificationList() {
         }
     }
     
-    try {
-        // Just use a fixed spreadsheet ID if we had one, but we don't, so let's prompt or error.
-        // For demonstration, we could let the user supply the ID, or we just alert them that they need to create one.
-        const spreadsheetId = prompt("Masukkan Spreadsheet ID untuk menyimpan arsip (kosongkan untuk membuat Spreadsheet baru):");
-        let targetId = spreadsheetId;
-        
-        if (!targetId) {
-            alert("Membuat spreadsheet baru...");
+    openDialog({
+      type: "prompt",
+      title: "Arsip ke Spreadsheet",
+      description: "Masukkan Spreadsheet ID untuk menyimpan arsip. Biarkan kosong untuk membuat Spreadsheet baru.",
+      inputLabel: "Spreadsheet ID",
+      inputValue: "",
+      onConfirm: async (value) => {
+        try {
+          let targetId = (value || "").trim();
+          if (!targetId) {
             const { createSpreadsheet } = await import("../lib/sheetsService");
             targetId = await createSpreadsheet("Arsip Penilaian SI-PEKA");
-            alert(`Spreadsheet baru berhasil dibuat dengan ID: ${targetId}`);
-        }
-        
-        const values = [
+          }
+          
+          const values = [
             [
-                format(new Date(assessment.date), "dd MMM yyyy", { locale: id }),
-                assessment.schoolName,
-                assessment.buildingName,
-                assessment.npsn,
-                assessment.buildingArea.toString(),
-                assessment.finalResult.totalDamagePercentage.toFixed(2) + "%",
-                "Rusak " + assessment.finalResult.category
+              format(new Date(assessment.date), "dd MMM yyyy", { locale: id }),
+              assessment.schoolName,
+              assessment.buildingName,
+              assessment.npsn,
+              assessment.buildingArea.toString(),
+              assessment.finalResult.totalDamagePercentage.toFixed(2) + "%",
+              "Rusak " + assessment.finalResult.category
             ]
-        ];
-        
-        await appendToSheet(targetId as string, "Sheet1!A:G", values);
-        alert(`Data berhasil diarsipkan ke Spreadsheet (ID: ${targetId}).\nBuka di: https://docs.google.com/spreadsheets/d/${targetId}`);
-    } catch (err) {
-        console.error("Failed to archive", err);
-        alert("Gagal mengarsipkan ke Spreadsheet.");
-    }
+          ];
+          
+          await appendToSheet(targetId as string, "Sheet1!A:G", values);
+          openDialog({
+            type: "info",
+            title: "Arsip berhasil dibuat",
+            description: `Data berhasil diarsipkan ke Spreadsheet (ID: ${targetId}).`
+          });
+        } catch (err) {
+          console.error("Failed to archive", err);
+          openDialog({
+            type: "info",
+            title: "Gagal mengarsipkan",
+            description: "Tidak dapat mengarsipkan data ke Spreadsheet."
+          });
+        }
+      }
+    });
   };
 
 
@@ -561,6 +628,29 @@ export default function VerificationList() {
           isForwarding={isForwarding}
         />
 
+
+        {dialogState && (
+          <ActionDialog
+            isOpen={true}
+            onClose={closeDialog}
+            title={dialogState.title}
+            description={dialogState.description}
+            variant={dialogState.type === "info" ? "info" : dialogState.type === "prompt" ? "prompt" : "confirm"}
+            inputLabel={dialogState.inputLabel}
+            inputValue={dialogInputValue}
+            onInputChange={(value) => setDialogInputValue(value)}
+            onConfirm={() => {
+              if (dialogState.onConfirm) {
+                void dialogState.onConfirm(dialogInputValue);
+              }
+              if (dialogState.type !== "prompt") {
+                closeDialog();
+              }
+            }}
+            confirmLabel={dialogState.type === "prompt" ? "Simpan" : dialogState.type === "confirm" ? "Lanjutkan" : "Tutup"}
+            cancelLabel={dialogState.type === "info" ? "Tutup" : "Batal"}
+          />
+        )}
 
         {/* Lightbox Modal */}
         {smartPreviewPhoto && (

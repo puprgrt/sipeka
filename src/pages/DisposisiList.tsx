@@ -14,6 +14,7 @@ import { appendToSheet } from "../lib/sheetsService";
 import { getAccessToken, googleSignIn } from "../lib/firebaseAuth";
 import { motion, AnimatePresence } from "motion/react";
 import SmartPhotoViewer from '../components/SmartPhotoViewer';
+import ActionDialog from "../components/ui/ActionDialog";
 import { exportAssessmentToPdf } from "../lib/exportPdf";
 import { Download } from "lucide-react";
 import { 
@@ -43,6 +44,15 @@ export default function DisposisiList() {
   const [dispositionLogs, setDispositionLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [smartPreviewPhoto, setSmartPreviewPhoto] = useState<string | null>(null);
+  const [dialogState, setDialogState] = useState<{
+    type: "confirm" | "prompt" | "info";
+    title: string;
+    description: string;
+    inputLabel?: string;
+    inputValue?: string;
+    onConfirm?: (value?: string) => void | Promise<void>;
+  } | null>(null);
+  const [dialogInputValue, setDialogInputValue] = useState("");
 
   // Editable disposisi states
   const [isEditingDisposisi, setIsEditingDisposisi] = useState(false);
@@ -203,6 +213,16 @@ export default function DisposisiList() {
     }
   }, [selectedAssessment, selectedAssessment?.status, letterConfig]);
 
+  const openDialog = (state: NonNullable<typeof dialogState>) => {
+    setDialogInputValue(state.inputValue ?? "");
+    setDialogState(state);
+  };
+
+  const closeDialog = () => {
+    setDialogState(null);
+    setDialogInputValue("");
+  };
+
   const handleSaveDisposisi = async () => {
     if (!selectedAssessment) return;
     
@@ -252,13 +272,25 @@ export default function DisposisiList() {
         });
 
         setIsEditingDisposisi(false);
-        alert("Disposisi berhasil disimpan dan status diperbarui!");
+        openDialog({
+          type: "info",
+          title: "Disposisi berhasil disimpan",
+          description: "Data disposisi berhasil disimpan dan status telah diperbarui."
+        });
       } else {
-        alert("Gagal menyimpan disposisi.");
+        openDialog({
+          type: "info",
+          title: "Gagal menyimpan disposisi",
+          description: "Tidak dapat menyimpan disposisi saat ini."
+        });
       }
     } catch (err) {
       console.error(err);
-      alert("Kesalahan jaringan.");
+      openDialog({
+        type: "info",
+        title: "Kesalahan jaringan",
+        description: "Terjadi kesalahan jaringan saat menyimpan disposisi."
+      });
     }
   };
 
@@ -267,12 +299,20 @@ export default function DisposisiList() {
     
     const isAuthorized = activeRole === "Kadis" || activeRole === "Kabid";
     if (!isAuthorized) {
-      alert("Akses Ditolak: Hanya Kepala Dinas (Kadis) atau Kepala Bidang (Kabid) yang berwenang melakukan Recall / Re-disposisi.");
+      openDialog({
+        type: "info",
+        title: "Akses ditolak",
+        description: "Hanya Kepala Dinas (Kadis) atau Kepala Bidang (Kabid) yang berwenang melakukan Recall / Re-disposisi."
+      });
       return;
     }
 
     if (!recallNote.trim()) {
-      alert("Harap masukkan catatan justifikasi recall / re-disposisi.");
+      openDialog({
+        type: "info",
+        title: "Catatan belum lengkap",
+        description: "Harap masukkan catatan justifikasi recall / re-disposisi."
+      });
       return;
     }
 
@@ -343,13 +383,25 @@ export default function DisposisiList() {
         setRecallsList(updatedRecalls);
         setShowRecallForm(false);
         setRecallNote("");
-        alert("Recall / Re-disposisi berhasil dijalankan! Status ditarik kembali dan tercatat di riwayat.");
+        openDialog({
+          type: "info",
+          title: "Recall berhasil",
+          description: "Recall / Re-disposisi berhasil dijalankan. Status ditarik kembali dan tercatat di riwayat."
+        });
       } else {
-        alert("Gagal memproses recall / re-disposisi.");
+        openDialog({
+          type: "info",
+          title: "Gagal memproses",
+          description: "Gagal memproses recall / re-disposisi."
+        });
       }
     } catch (err) {
       console.error(err);
-      alert("Kesalahan jaringan.");
+      openDialog({
+        type: "info",
+        title: "Kesalahan jaringan",
+        description: "Terjadi kesalahan jaringan saat memproses recall."
+      });
     }
   };
 
@@ -372,10 +424,18 @@ export default function DisposisiList() {
         const description = `Alamat: ${assessment.address}\n\nMohon lakukan pengecekan lapangan untuk memverifikasi laporan kerusakan.`;
         
         const link = await createCalendarEvent(summary, description, schedule.startTime, schedule.endTime);
-        alert(`Jadwal survei lapangan berhasil dibuat!\nLihat di Google Calendar: ${link}`);
+        openDialog({
+          type: "info",
+          title: "Jadwal survei dibuat",
+          description: `Jadwal survei lapangan berhasil dibuat. Lihat di Google Calendar: ${link}`
+        });
     } catch (err) {
         console.error("Failed to schedule", err);
-        alert("Gagal membuat jadwal survei.");
+        openDialog({
+          type: "info",
+          title: "Gagal membuat jadwal",
+          description: "Gagal membuat jadwal survei lapangan."
+        });
     }
   };
 
@@ -390,37 +450,48 @@ export default function DisposisiList() {
         }
     }
     
-    try {
-        // Just use a fixed spreadsheet ID if we had one, but we don't, so let's prompt or error.
-        // For demonstration, we could let the user supply the ID, or we just alert them that they need to create one.
-        const spreadsheetId = prompt("Masukkan Spreadsheet ID untuk menyimpan arsip (kosongkan untuk membuat Spreadsheet baru):");
-        let targetId = spreadsheetId;
-        
-        if (!targetId) {
-            alert("Membuat spreadsheet baru...");
+    openDialog({
+      type: "prompt",
+      title: "Arsip ke Spreadsheet",
+      description: "Masukkan Spreadsheet ID untuk menyimpan arsip. Biarkan kosong untuk membuat Spreadsheet baru.",
+      inputLabel: "Spreadsheet ID",
+      inputValue: "",
+      onConfirm: async (value) => {
+        try {
+          let targetId = (value || "").trim();
+          if (!targetId) {
             const { createSpreadsheet } = await import("../lib/sheetsService");
             targetId = await createSpreadsheet("Arsip Penilaian SI-PEKA");
-            alert(`Spreadsheet baru berhasil dibuat dengan ID: ${targetId}`);
-        }
-        
-        const values = [
+          }
+          
+          const values = [
             [
-                format(new Date(assessment.date), "dd MMM yyyy", { locale: id }),
-                assessment.schoolName,
-                assessment.buildingName,
-                assessment.npsn,
-                assessment.buildingArea.toString(),
-                assessment.finalResult.totalDamagePercentage.toFixed(2) + "%",
-                "Rusak " + assessment.finalResult.category
+              format(new Date(assessment.date), "dd MMM yyyy", { locale: id }),
+              assessment.schoolName,
+              assessment.buildingName,
+              assessment.npsn,
+              assessment.buildingArea.toString(),
+              assessment.finalResult.totalDamagePercentage.toFixed(2) + "%",
+              "Rusak " + assessment.finalResult.category
             ]
-        ];
-        
-        await appendToSheet(targetId as string, "Sheet1!A:G", values);
-        alert(`Data berhasil diarsipkan ke Spreadsheet (ID: ${targetId}).\nBuka di: https://docs.google.com/spreadsheets/d/${targetId}`);
-    } catch (err) {
-        console.error("Failed to archive", err);
-        alert("Gagal mengarsipkan ke Spreadsheet.");
-    }
+          ];
+          
+          await appendToSheet(targetId as string, "Sheet1!A:G", values);
+          openDialog({
+            type: "info",
+            title: "Arsip berhasil dibuat",
+            description: `Data berhasil diarsipkan ke Spreadsheet (ID: ${targetId}).`
+          });
+        } catch (err) {
+          console.error("Failed to archive", err);
+          openDialog({
+            type: "info",
+            title: "Gagal mengarsipkan",
+            description: "Tidak dapat mengarsipkan data ke Spreadsheet."
+          });
+        }
+      }
+    });
   };
 
   const columns: ColumnDef<Assessment>[] = [
@@ -577,6 +648,29 @@ export default function DisposisiList() {
         timTeknisUsers={timTeknisUsers}
         petugasSurveyUsers={petugasSurveyUsers}
       />
+
+      {dialogState && (
+        <ActionDialog
+          isOpen={true}
+          onClose={closeDialog}
+          title={dialogState.title}
+          description={dialogState.description}
+          variant={dialogState.type === "info" ? "info" : dialogState.type === "prompt" ? "prompt" : "confirm"}
+          inputLabel={dialogState.inputLabel}
+          inputValue={dialogInputValue}
+          onInputChange={(value) => setDialogInputValue(value)}
+          onConfirm={() => {
+            if (dialogState.onConfirm) {
+              void dialogState.onConfirm(dialogInputValue);
+            }
+            if (dialogState.type !== "prompt") {
+              closeDialog();
+            }
+          }}
+          confirmLabel={dialogState.type === "prompt" ? "Simpan" : dialogState.type === "confirm" ? "Lanjutkan" : "Tutup"}
+          cancelLabel={dialogState.type === "info" ? "Tutup" : "Batal"}
+        />
+      )}
 
       {/* Lightbox Modal */}
       {smartPreviewPhoto && (

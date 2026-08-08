@@ -35,6 +35,7 @@ export default function App() {
             <Route index element={<Dashboard />} />
             <Route path="ai" element={<AiDashboard />} />
             <Route path="new" element={<AssessmentForm />} />
+            <Route path="verifikasi-edit/:id" element={<AssessmentForm />} />
             <Route path="list" element={<AssessmentList />} />
             <Route path="disposisi" element={<DisposisiList />} />
             <Route path="verifikasi" element={<VerificationList />} />

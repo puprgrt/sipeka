@@ -113,6 +113,21 @@ export default function DisposisiDetailModal({
 
   if (!selectedAssessment) return null;
 
+  const buildingTypeLabel = selectedAssessment.floorCount === 1
+    ? "Tipe A (1 Lantai)"
+    : selectedAssessment.floorCount === 2
+      ? "Tipe B (2 Lantai)"
+      : `Tipe ${selectedAssessment.floorCount >= 3 ? 'C' : 'A'} (${selectedAssessment.floorCount || 1} Lantai)`;
+
+  const visibleComponents = Array.isArray(selectedAssessment.components)
+    ? selectedAssessment.components.filter((comp: any) => {
+        const fCount = selectedAssessment.floorCount || 1;
+        const weights = fCount === 2 ? COMPONENT_WEIGHTS_2_LANTAI : fCount >= 3 ? COMPONENT_WEIGHTS_3_LANTAI : COMPONENT_WEIGHTS_1_LANTAI;
+        const matchesType = (weights[comp.name] || 0) > 0;
+        return matchesType || (selectedAssessment.components.filter((item: any) => (weights[item.name] || 0) > 0).length === 0);
+      })
+    : [];
+
   const parsePhotos = (photoStr: string | string[]) => {
     if (!photoStr) return [];
     if (Array.isArray(photoStr)) return photoStr;
@@ -696,11 +711,7 @@ export default function DisposisiDetailModal({
                           Rincian Kerusakan per Komponen
                         </p>
                         <div className="space-y-3">
-                          {selectedAssessment.components.filter(comp => {
-                            const fCount = selectedAssessment.floorCount || 1;
-                            const weights = fCount === 2 ? COMPONENT_WEIGHTS_2_LANTAI : fCount >= 3 ? COMPONENT_WEIGHTS_3_LANTAI : COMPONENT_WEIGHTS_1_LANTAI;
-                            return (weights[comp.name] || 0) > 0;
-                          }).map((comp, idx) => (
+                          {visibleComponents.map((comp: any, idx: number) => (
                             <div key={idx} className="bg-slate-50 border border-slate-200/60 rounded-xl p-3 text-xs">
                               <div className="flex justify-between items-start mb-2">
                                 <span className="font-bold text-slate-700">{comp.name}</span>

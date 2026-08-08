@@ -2,12 +2,13 @@ import React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   X, MapPin, Calendar, CheckCircle2, Clock, 
-  User, FileText, Loader2, Search
+  User, FileText, Loader2, Search, RefreshCw
 } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { cn, parsePhotos } from "../../lib/utils";
 import { getStatusBadgeClasses, formatStatusText } from "../../lib/statusUtils";
+import { COMPONENT_WEIGHTS_1_LANTAI, COMPONENT_WEIGHTS_2_LANTAI, COMPONENT_WEIGHTS_3_LANTAI } from "../../types";
 
 interface AssessmentDetailModalProps {
   selectedAssessment: any;
@@ -17,10 +18,12 @@ interface AssessmentDetailModalProps {
   handleScheduleSurvei: (assessment: any) => void;
   handleGenerateAnalysisFormat: (assessment: any) => void;
   handleGenerateSuratJawaban: (assessment: any) => void;
+  handleUpdateGeneratedDocument: (assessment: any) => void;
   setPreviewUrl: (val: string) => void;
   loadingLogs: boolean;
   dispositionLogs: any[];
   setSmartPreviewPhoto: (val: string) => void;
+  updatingDocumentId?: string | null;
 }
 
 export default function AssessmentDetailModal({
@@ -31,14 +34,33 @@ export default function AssessmentDetailModal({
   handleScheduleSurvei,
   handleGenerateAnalysisFormat,
   handleGenerateSuratJawaban,
+  handleUpdateGeneratedDocument,
   setPreviewUrl,
   loadingLogs,
   dispositionLogs,
-  setSmartPreviewPhoto
+  setSmartPreviewPhoto,
+  updatingDocumentId
 }: AssessmentDetailModalProps) {
   if (!selectedAssessment) return null;
 
-  // Use shared utility to normalize arrays, CSV strings, Drive IDs, and inline data URLs
+  const buildingTypeLabel = selectedAssessment.floorCount === 1
+    ? "Tipe A (1 Lantai)"
+    : selectedAssessment.floorCount === 2
+      ? "Tipe B (2 Lantai)"
+      : `Tipe ${selectedAssessment.floorCount >= 3 ? 'C' : 'A'} (${selectedAssessment.floorCount || 1} Lantai)`;
+
+  const visibleComponents = Array.isArray(selectedAssessment.components)
+    ? selectedAssessment.components.filter((comp: any) => {
+        const fCount = selectedAssessment.floorCount || 1;
+        const weights = fCount === 2
+          ? COMPONENT_WEIGHTS_2_LANTAI
+          : fCount >= 3
+            ? COMPONENT_WEIGHTS_3_LANTAI
+            : COMPONENT_WEIGHTS_1_LANTAI;
+        const matchesType = (weights[comp.name] || 0) > 0;
+        return matchesType || (selectedAssessment.components.filter((item: any) => (weights[item.name] || 0) > 0).length === 0);
+      })
+    : [];
 
   return (
     <AnimatePresence>
@@ -124,6 +146,10 @@ export default function AssessmentDetailModal({
                       <span className="text-slate-500">Lantai:</span>
                       <span className="font-bold text-slate-700">{selectedAssessment.floorCount} Tingkat</span>
                     </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-slate-500">Tipe:</span>
+                      <span className="font-bold text-slate-700">{buildingTypeLabel}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -178,7 +204,7 @@ export default function AssessmentDetailModal({
                 <div className="pt-2">
                   <span className="block text-[10px] font-bold text-slate-400 uppercase mb-3 tracking-wider">Rincian Komponen Teridentifikasi</span>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {selectedAssessment.components.map((comp: any, idx: number) => (
+                    {visibleComponents.map((comp: any, idx: number) => (
                       <div key={idx} className="bg-slate-50 border border-slate-200/60 rounded-xl p-3 text-xs">
                         <div className="flex justify-between items-start mb-2">
                           <span className="font-bold text-slate-700">
@@ -398,12 +424,22 @@ export default function AssessmentDetailModal({
                       <p className="text-[10px] text-blue-700/80 mt-0.5">Disimpan aman dalam format PDF untuk arsip kedinasan.</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => setPreviewUrl(selectedAssessment.documentLink)}
-                    className="inline-flex items-center px-4 py-2 text-xs font-bold rounded-xl text-white bg-blue-600 hover:bg-blue-700 shadow transition-all hover:scale-105"
-                  >
-                    Buka Preview Dokumen
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setPreviewUrl(selectedAssessment.documentLink)}
+                      className="inline-flex items-center px-4 py-2 text-xs font-bold rounded-xl text-white bg-blue-600 hover:bg-blue-700 shadow transition-all hover:scale-105"
+                    >
+                      Buka Preview Dokumen
+                    </button>
+                    <button
+                      onClick={() => handleUpdateGeneratedDocument(selectedAssessment)}
+                      disabled={updatingDocumentId === selectedAssessment.id}
+                      className="inline-flex items-center px-4 py-2 text-xs font-bold rounded-xl text-violet-700 bg-violet-100 hover:bg-violet-200 shadow-sm transition-all disabled:opacity-60"
+                    >
+                      {updatingDocumentId === selectedAssessment.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                      Perbarui Hasil Generate
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 text-center text-[11px] text-slate-500 italic">

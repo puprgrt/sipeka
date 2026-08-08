@@ -50,6 +50,21 @@ export default function VerificationDetailModal({
     }
   };
 
+  const buildingTypeLabel = selectedAssessment.floorCount === 1
+    ? "Tipe A (1 Lantai)"
+    : selectedAssessment.floorCount === 2
+      ? "Tipe B (2 Lantai)"
+      : `Tipe ${selectedAssessment.floorCount >= 3 ? 'C' : 'A'} (${selectedAssessment.floorCount || 1} Lantai)`;
+
+  const visibleComponents = Array.isArray(selectedAssessment.components)
+    ? selectedAssessment.components.filter((comp: any) => {
+        const fCount = selectedAssessment.floorCount || 1;
+        const weights = fCount === 2 ? COMPONENT_WEIGHTS_2_LANTAI : fCount >= 3 ? COMPONENT_WEIGHTS_3_LANTAI : COMPONENT_WEIGHTS_1_LANTAI;
+        const matchesType = (weights[comp.name] || 0) > 0;
+        return matchesType || (selectedAssessment.components.filter((item: any) => (weights[item.name] || 0) > 0).length === 0);
+      })
+    : [];
+
   return (
     <>
             {/* Side Sheet Detail & Real-Time Timeline */}
@@ -96,11 +111,11 @@ export default function VerificationDetailModal({
                           Kembali ke Daftar Verifikasi
                         </button>
                         <button
-                          onClick={() => navigate(`/new?edit=${selectedAssessment.id}&returnTo=/verifikasi`)}
+                          onClick={() => navigate(`/verifikasi-edit/${selectedAssessment.id}`)}
                           className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors border border-amber-200 flex items-center gap-1.5 shadow-sm"
                         >
                           <FileSignature className="w-3.5 h-3.5" />
-                          Edit Data Penilaian
+                          Perbaiki Data Penilaian
                         </button>
                         <button
                           onClick={() => setSelectedAssessment(null)}
@@ -150,6 +165,10 @@ export default function VerificationDetailModal({
                                 ? `${selectedAssessment.finalResult.totalDamagePercentage.toFixed(2)}% (Rusak ${selectedAssessment.finalResult.category})`
                                 : "Belum Dinilai (Menunggu Survei Teknis)"}
                             </p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-slate-400 font-semibold text-[10px] uppercase">Tipe Bangunan</p>
+                            <p className="font-bold text-slate-800">{buildingTypeLabel}</p>
                           </div>
                         </div>
       
@@ -231,11 +250,7 @@ export default function VerificationDetailModal({
                               Rincian Kerusakan per Komponen
                             </p>
                             <div className="space-y-3">
-                              {selectedAssessment.components.filter(comp => {
-                                const fCount = selectedAssessment.floorCount || 1;
-                                const weights = fCount === 2 ? COMPONENT_WEIGHTS_2_LANTAI : fCount >= 3 ? COMPONENT_WEIGHTS_3_LANTAI : COMPONENT_WEIGHTS_1_LANTAI;
-                                return (weights[comp.name] || 0) > 0;
-                              }).map((comp, idx) => (
+                              {visibleComponents.map((comp: any, idx: number) => (
                                 <div key={idx} className="bg-slate-50 border border-slate-200/60 rounded-xl p-3 text-xs space-y-3">
                                   <div>
                                     <div className="flex justify-between items-start mb-2">
