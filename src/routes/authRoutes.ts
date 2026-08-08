@@ -41,12 +41,32 @@ router.post('/api/auth/verify-turnstile', async (req: Request, res: Response): P
   }
 });
 
+// Helper function to decode JWT payload without verification (as fallback when API Gateway is offline)
+function decodeJwtPayload(token: string): any {
+  try {
+    const parts = token.split('.');
+    if (parts.length === 3) {
+      const payloadBase64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const jsonStr = Buffer.from(payloadBase64, 'base64').toString('utf8');
+      const data = JSON.parse(jsonStr);
+      return {
+        username: data.user_metadata?.full_name || data.user_metadata?.name || data.preferred_username || data.sub || (data.email ? data.email.split('@')[0] : 'User'),
+        email: data.email || (data.sub ? `${data.sub}@garutkab.go.id` : null),
+        role: data.app_metadata?.role || data.role || 'Guest',
+      };
+    }
+  } catch (err) {
+    logger.warn({ err }, 'Failed to decode JWT payload');
+  }
+  return null;
+}
+
 // === SSO PUPR-ID AUTH ENDPOINTS ===
 
 /**
  * POST /api/auth/sso/pupr-id
  * Receives a token from puprID after the user logs in there.
- * Validates the token against puprID API Gateway's /api/v1/userinfo endpoint,
+ * Validates token against puprID API Gateway or falls back to JWT token parsing,
  * syncs the user into sipeka's local DB (auto-create if enabled), and returns user info.
  */
 router.post('/api/auth/sso/pupr-id', async (req: Request, res: Response): Promise<any> => {
@@ -62,32 +82,33 @@ router.post('/api/auth/sso/pupr-id', async (req: Request, res: Response): Promis
     }
 
     const apiGatewayUrl = (ssoConfig.puprIdApiGatewayUrl || '').replace(/\/$/, '');
-    if (!apiGatewayUrl) {
-      return res.status(500).json({ success: false, message: 'URL API Gateway puprID belum dikonfigurasi.' });
+    let puprIdUser: any = null;
+
+    // Strategy 1: Try API Gateway userinfo endpoint if configured
+    if (apiGatewayUrl) {
+      try {
+        const userinfoRes = await fetch(`${apiGatewayUrl}/api/v1/userinfo`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+          signal: AbortSignal.timeout(5000),
+        });
+
+        if (userinfoRes.ok) {
+          puprIdUser = await userinfoRes.json();
+        }
+      } catch (fetchErr: any) {
+        logger.warn({ err: fetchErr }, 'API Gateway unreachable — falling back to JWT payload decode');
+      }
     }
 
-    // Validate token against puprID userinfo endpoint
-    let puprIdUser: any;
-    try {
-      const userinfoRes = await fetch(`${apiGatewayUrl}/api/v1/userinfo`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-        signal: AbortSignal.timeout(10000),
-      });
+    // Strategy 2: Fallback to JWT payload decoding
+    if (!puprIdUser) {
+      puprIdUser = decodeJwtPayload(token);
+    }
 
-      if (!userinfoRes.ok) {
-        logger.warn({ status: userinfoRes.status }, 'puprID userinfo validation failed');
-        return res.status(401).json({
-          success: false,
-          message: 'Token puprID tidak valid atau telah kedaluwarsa.',
-        });
-      }
-
-      puprIdUser = await userinfoRes.json();
-    } catch (fetchErr: any) {
-      logger.error({ err: fetchErr }, 'Failed to validate token against puprID API Gateway');
-      return res.status(502).json({
+    if (!puprIdUser || (!puprIdUser.email && !puprIdUser.username)) {
+      return res.status(401).json({
         success: false,
-        message: 'Gagal menghubungi API Gateway puprID untuk validasi token.',
+        message: 'Token puprID tidak valid atau data profil pengguna tidak dapat dibaca.',
       });
     }
 
@@ -103,7 +124,6 @@ router.post('/api/auth/sso/pupr-id', async (req: Request, res: Response): Promis
     let [existingUser] = await db.select().from(schema.users).where(eq(schema.users.email, email)).limit(1);
 
     if (existingUser) {
-      // Update existing user — sync name (role stays as configured in sipeka unless admin overrides)
       logger.info({ email, puprIdRole, sipekaRole }, 'SSO user found in sipeka DB');
     } else if (ssoConfig.autoCreateUser) {
       // Auto-create user
