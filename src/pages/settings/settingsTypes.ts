@@ -108,11 +108,24 @@ export interface AiConfig {
   documentPrompt: string;
 }
 
+export interface SsoConfig {
+  enabled: boolean;
+  puprIdBaseUrl: string;
+  puprIdApiGatewayUrl: string;
+  puprIdRealm: string;
+  clientId: string;
+  clientSecret: string;
+  showLoginButton: boolean;
+  autoCreateUser: boolean;
+  defaultRole: string;
+  roleMapping: Record<string, string>;
+}
+
 // Helper: available tabs per role
 export const getAvailableTabsList = (role: string): string[] => {
   switch (role) {
     case "Administrator":
-      return ["aplikasi", "komponen", "katalog", "users", "formulir", "param_profil", "dinas", "surat", "template", "ai"];
+      return ["aplikasi", "komponen", "katalog", "users", "formulir", "param_profil", "dinas", "surat", "template", "ai", "sso", "ikm"];
     case "Kadis":
     case "Kabid":
       return ["aplikasi", "dinas", "surat", "users"];
@@ -137,4 +150,7 @@ export const ALL_TABS = [
   { id: "surat", label: "Kop Surat" },
   { id: "template", label: "Pusat Template" },
   { id: "ai", label: "Pengaturan AI" },
+  { id: "sso", label: "Integrasi SSO" },
+  { id: "ikm", label: "Pertanyaan IKM" },
 ] as const;
+

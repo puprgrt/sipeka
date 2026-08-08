@@ -1,6 +1,6 @@
 import { useState, useEffect, Suspense, lazy } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Brain, Layers, Users, Shield, FileText, Printer, Settings as SettingsIcon, HelpCircle, Info, UserCog, Check, ClipboardCheck } from "lucide-react";
+import { Brain, Layers, Users, Shield, FileText, Printer, Settings as SettingsIcon, HelpCircle, Info, UserCog, Check, ClipboardCheck, Link } from "lucide-react";
 import { cn } from "../lib/utils";
 
 // Lazy loading all tab components for better performance
@@ -15,6 +15,7 @@ const SettingsLetterTab = lazy(() => import("./settings/SettingsLetterTab"));
 const SettingsTemplateTab = lazy(() => import("./settings/SettingsTemplateTab"));
 const SettingsAiTab = lazy(() => import("./settings/SettingsAiTab"));
 const SettingsIkmTab = lazy(() => import("./settings/SettingsIkmTab"));
+const SettingsSsoTab = lazy(() => import("./settings/SettingsSsoTab"));
 
 export default function Settings() {
   const [activeRole, setActiveRole] = useState<string>(() => {
@@ -24,7 +25,7 @@ export default function Settings() {
   const getAvailableTabsList = (role: string) => {
     switch (role) {
       case "Administrator":
-        return ["aplikasi", "komponen", "katalog", "users", "formulir", "param_profil", "dinas", "surat", "template", "ai", "ikm"];
+        return ["aplikasi", "komponen", "katalog", "users", "formulir", "param_profil", "dinas", "surat", "template", "ai", "sso", "ikm"];
       case "Kadis":
       case "Kabid":
         return ["aplikasi", "dinas", "surat", "users"];
@@ -72,6 +73,7 @@ export default function Settings() {
     { id: "surat", label: "Kop Surat", icon: Printer },
     { id: "template", label: "Pusat Template", icon: FileText },
     { id: "ai", label: "Pengaturan AI", icon: Brain },
+    { id: "sso", label: "Integrasi SSO", icon: Link },
     { id: "ikm", label: "Pertanyaan IKM", icon: ClipboardCheck },
   ];
 
@@ -113,6 +115,7 @@ export default function Settings() {
         {activeTab === "surat" && <SettingsLetterTab onToast={showToast} />}
         {activeTab === "template" && <SettingsTemplateTab onToast={showToast} />}
         {activeTab === "ai" && <SettingsAiTab onToast={showToast} />}
+        {activeTab === "sso" && <SettingsSsoTab onToast={showToast} />}
         {activeTab === "ikm" && <SettingsIkmTab onToast={showToast} />}
       </Suspense>
 

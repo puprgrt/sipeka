@@ -1,7 +1,7 @@
 import express from 'express';
 import { db } from '../db';
 import * as schema from '../db/schema';
-import { readAppSettingsFile, writeAppSettingsFile, readLetterParamsFile, writeLetterParamsFile, readAiSettings, writeAiSettings, readDocumentTemplates, writeDocumentTemplates } from '../utils/configHelper';
+import { readAppSettingsFile, writeAppSettingsFile, readLetterParamsFile, writeLetterParamsFile, readAiSettings, writeAiSettings, readDocumentTemplates, writeDocumentTemplates, readSsoSettings, writeSsoSettings } from '../utils/configHelper';
 
 
 import { requireRole } from '../middleware/authMiddleware';
@@ -149,6 +149,161 @@ router.post("/api/document-templates/reset-all", requireRole(...ADMIN_ROLES), as
   } catch (error) {
     console.error("POST reset-all templates error", error);
     res.status(500).json({ error: "Failed to reset all templates" });
+  }
+});
+
+// === SSO PUPR-ID SETTINGS ===
+
+router.get("/api/sso-settings", async (req, res) => {
+  try {
+    const params = await readSsoSettings();
+    // Mask clientSecret for security
+    if (params.clientSecret) {
+      params.clientSecret = "********";
+    }
+    res.json(params);
+  } catch (error) {
+    console.error("GET sso-settings error", error);
+    res.status(500).json({ error: "Failed to load SSO settings" });
+  }
+});
+
+router.get("/api/sso-settings/public", async (req, res) => {
+  try {
+    const params = await readSsoSettings();
+    // Only expose what the login page needs
+    res.json({
+      enabled: params.enabled,
+      showLoginButton: params.showLoginButton,
+      puprIdBaseUrl: params.puprIdBaseUrl,
+      puprIdRealm: params.puprIdRealm,
+    });
+  } catch (error) {
+    console.error("GET sso-settings/public error", error);
+    res.status(500).json({ error: "Failed to load public SSO settings" });
+  }
+});
+
+router.put("/api/sso-settings", requireRole('Administrator'), async (req, res) => {
+  try {
+    const updated = req.body;
+    // If the frontend sends back the mask, keep the existing secret
+    if (updated.clientSecret === "********") {
+      const current = await readSsoSettings();
+      updated.clientSecret = current.clientSecret;
+    }
+    await writeSsoSettings(updated);
+    // Mask secret before sending response
+    if (updated.clientSecret) {
+      updated.clientSecret = "********";
+    }
+    res.json(updated);
+  } catch (error) {
+    console.error("PUT sso-settings error", error);
+    res.status(500).json({ error: "Failed to update SSO settings" });
+  }
+});
+
+router.post("/api/sso/test-connection", requireRole('Administrator'), async (req, res) => {
+  const startTime = Date.now();
+  try {
+    const ssoConfig = await readSsoSettings();
+    const baseUrl = (req.body.puprIdBaseUrl || ssoConfig.puprIdBaseUrl || "").replace(/\/$/, "");
+    const apiGatewayUrl = (req.body.puprIdApiGatewayUrl || ssoConfig.puprIdApiGatewayUrl || "").replace(/\/$/, "");
+    const realm = req.body.puprIdRealm || ssoConfig.puprIdRealm || "dpupr-garut";
+
+    if (!baseUrl && !apiGatewayUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "URL puprID belum dikonfigurasi.",
+        latencyMs: Date.now() - startTime,
+      });
+    }
+
+    const results: any = { tests: [] };
+
+    // Test 1: Ping puprID Frontend
+    if (baseUrl) {
+      try {
+        const frontendRes = await fetch(baseUrl, { method: "HEAD", signal: AbortSignal.timeout(8000) });
+        results.tests.push({
+          name: "puprID Frontend",
+          url: baseUrl,
+          status: frontendRes.ok ? "OK" : `HTTP ${frontendRes.status}`,
+          success: frontendRes.ok,
+        });
+      } catch (err: any) {
+        results.tests.push({
+          name: "puprID Frontend",
+          url: baseUrl,
+          status: err.message || "Connection failed",
+          success: false,
+        });
+      }
+    }
+
+    // Test 2: Ping puprID API Gateway Health
+    if (apiGatewayUrl) {
+      try {
+        const healthRes = await fetch(`${apiGatewayUrl}/health`, { signal: AbortSignal.timeout(8000) });
+        const healthData = await healthRes.json().catch(() => null);
+        results.tests.push({
+          name: "API Gateway Health",
+          url: `${apiGatewayUrl}/health`,
+          status: healthRes.ok ? healthData?.status || "OK" : `HTTP ${healthRes.status}`,
+          success: healthRes.ok,
+        });
+      } catch (err: any) {
+        results.tests.push({
+          name: "API Gateway Health",
+          url: `${apiGatewayUrl}/health`,
+          status: err.message || "Connection failed",
+          success: false,
+        });
+      }
+
+      // Test 3: OIDC Discovery
+      try {
+        const oidcRes = await fetch(`${apiGatewayUrl}/realms/${realm}/.well-known/openid-configuration`, { signal: AbortSignal.timeout(8000) });
+        const oidcData = await oidcRes.json().catch(() => null);
+        results.tests.push({
+          name: "OIDC Discovery",
+          url: `${apiGatewayUrl}/realms/${realm}/.well-known/openid-configuration`,
+          status: oidcRes.ok && oidcData?.issuer ? "OK" : `HTTP ${oidcRes.status}`,
+          success: oidcRes.ok && !!oidcData?.issuer,
+          issuer: oidcData?.issuer || null,
+        });
+      } catch (err: any) {
+        results.tests.push({
+          name: "OIDC Discovery",
+          url: `${apiGatewayUrl}/realms/${realm}/.well-known/openid-configuration`,
+          status: err.message || "Connection failed",
+          success: false,
+        });
+      }
+    }
+
+    const allPassed = results.tests.every((t: any) => t.success);
+    const anyPassed = results.tests.some((t: any) => t.success);
+
+    res.json({
+      success: allPassed,
+      partial: !allPassed && anyPassed,
+      message: allPassed
+        ? "Semua koneksi ke puprID berhasil!"
+        : anyPassed
+        ? "Sebagian koneksi berhasil, periksa detail di bawah."
+        : "Gagal terhubung ke puprID. Periksa URL dan pastikan layanan berjalan.",
+      latencyMs: Date.now() - startTime,
+      ...results,
+    });
+  } catch (error: any) {
+    console.error("SSO test-connection error", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Gagal menguji koneksi ke puprID.",
+      latencyMs: Date.now() - startTime,
+    });
   }
 });
 

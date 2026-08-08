@@ -136,3 +136,38 @@ export async function writeDocumentTemplates(templates: any[]) {
   await setDbConfig('document_templates', toSave);
   return true;
 }
+
+// === SSO PUPR-ID SETTINGS ===
+
+export async function readSsoSettings() {
+  const defaultVal: any = {
+    enabled: false,
+    puprIdBaseUrl: "https://pupr-id.vercel.app",
+    puprIdApiGatewayUrl: "",
+    puprIdRealm: "dpupr-garut",
+    clientId: "",
+    clientSecret: "",
+    showLoginButton: true,
+    autoCreateUser: true,
+    defaultRole: "Pengelola_Bangunan",
+    roleMapping: {
+      "Administrator": "Administrator",
+      "Super Admin": "Administrator",
+      "Operator": "Operator",
+      "Tim_Teknis": "Tim_Teknis",
+      "Petugas_Survey": "Petugas_Survey",
+      "Koordinator": "Koordinator",
+      "Kabid": "Kabid",
+      "Kadis": "Kadis",
+      "Pengelola_Bangunan": "Pengelola_Bangunan",
+      "Guest": "Pengelola_Bangunan"
+    }
+  };
+  const dbVal = await getDbConfig('sso_settings', defaultVal);
+  return { ...defaultVal, ...(dbVal || {}) };
+}
+
+export async function writeSsoSettings(data: any) {
+  await setDbConfig('sso_settings', data);
+  return true;
+}

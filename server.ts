@@ -116,6 +116,8 @@ app.use("/api", (req, res, next) => {
     { method: "GET", path: "/health" },
     { method: "GET", path: "/app-settings" },
     { method: "POST", path: "/auth/verify-turnstile" },
+    { method: "GET", path: "/sso-settings/public" },
+    { method: "POST", path: "/auth/sso/pupr-id" },
     { method: "GET", regex: /^\/assessments\/[a-zA-Z0-9_-]+\/validate-public$/ },
   ];
 

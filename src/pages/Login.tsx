@@ -1,7 +1,7 @@
 import { apiFetch } from "../lib/api";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Mail, Lock, Eye, EyeOff, Chrome, ArrowRight, Building2, Shield, Activity, Info, UserCheck, CheckCircle2, AlertCircle } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, Chrome, ArrowRight, Building2, Shield, Activity, Info, UserCheck, CheckCircle2, AlertCircle, Fingerprint } from "lucide-react";
 import { motion } from "motion/react";
 import { googleSignIn, initAuth, emailPasswordSignIn, persistUserSession } from "../lib/firebaseAuth";
 import { isDemoLoginAllowed } from "../lib/clientEnv";
@@ -98,6 +98,8 @@ export default function Login() {
     logoKiri: "https://upload.wikimedia.org/wikipedia/commons/b/b3/Coat_of_arms_of_Garut_Regency.svg",
     logoKanan: "https://upload.wikimedia.org/wikipedia/commons/0/06/Logo_PUPR.png"
   });
+  const [ssoConfig, setSsoConfig] = useState<{ enabled: boolean; showLoginButton: boolean; puprIdBaseUrl: string; puprIdRealm: string } | null>(null);
+  const [ssoLoading, setSsoLoading] = useState(false);
 
   useEffect(() => {
     apiFetch("/api/app-settings")
@@ -108,6 +110,16 @@ export default function Login() {
         }
       })
       .catch(err => console.error("Error fetching app settings in login:", err));
+
+    // Fetch SSO settings
+    apiFetch("/api/sso-settings/public")
+      .then(res => res.json())
+      .then(data => {
+        if (data && typeof data.enabled === 'boolean') {
+          setSsoConfig(data);
+        }
+      })
+      .catch(err => console.error("Error fetching SSO settings:", err));
   }, []);
 
   // If already logged in, redirect to dashboard
@@ -158,6 +170,59 @@ export default function Login() {
     return () => {
       if (typeof unsubscribe === "function") unsubscribe();
     };
+  }, [navigate]);
+
+  // Handle SSO callback — when redirected back from puprID with token in URL hash
+  useEffect(() => {
+    const handleSsoCallback = async () => {
+      const hash = window.location.hash;
+      if (!hash.includes('sso_token=')) return;
+
+      const params = new URLSearchParams(hash.replace('#', ''));
+      const ssoToken = params.get('sso_token');
+      if (!ssoToken) return;
+
+      // Clean URL
+      window.history.replaceState(null, '', window.location.pathname);
+
+      setLoading(true);
+      setSsoLoading(true);
+      setError(null);
+      setSuccess(null);
+
+      try {
+        const res = await apiFetch('/api/auth/sso/pupr-id', {
+          method: 'POST',
+          body: JSON.stringify({ token: ssoToken }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          throw new Error(data.message || 'Login SSO gagal.');
+        }
+
+        // Establish local session from SSO response
+        persistUserSession({
+          email: data.user.email || '',
+          displayName: data.user.namaLengkap || '',
+          role: data.user.role || 'Pengelola_Bangunan',
+          userId: data.user.idUser ? String(data.user.idUser) : undefined,
+        });
+
+        setSuccess(data.message || 'Login SSO berhasil!');
+        setTimeout(() => {
+          window.dispatchEvent(new Event('storage'));
+          navigate('/', { replace: true });
+        }, 800);
+      } catch (err: any) {
+        setError(err.message || 'Gagal memproses login SSO dari puprID.');
+      } finally {
+        setLoading(false);
+        setSsoLoading(false);
+      }
+    };
+
+    handleSsoCallback();
   }, [navigate]);
 
   const handleCredentialsLogin = async (e: React.FormEvent) => {
@@ -541,6 +606,29 @@ export default function Login() {
               <Chrome className="w-4 h-4 text-amber-500" />
               <span>Masuk dengan Google Workspace</span>
             </button>
+
+            {/* puprID SSO Login Button */}
+            {ssoConfig?.enabled && ssoConfig?.showLoginButton && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!ssoConfig?.puprIdBaseUrl) {
+                    setError("URL puprID belum dikonfigurasi. Hubungi Administrator.");
+                    return;
+                  }
+                  setSsoLoading(true);
+                  // Construct callback URL — puprID will redirect back here with token
+                  const callbackUrl = `${window.location.origin}/login#sso_source=puprid`;
+                  const puprIdLoginUrl = `${ssoConfig.puprIdBaseUrl}/login?redirect_to=${encodeURIComponent(callbackUrl)}&client_app=sipeka`;
+                  window.location.href = puprIdLoginUrl;
+                }}
+                disabled={loading || ssoLoading}
+                className="w-full mt-3 bg-gradient-to-r from-[#071A3D] to-[#123B7A] hover:from-[#0A2350] hover:to-[#1A4D94] border border-[#FFDA00]/20 text-white font-semibold text-sm py-2.5 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2.5 disabled:opacity-50 cursor-pointer group"
+              >
+                <Fingerprint className="w-4 h-4 text-[#FFDA00] group-hover:scale-110 transition-transform" />
+                <span>Masuk via <span className="font-black">pupr<span className="text-[#FFDA00]">ID</span></span></span>
+              </button>
+            )}
           </div>
 
           {/* Footer */}
