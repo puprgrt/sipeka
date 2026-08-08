@@ -112,21 +112,39 @@ router.post('/api/auth/sso/pupr-id', async (req: Request, res: Response): Promis
       });
     }
 
-    // Map puprID role to sipeka role
     const puprIdRole = puprIdUser.role || 'Guest';
-    const roleMapping = ssoConfig.roleMapping || {};
-    const sipekaRole = roleMapping[puprIdRole] || ssoConfig.defaultRole || 'Pengelola_Bangunan';
-
-    const email = puprIdUser.email || `${puprIdUser.username}@garutkab.go.id`;
+    const email = puprIdUser.email || (puprIdUser.username ? `${puprIdUser.username}@garutkab.go.id` : 'user@garutkab.go.id');
     const displayName = puprIdUser.username || email.split('@')[0];
+
+    const roleMapping: Record<string, string> = {
+      'Super Admin': 'Administrator',
+      'Admin': 'Administrator',
+      'Administrator': 'Administrator',
+      'Tim Teknis': 'Tim_Teknis',
+      'Petugas': 'Petugas_Survey',
+      'Surveyor': 'Petugas_Survey',
+      'Operator': 'Operator',
+      'Koordinator': 'Koordinator',
+      'Kepala Dinas': 'Kadis',
+      'Kadis': 'Kadis',
+      'Pengelola': 'Pengelola_Bangunan',
+      'Guest': 'Pengelola_Bangunan'
+    };
+
+    let sipekaRole = roleMapping[puprIdRole];
+    if (!sipekaRole) {
+      const ssoRoleMapping = ssoConfig.roleMapping || {};
+      sipekaRole = ssoRoleMapping[puprIdRole] || ssoConfig.defaultRole || 'Pengelola_Bangunan';
+      logger.info({ puprIdRole, sipekaRole }, 'SSO Role unmapped, falling back to default role');
+    }
 
     // Check if user exists in sipeka DB
     let [existingUser] = await db.select().from(schema.users).where(eq(schema.users.email, email)).limit(1);
 
     if (existingUser) {
       logger.info({ email, puprIdRole, sipekaRole }, 'SSO user found in sipeka DB');
-    } else if (ssoConfig.autoCreateUser) {
-      // Auto-create user
+    } else if (ssoConfig.autoCreateUser || sipekaRole === 'Administrator') {
+      // Auto-create user (Always allow for Administrators to prevent lockout)
       const uid = `puprid_${puprIdUser.username || Date.now()}`;
       const [newUser] = await db.insert(schema.users).values({
         uid,
@@ -140,7 +158,7 @@ router.post('/api/auth/sso/pupr-id', async (req: Request, res: Response): Promis
     } else {
       return res.status(403).json({
         success: false,
-        message: 'Akun Anda belum terdaftar di SI-PEKA. Hubungi Administrator untuk mendaftarkan akun.',
+        message: 'Akun Anda belum terdaftar di SI-PEKA dan auto-provisioning dinonaktifkan.',
       });
     }
 

@@ -190,9 +190,6 @@ export default function Login() {
 
       if (!ssoToken) return;
 
-      // Clean URL parameters
-      window.history.replaceState(null, '', window.location.pathname);
-
       setLoading(true);
       setSsoLoading(true);
       setError(null);
@@ -216,6 +213,9 @@ export default function Login() {
           role: data.user.role || 'Pengelola_Bangunan',
           userId: data.user.idUser ? String(data.user.idUser) : undefined,
         });
+
+        // Clean URL parameters now that we successfully authenticated
+        window.history.replaceState(null, '', window.location.pathname);
 
         setSuccess(data.message || 'Login SSO berhasil! Mengalihkan ke Dasbor...');
         setTimeout(() => {
