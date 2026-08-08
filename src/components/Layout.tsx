@@ -276,9 +276,9 @@ export default function Layout() {
 
   useEffect(() => {
     if (authLoaded && !user) {
-      navigate("/login", { replace: true });
+      navigate({ pathname: "/login", hash: location.hash, search: location.search }, { replace: true });
     }
-  }, [authLoaded, user, navigate]);
+  }, [authLoaded, user, navigate, location.hash, location.search]);
 
   const handleLogin = async () => {
     setIsLoggingIn(true);
