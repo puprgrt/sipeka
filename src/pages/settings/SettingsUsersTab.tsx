@@ -20,11 +20,6 @@ export default function SettingsUsersTab({ onToast }: SettingsUsersTabProps) {
 
   useEffect(() => { fetchUsers(); }, []);
 
-  // Real-time auto-refresh
-  useEffect(() => {
-    const interval = setInterval(() => { fetchUsers(true); }, 3000);
-    return () => clearInterval(interval);
-  }, []);
 
   const fetchUsers = async (silent = false) => {
     if (!silent) setLoadingUsers(true);

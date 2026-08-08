@@ -37,8 +37,7 @@ export default function VerifikasiAdministrasi() {
 
   useEffect(() => {
     fetchAssessments();
-    const intervalId = setInterval(fetchAssessments, 10000);
-    return () => clearInterval(intervalId);
+    // Polling removed to save egress
   }, []);
 
   const filteredAssessments = assessments.filter(a => {

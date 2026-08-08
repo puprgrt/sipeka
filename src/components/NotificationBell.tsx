@@ -92,7 +92,6 @@ export default function NotificationBell() {
     }
 
     connectStream();
-    const interval = setInterval(fetchNotifications, 30000);
 
     const handleStorageChange = () => {
       fetchNotifications();
@@ -102,7 +101,6 @@ export default function NotificationBell() {
     return () => {
       cancelled = true;
       eventSource?.close();
-      clearInterval(interval);
       window.removeEventListener("storage", handleStorageChange);
     };
   }, [activeRole, activeUserId]);

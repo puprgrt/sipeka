@@ -43,8 +43,7 @@ export default function SuratReports() {
       .then(data => setLetterConfig(data))
       .catch(err => console.error("Failed to load letter config", err));
 
-    const intervalId = setInterval(fetchAssessments, 10000); // Polling every 10s for realtime updates
-    return () => clearInterval(intervalId);
+    // Polling removed to save egress
   }, []);
 
   const handleUpdateDocument = async (assessment: Assessment) => {
