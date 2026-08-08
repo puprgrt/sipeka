@@ -254,19 +254,16 @@ export default function Layout() {
       },
       () => {
         const isLocalLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-        if (isLocalLoggedIn && isDemoLoginAllowed()) {
-          const email = localStorage.getItem("userEmail") || "admin@sipeka.com";
-          const name = localStorage.getItem("userName") || "Sistem Admin";
+        if (isLocalLoggedIn) {
+          const email = localStorage.getItem("userEmail") || "user@sipeka.com";
+          const name = localStorage.getItem("userName") || "Pengguna SIPEKA";
           setUser({
             email,
             displayName: name,
             photoURL: localStorage.getItem("userPhoto") || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150",
-            uid: localStorage.getItem("activeUserId") || "demo_user",
+            uid: localStorage.getItem("activeUserId") || "sso_user",
           } as any);
         } else {
-          if (isLocalLoggedIn) {
-            clearUserSession();
-          }
           setUser(null);
         }
         setAuthLoaded(true);

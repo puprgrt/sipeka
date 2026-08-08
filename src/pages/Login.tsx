@@ -162,7 +162,7 @@ export default function Login() {
       },
       () => {
         const isLocalLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-        if (isLocalLoggedIn && isDemoLoginAllowed()) {
+        if (isLocalLoggedIn) {
           navigate("/", { replace: true });
         }
       }
@@ -172,17 +172,25 @@ export default function Login() {
     };
   }, [navigate]);
 
-  // Handle SSO callback — when redirected back from puprID with token in URL hash
+  // Handle SSO callback — when redirected back from puprID with token in URL search or hash
   useEffect(() => {
     const handleSsoCallback = async () => {
+      const search = window.location.search;
       const hash = window.location.hash;
-      if (!hash.includes('sso_token=')) return;
 
-      const params = new URLSearchParams(hash.replace('#', ''));
-      const ssoToken = params.get('sso_token');
+      const searchParams = new URLSearchParams(search);
+      const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
+
+      const ssoToken = searchParams.get('sso_token') ||
+                       searchParams.get('access_token') ||
+                       searchParams.get('token') ||
+                       hashParams.get('sso_token') ||
+                       hashParams.get('access_token') ||
+                       hashParams.get('token');
+
       if (!ssoToken) return;
 
-      // Clean URL
+      // Clean URL parameters
       window.history.replaceState(null, '', window.location.pathname);
 
       setLoading(true);
@@ -201,7 +209,7 @@ export default function Login() {
           throw new Error(data.message || 'Login SSO gagal.');
         }
 
-        // Establish local session from SSO response
+        // Establish local session from SSO response with exact mapped role
         persistUserSession({
           email: data.user.email || '',
           displayName: data.user.namaLengkap || '',
@@ -209,7 +217,7 @@ export default function Login() {
           userId: data.user.idUser ? String(data.user.idUser) : undefined,
         });
 
-        setSuccess(data.message || 'Login SSO berhasil!');
+        setSuccess(data.message || 'Login SSO berhasil! Mengalihkan ke Dasbor...');
         setTimeout(() => {
           window.dispatchEvent(new Event('storage'));
           navigate('/', { replace: true });
